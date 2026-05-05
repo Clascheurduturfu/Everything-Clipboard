@@ -1,0 +1,6 @@
+pystray
+Pillow
+websockets
+cryptography
+fastapi
+uvicorn[standard]

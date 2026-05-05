@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#1a1a2e">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📋 ClipSync"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#e0e0e0"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Service: Stopped"
+        android:textSize="14sp"
+        android:textColor="#888888"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Device Name"
+        android:textColor="#aaaaaa"
+        android:textSize="12sp"/>
+
+    <EditText
+        android:id="@+id/editDeviceName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="e.g. My Pixel"
+        android:textColor="#ffffff"
+        android:textColorHint="#555555"
+        android:backgroundTint="#444444"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Server URL"
+        android:textColor="#aaaaaa"
+        android:textSize="12sp"/>
+
+    <EditText
+        android:id="@+id/editServerUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="wss://your-server.ondigitalocean.app"
+        android:textColor="#ffffff"
+        android:textColorHint="#555555"
+        android:backgroundTint="#444444"
+        android:inputType="textUri"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Secret Key"
+        android:textColor="#aaaaaa"
+        android:textSize="12sp"/>
+
+    <EditText
+        android:id="@+id/editSecretKey"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Your shared secret"
+        android:textColor="#ffffff"
+        android:textColorHint="#555555"
+        android:backgroundTint="#444444"
+        android:inputType="textPassword"
+        android:layout_marginBottom="24dp"/>
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Settings"
+        android:backgroundTint="#4a90d9"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="24dp"/>
+
+    <Switch
+        android:id="@+id/switchService"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Run ClipSync in Background"
+        android:textColor="#e0e0e0"
+        android:textSize="16sp"/>
+
+</LinearLayout>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClipSync</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="server_url">Server URL</string>
+    <string name="connection_status">Status: Disconnected</string>
+    <string name="connected">Status: Connected</string>
+    <string name="disconnected">Status: Disconnected</string>
+    <string name="connecting">Status: Connecting…</string>
+</resources>
