@@ -12,6 +12,8 @@ import sys
 import textwrap
 import threading
 import time
+import ssl
+
 
 import pystray
 import websockets
@@ -179,6 +181,11 @@ class ClipSyncApp:
         url = self.config["server_url"].rstrip("/")
         ws_url = f"{url}/ws/{room_id}"
         logger.info(f"Connecting to {ws_url}")
+        ssl_context = None
+        if ws_url.startswith("wss"):
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
 
         while not self.stop_event.is_set():
             try:
