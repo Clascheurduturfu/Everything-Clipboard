@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
         val editServerUrl = findViewById<EditText>(R.id.editServerUrl)
         val editSecretKey = findViewById<EditText>(R.id.editSecretKey)
         val btnSave = findViewById<Button>(R.id.btnSave)
+        val btnAccessibility = findViewById<Button>(R.id.btnAccessibility)
         val switchService = findViewById<Switch>(R.id.switchService)
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
 
@@ -59,6 +61,10 @@ class MainActivity : AppCompatActivity() {
                 startClipSyncService()
                 tvStatus.text = "Service: Restarting..."
             }
+        }
+
+        btnAccessibility.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->

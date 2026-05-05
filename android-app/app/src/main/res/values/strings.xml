@@ -7,5 +7,7 @@
     <string name="connection_status">Status: Disconnected</string>
     <string name="connected">Status: Connected</string>
     <string name="disconnected">Status: Disconnected</string>
-    <string name="connecting">Status: Connecting…</string>
+    <string name="connecting">Status: Connecting...</string>
+    <string name="accessibility_service_label">ClipSync Clipboard Bridge</string>
+    <string name="accessibility_service_description">Watches clipboard changes and sends copied text to your ClipSync devices.</string>
 </resources>

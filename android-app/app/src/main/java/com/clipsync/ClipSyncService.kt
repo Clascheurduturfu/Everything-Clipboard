@@ -1,6 +1,10 @@
 package com.clipsync
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -18,6 +22,10 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         private const val TAG = "ClipSyncService"
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "clipsync_channel"
+
+        const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
+        const val EXTRA_TEXT = "com.clipsync.extra.TEXT"
+        const val EXTRA_SOURCE = "com.clipsync.extra.SOURCE"
     }
 
     private lateinit var clipboardManager: ClipboardManager
@@ -26,6 +34,10 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     private var keyBytes: ByteArray? = null
     private var deviceName: String = ""
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingOutgoing = mutableListOf<String>()
+    private var currentServerUrl: String = ""
+    private var currentRoomId: String = ""
+    private var listenerRegistered = false
 
     override fun onCreate() {
         super.onCreate()
@@ -42,26 +54,45 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         deviceName = prefs.getString("device_name", "Android Phone") ?: "Android Phone"
 
         if (serverUrl.isEmpty() || secretKey.isEmpty()) {
-            updateNotification("Waiting for settings — open ClipSync app")
+            updateNotification("Waiting for settings - open ClipSync app")
             return START_STICKY
         }
 
         keyBytes = CryptoUtils.deriveKey(secretKey)
         val roomId = CryptoUtils.getRoomId(secretKey)
+        val actionText = intent?.getStringExtra(EXTRA_TEXT)
 
-        // Disconnect old client if reconnecting with new settings
-        wsClient?.disconnect()
+        val settingsChanged = serverUrl != currentServerUrl || roomId != currentRoomId || wsClient == null
+        if (settingsChanged) {
+            wsClient?.disconnect()
+            currentServerUrl = serverUrl
+            currentRoomId = roomId
 
-        wsClient = WsClient(
-            url = serverUrl,
-            roomId = roomId,
-            onMessage = { encryptedPayload -> handleIncomingPayload(encryptedPayload) },
-            onConnected = { updateNotification("Connected — syncing clipboard") },
-            onDisconnected = { updateNotification("Disconnected — reconnecting...") },
-        )
-        wsClient?.connect()
-        clipboardManager.addPrimaryClipChangedListener(this)
-        updateNotification("Connecting to server...")
+            wsClient = WsClient(
+                url = serverUrl,
+                roomId = roomId,
+                onMessage = { encryptedPayload -> handleIncomingPayload(encryptedPayload) },
+                onConnected = {
+                    flushPendingOutgoing()
+                    updateNotification("Connected - syncing clipboard")
+                },
+                onDisconnected = { updateNotification("Disconnected - reconnecting...") },
+            )
+            wsClient?.connect()
+        }
+
+        if (!listenerRegistered) {
+            clipboardManager.addPrimaryClipChangedListener(this)
+            listenerRegistered = true
+        }
+
+        if (!actionText.isNullOrBlank()) {
+            sendClipboardText(actionText, intent.getStringExtra(EXTRA_SOURCE) ?: "external")
+        }
+
+        if (settingsChanged) {
+            updateNotification("Connecting to server...")
+        }
 
         Log.i(TAG, "Service started with server=$serverUrl")
         return START_STICKY
@@ -76,21 +107,29 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         lastClipboardText = content
 
         mainHandler.post {
-            // Temporarily remove listener to prevent echo loop
             clipboardManager.removePrimaryClipChangedListener(this)
+            listenerRegistered = false
+
             val clip = ClipData.newPlainText("ClipSync", content)
             clipboardManager.setPrimaryClip(clip)
-            clipboardManager.addPrimaryClipChangedListener(this)
 
+            clipboardManager.addPrimaryClipChangedListener(this)
+            listenerRegistered = true
             updateNotification("From $senderDevice: ${content.take(25)}...")
         }
     }
 
     override fun onPrimaryClipChanged() {
-        val clip = clipboardManager.primaryClip ?: return
-        if (clip.itemCount == 0) return
-        val text = clip.getItemAt(0).text?.toString() ?: return
+        sendClipboardText(readClipboardText() ?: return, "clipboard_listener")
+    }
 
+    private fun readClipboardText(): String? {
+        val clip = clipboardManager.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+        return clip.getItemAt(0).coerceToText(this)?.toString()
+    }
+
+    private fun sendClipboardText(text: String, source: String) {
         if (text == lastClipboardText || text.isBlank()) return
 
         lastClipboardText = text
@@ -99,8 +138,30 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         val payload = CryptoUtils.encryptPayload(deviceName, text, key)
         val sent = wsClient?.send(payload) ?: false
         if (sent) {
-            Log.i(TAG, "Sent: ${text.take(30)}...")
+            Log.i(TAG, "Sent from $source: ${text.take(30)}...")
             updateNotification("Sent: ${text.take(25)}...")
+        } else {
+            pendingOutgoing.add(payload)
+            Log.i(TAG, "Queued from $source: ${text.take(30)}...")
+            updateNotification("Queued clipboard - reconnecting...")
+        }
+    }
+
+    private fun flushPendingOutgoing() {
+        if (pendingOutgoing.isEmpty()) return
+
+        val iterator = pendingOutgoing.iterator()
+        var sentCount = 0
+        while (iterator.hasNext()) {
+            if (wsClient?.send(iterator.next()) == true) {
+                iterator.remove()
+                sentCount++
+            } else {
+                break
+            }
+        }
+        if (sentCount > 0) {
+            Log.i(TAG, "Flushed $sentCount queued clipboard update(s)")
         }
     }
 
@@ -119,17 +180,18 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun buildNotification(text: String): Notification {
-        // Tapping notification opens the main activity
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this,
+            0,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("ClipSync")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_menu_edit)
+            .setSmallIcon(R.drawable.ic_stat_clipsync)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
@@ -142,7 +204,10 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
 
     override fun onDestroy() {
         Log.i(TAG, "Service destroyed")
-        clipboardManager.removePrimaryClipChangedListener(this)
+        if (listenerRegistered) {
+            clipboardManager.removePrimaryClipChangedListener(this)
+            listenerRegistered = false
+        }
         wsClient?.disconnect()
         super.onDestroy()
     }

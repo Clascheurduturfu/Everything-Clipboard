@@ -9,6 +9,8 @@
 
     <application
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="ClipSync"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
@@ -25,6 +27,19 @@
             android:name=".ClipSyncService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
+
+        <service
+            android:name=".ClipboardAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
 
     </application>
 </manifest>
