@@ -10,4 +10,6 @@
     <string name="connecting">Status: Connecting...</string>
     <string name="accessibility_service_label">ClipSync Clipboard Bridge</string>
     <string name="accessibility_service_description">Watches clipboard changes and sends copied text to your ClipSync devices.</string>
+    <string name="send_clipboard_action">Send Clipboard</string>
+    <string name="quick_settings_tile_label">Send ClipSync</string>
 </resources>

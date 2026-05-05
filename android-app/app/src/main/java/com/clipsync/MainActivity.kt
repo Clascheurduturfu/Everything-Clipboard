@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         val btnSave = findViewById<Button>(R.id.btnSave)
         val btnAccessibility = findViewById<Button>(R.id.btnAccessibility)
         val switchService = findViewById<Switch>(R.id.switchService)
+        val switchSendNotificationAction = findViewById<Switch>(R.id.switchSendNotificationAction)
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
 
         // Load saved prefs
@@ -31,6 +32,8 @@ class MainActivity : AppCompatActivity() {
         editDeviceName.setText(prefs.getString("device_name", "Android Phone"))
         editServerUrl.setText(prefs.getString("server_url", ""))
         editSecretKey.setText(prefs.getString("secret_key", ""))
+        switchSendNotificationAction.isChecked =
+            prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
 
         // Check if service is supposed to be running
         val wasRunning = prefs.getBoolean("service_running", false)
@@ -65,6 +68,16 @@ class MainActivity : AppCompatActivity() {
 
         btnAccessibility.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        switchSendNotificationAction.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit()
+                .putBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, isChecked)
+                .apply()
+
+            if (switchService.isChecked) {
+                startClipSyncService()
+            }
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->

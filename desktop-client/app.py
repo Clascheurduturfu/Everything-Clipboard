@@ -191,6 +191,7 @@ class ClipSyncApp:
             try:
                 async with websockets.connect(
                     ws_url,
+                    ssl=ssl_context,
                     ping_interval=20,
                     ping_timeout=10,
                     close_timeout=5,

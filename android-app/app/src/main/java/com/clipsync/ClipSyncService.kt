@@ -22,6 +22,8 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         private const val TAG = "ClipSyncService"
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "clipsync_channel"
+        private const val PREFS_NAME = "clipsync_prefs"
+        const val PREF_SHOW_SEND_NOTIFICATION_ACTION = "show_send_notification_action"
 
         const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
         const val EXTRA_TEXT = "com.clipsync.extra.TEXT"
@@ -48,7 +50,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val serverUrl = prefs.getString("server_url", "") ?: ""
         val secretKey = prefs.getString("secret_key", "") ?: ""
         deviceName = prefs.getString("device_name", "Android Phone") ?: "Android Phone"
@@ -188,13 +190,31 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("ClipSync")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_clipsync)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .build()
+
+        val showSendAction = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
+        if (showSendAction) {
+            val sendIntent = Intent(this, SendClipboardActivity::class.java)
+            val sendPendingIntent = PendingIntent.getActivity(
+                this,
+                1,
+                sendIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                R.drawable.ic_stat_clipsync,
+                getString(R.string.send_clipboard_action),
+                sendPendingIntent
+            )
+        }
+
+        return builder.build()
     }
 
     private fun updateNotification(text: String) {

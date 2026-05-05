@@ -94,10 +94,19 @@
             android:id="@+id/btnAccessibility"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="16dp"
             android:backgroundTint="#00a6a6"
             android:text="Enable Clipboard Bridge"
             android:textColor="#ffffff" />
+
+        <Switch
+            android:id="@+id/switchSendNotificationAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Show Send Clipboard notification button"
+            android:textColor="#e7eef8"
+            android:textSize="15sp" />
 
         <Switch
             android:id="@+id/switchService"
