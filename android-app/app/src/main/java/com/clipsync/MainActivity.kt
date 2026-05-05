@@ -1,7 +1,9 @@
 package com.clipsync
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -13,6 +15,12 @@ import android.widget.Switch
 import android.widget.TextView
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val REQUEST_POST_NOTIFICATIONS = 1001
+    }
+
+    private var startServiceAfterNotificationPrompt = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +69,7 @@ class MainActivity : AppCompatActivity() {
             // Restart service if it's running to apply new settings
             if (switchService.isChecked) {
                 stopClipSyncService()
-                startClipSyncService()
+                startClipSyncServiceWithPermissionPrompt()
                 tvStatus.text = "Service: Restarting..."
             }
         }
@@ -75,8 +83,12 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, isChecked)
                 .apply()
 
+            if (isChecked) {
+                requestNotificationPermissionIfNeeded()
+            }
+
             if (switchService.isChecked) {
-                startClipSyncService()
+                startClipSyncServiceWithPermissionPrompt()
             }
         }
 
@@ -90,13 +102,31 @@ class MainActivity : AppCompatActivity() {
                     switchService.isChecked = false
                     return@setOnCheckedChangeListener
                 }
-                startClipSyncService()
+                startClipSyncServiceWithPermissionPrompt()
                 tvStatus.text = "Service: Running"
             } else {
                 stopClipSyncService()
                 tvStatus.text = "Service: Stopped"
             }
         }
+    }
+
+    private fun startClipSyncServiceWithPermissionPrompt() {
+        if (requestNotificationPermissionIfNeeded()) {
+            startServiceAfterNotificationPrompt = true
+            return
+        }
+        startClipSyncService()
+    }
+
+    private fun requestNotificationPermissionIfNeeded(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            return false
+        }
+
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_POST_NOTIFICATIONS)
+        return true
     }
 
     private fun startClipSyncService() {
@@ -110,5 +140,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopClipSyncService() {
         stopService(Intent(this, ClipSyncService::class.java))
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_POST_NOTIFICATIONS) return
+
+        if (grantResults.firstOrNull() != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(
+                this,
+                "ClipSync can still sync, but Android may hide its notification.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+
+        if (startServiceAfterNotificationPrompt) {
+            startServiceAfterNotificationPrompt = false
+            startClipSyncService()
+        }
     }
 }

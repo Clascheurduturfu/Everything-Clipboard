@@ -1,8 +1,9 @@
+import logging
+import threading
+from typing import Dict, Set
+
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from typing import Dict, Set
-import threading
-import logging
 
 logger = logging.getLogger("clipsync-host")
 
@@ -16,20 +17,21 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
     if room_id not in _manager_connections:
         _manager_connections[room_id] = set()
     _manager_connections[room_id].add(websocket)
-    logger.info(f"[Host] Client joined room. Total: {len(_manager_connections[room_id])}")
+    logger.info("[Host] Client joined room. Total: %s", len(_manager_connections[room_id]))
 
     try:
         while True:
             data = await websocket.receive_text()
             dead = []
             for conn in _manager_connections.get(room_id, set()):
-                if conn is not websocket:
-                    try:
-                        await conn.send_text(data)
-                    except Exception:
-                        dead.append(conn)
-            for d in dead:
-                _manager_connections[room_id].discard(d)
+                if conn is websocket:
+                    continue
+                try:
+                    await conn.send_text(data)
+                except Exception:
+                    dead.append(conn)
+            for conn in dead:
+                _manager_connections[room_id].discard(conn)
     except WebSocketDisconnect:
         if room_id in _manager_connections:
             _manager_connections[room_id].discard(websocket)
@@ -42,12 +44,38 @@ def health():
     return {"status": "ClipSync Host Mode is running"}
 
 
-def start_host_server(port: int = 8000):
-    """Start the built-in relay server in a background daemon thread."""
-    def _run():
-        uvicorn.run(_server_app, host="0.0.0.0", port=port, log_level="warning")
+class HostServer:
+    def __init__(self, host: str = "127.0.0.1", port: int = 8000):
+        self.host = host
+        self.port = port
+        self.config = uvicorn.Config(
+            _server_app,
+            host=host,
+            port=port,
+            log_level="warning",
+            access_log=False,
+            log_config=None,
+        )
+        self.server = uvicorn.Server(self.config)
+        self.thread = threading.Thread(target=self.server.run, daemon=True)
 
-    t = threading.Thread(target=_run, daemon=True)
-    t.start()
-    logger.info(f"[Host] Server started on port {port}")
-    return t
+    def start(self):
+        if not self.thread.is_alive():
+            self.thread.start()
+            logger.info("[Host] Server started on %s:%s", self.host, self.port)
+
+    def stop(self):
+        self.server.should_exit = True
+        if self.thread.is_alive():
+            self.thread.join(timeout=3)
+        logger.info("[Host] Server stopped")
+
+    @property
+    def is_alive(self) -> bool:
+        return self.thread.is_alive()
+
+
+def start_host_server(host: str = "127.0.0.1", port: int = 8000) -> HostServer:
+    server = HostServer(host=host, port=port)
+    server.start()
+    return server

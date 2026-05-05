@@ -4,3 +4,4 @@ websockets
 cryptography
 fastapi
 uvicorn[standard]
+pyinstaller
