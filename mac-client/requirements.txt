@@ -1,6 +1,0 @@
-rumps
-websockets
-cryptography
-pyperclip
-fastapi
-uvicorn
