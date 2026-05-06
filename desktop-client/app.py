@@ -85,6 +85,75 @@ def configure_file_logging():
     logger.info("Logging to %s", LOG_FILE)
 
 
+def launch_arguments(extra_args: list[str] | None = None) -> list[str]:
+    args = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, os.path.abspath(__file__)]
+    if extra_args:
+        args.extend(extra_args)
+    return args
+
+
+def show_preferences_dialog() -> bool:
+    import tkinter as tk
+
+    config = load_config()
+    root = tk.Tk()
+    root.title("ClipSync Preferences")
+    root.resizable(False, False)
+    root.configure(padx=18, pady=16)
+
+    device_var = tk.StringVar(value=config.get("device_name", "Desktop"))
+    server_var = tk.StringVar(value=config.get("normal_server_url") or config.get("server_url", ""))
+    secret_var = tk.StringVar(value=config.get("secret_key", ""))
+    startup_var = tk.BooleanVar(value=bool(config.get("start_on_login")))
+    host_var = tk.BooleanVar(value=bool(config.get("host_mode")))
+    ngrok_var = tk.BooleanVar(value=bool(config.get("use_ngrok_with_host")))
+    saved = {"value": False}
+
+    def row(label: str, widget, idx: int):
+        tk.Label(root, text=label, anchor="w").grid(row=idx, column=0, sticky="w", pady=5)
+        widget.grid(row=idx, column=1, sticky="ew", pady=5)
+
+    root.columnconfigure(1, minsize=320)
+    row("Device name", tk.Entry(root, textvariable=device_var, width=42), 0)
+    row("Server URL", tk.Entry(root, textvariable=server_var, width=42), 1)
+    row("Secret key", tk.Entry(root, textvariable=secret_var, width=42, show="*"), 2)
+    tk.Checkbutton(root, text="Start ClipSync on login", variable=startup_var).grid(
+        row=3, column=0, columnspan=2, sticky="w", pady=(10, 2)
+    )
+    tk.Checkbutton(root, text="Host Mode", variable=host_var).grid(
+        row=4, column=0, columnspan=2, sticky="w", pady=2
+    )
+    tk.Checkbutton(root, text="Use ngrok with Host Mode", variable=ngrok_var).grid(
+        row=5, column=0, columnspan=2, sticky="w", pady=2
+    )
+
+    button_frame = tk.Frame(root)
+    button_frame.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
+
+    def save_and_close():
+        server_url = server_var.get().strip()
+        config.update(
+            {
+                "device_name": device_var.get().strip() or "Desktop",
+                "normal_server_url": server_url,
+                "secret_key": secret_var.get().strip(),
+                "start_on_login": bool(startup_var.get()),
+                "host_mode": bool(host_var.get()),
+                "use_ngrok_with_host": bool(ngrok_var.get()),
+                "ngrok_public_url": "",
+                "server_url": LOCAL_RELAY_URL if host_var.get() else server_url,
+            }
+        )
+        save_config(config)
+        saved["value"] = True
+        root.destroy()
+
+    tk.Button(button_frame, text="Cancel", command=root.destroy).pack(side="right", padx=(8, 0))
+    tk.Button(button_frame, text="Save", command=save_and_close).pack(side="right")
+    root.mainloop()
+    return saved["value"]
+
+
 def create_icon_image(color: str) -> Image.Image:
     size = 64
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -185,74 +254,43 @@ class ClipSyncApp:
         if self.preferences_open:
             return
 
-        def _show():
+        def _run_preferences_process():
             self.preferences_open = True
             try:
-                self._show_preferences_window()
+                process = subprocess.Popen(
+                    launch_arguments(["--preferences"]),
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                result = process.wait()
+                if result == 0:
+                    self.reload_preferences_from_disk()
+                elif result not in (0, 1):
+                    logger.warning("Preferences exited with code %s", result)
             finally:
                 self.preferences_open = False
 
-        threading.Thread(target=_show, daemon=True).start()
+        threading.Thread(target=_run_preferences_process, daemon=True).start()
 
-    def _show_preferences_window(self):
-        import tkinter as tk
-        from tkinter import messagebox
-
+    def reload_preferences_from_disk(self):
+        disk_config = load_config()
         with self.config_lock:
-            current = dict(self.config)
+            old = dict(self.config)
+            self.config = {**DEFAULT_CONFIG, **disk_config}
 
-        root = tk.Tk()
-        root.title("ClipSync Preferences")
-        root.resizable(False, False)
-        root.configure(padx=18, pady=16)
+        self._set_start_on_login(bool(self.config.get("start_on_login")))
+        if self.config.get("host_mode"):
+            self._enable_host_mode(reconnect=False)
+        else:
+            self._disable_host_mode(reconnect=False)
 
-        device_var = tk.StringVar(value=current.get("device_name", "Desktop"))
-        server_var = tk.StringVar(value=current.get("normal_server_url") or current.get("server_url", ""))
-        secret_var = tk.StringVar(value=current.get("secret_key", ""))
-        startup_var = tk.BooleanVar(value=bool(current.get("start_on_login")))
-        host_var = tk.BooleanVar(value=bool(current.get("host_mode")))
-        ngrok_var = tk.BooleanVar(value=bool(current.get("use_ngrok_with_host")))
-
-        def row(label: str, widget, idx: int):
-            tk.Label(root, text=label, anchor="w").grid(row=idx, column=0, sticky="w", pady=5)
-            widget.grid(row=idx, column=1, sticky="ew", pady=5)
-
-        root.columnconfigure(1, minsize=320)
-        row("Device name", tk.Entry(root, textvariable=device_var, width=42), 0)
-        row("Server URL", tk.Entry(root, textvariable=server_var, width=42), 1)
-        row("Secret key", tk.Entry(root, textvariable=secret_var, width=42, show="*"), 2)
-        tk.Checkbutton(root, text="Start ClipSync on login", variable=startup_var).grid(
-            row=3, column=0, columnspan=2, sticky="w", pady=(10, 2)
+        settings_changed = any(
+            old.get(key) != self.config.get(key)
+            for key in ("device_name", "server_url", "secret_key", "host_mode")
         )
-        tk.Checkbutton(root, text="Host Mode", variable=host_var).grid(
-            row=4, column=0, columnspan=2, sticky="w", pady=2
-        )
-        tk.Checkbutton(root, text="Use ngrok with Host Mode", variable=ngrok_var).grid(
-            row=5, column=0, columnspan=2, sticky="w", pady=2
-        )
-
-        button_frame = tk.Frame(root)
-        button_frame.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
-
-        def save_and_close():
-            updates = {
-                "device_name": device_var.get().strip() or "Desktop",
-                "server_url": server_var.get().strip(),
-                "normal_server_url": server_var.get().strip(),
-                "secret_key": secret_var.get().strip(),
-                "start_on_login": bool(startup_var.get()),
-                "use_ngrok_with_host": bool(ngrok_var.get()),
-            }
-            try:
-                self.apply_preferences(updates, host_enabled=bool(host_var.get()))
-            except Exception as exc:
-                messagebox.showerror("ClipSync", f"Could not save preferences:\n{exc}")
-                return
-            root.destroy()
-
-        tk.Button(button_frame, text="Cancel", command=root.destroy).pack(side="right", padx=(8, 0))
-        tk.Button(button_frame, text="Save", command=save_and_close).pack(side="right")
-        root.mainloop()
+        self._rebuild_menu()
+        if settings_changed:
+            self._reconnect_if_configured()
 
     def apply_preferences(self, updates: dict, host_enabled: bool):
         with self.config_lock:
@@ -583,9 +621,7 @@ class ClipSyncApp:
             logger.info("Start on login is not implemented for %s", system)
 
     def _launch_arguments(self) -> list[str]:
-        if getattr(sys, "frozen", False):
-            return [sys.executable]
-        return [sys.executable, os.path.abspath(__file__)]
+        return launch_arguments()
 
     def _launch_command(self) -> str:
         return subprocess.list2cmdline(self._launch_arguments())
@@ -661,4 +697,12 @@ class ClipSyncApp:
 
 
 if __name__ == "__main__":
+    if "--preferences" in sys.argv:
+        configure_file_logging()
+        try:
+            raise SystemExit(0 if show_preferences_dialog() else 1)
+        except Exception:
+            logger.exception("Preferences dialog crashed")
+            raise
+
     ClipSyncApp().run()

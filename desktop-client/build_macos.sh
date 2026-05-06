@@ -9,6 +9,7 @@ python3 -m PyInstaller \
   --clean \
   --windowed \
   --name ClipSync \
+  --osx-bundle-identifier com.clipsync.app \
   --icon assets/clipsync.icns \
   --add-data "assets/clipsync.icns:assets" \
   app.py
