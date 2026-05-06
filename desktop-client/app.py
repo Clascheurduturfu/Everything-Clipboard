@@ -52,6 +52,23 @@ DEFAULT_CONFIG = {
 }
 
 
+def find_executable(name: str) -> str | None:
+    path = shutil.which(name)
+    if path:
+        return path
+
+    if platform.system() == "Darwin":
+        for candidate in (
+            f"/opt/homebrew/bin/{name}",
+            f"/usr/local/bin/{name}",
+            f"/usr/bin/{name}",
+            f"/bin/{name}",
+        ):
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
+
+
 def load_config() -> dict:
     os.makedirs(CONFIG_DIR, exist_ok=True)
     if os.path.exists(CONFIG_FILE):
@@ -390,10 +407,10 @@ class ClipSyncApp:
         if self.ngrok_process and self.ngrok_process.poll() is None:
             return
 
-        ngrok_path = shutil.which("ngrok")
+        ngrok_path = find_executable("ngrok")
         if not ngrok_path:
             self._set_status("ngrok not found", "orange")
-            logger.warning("ngrok is not installed or not on PATH")
+            logger.warning("ngrok is not installed or not visible to ClipSync")
             return
 
         cmd = [ngrok_path, "http", "8000"]

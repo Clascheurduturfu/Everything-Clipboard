@@ -55,6 +55,7 @@ class HostServer:
             log_level="warning",
             access_log=False,
             log_config=None,
+            loop="asyncio",
         )
         self.server = uvicorn.Server(self.config)
         self.thread = threading.Thread(target=self.server.run, daemon=True)
