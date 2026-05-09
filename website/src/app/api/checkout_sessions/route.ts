@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-// Initialize Stripe with the secret key from environment variables
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-04-22.dahlia',
-});
+function getStripe() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: '2026-04-22.dahlia',
+  });
+}
 
 export async function POST(request: Request) {
   try {
     const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const stripe = getStripe();
 
     // Create Checkout Sessions from body params.
     const session = await stripe.checkout.sessions.create({
@@ -33,8 +41,14 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.redirect(session.url!, 303);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error creating Stripe session:', err);
-    return NextResponse.json({ error: err.message }, { status: err.statusCode || 500 });
+
+    const message = err instanceof Error ? err.message : 'Unable to create Stripe session';
+    const status = typeof err === 'object' && err !== null && 'statusCode' in err && typeof err.statusCode === 'number'
+      ? err.statusCode
+      : 500;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }
