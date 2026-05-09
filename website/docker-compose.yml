@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  clipsync-website:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: clipsync-website
+    container_name: clipsync-website
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # - NEXT_PUBLIC_BASE_URL=https://yourdomain.com
+      # - STRIPE_SECRET_KEY=sk_test_... # ADD YOUR STRIPE SECRET KEY HERE
+    restart: unless-stopped

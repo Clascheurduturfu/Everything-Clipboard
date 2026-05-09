@@ -50,12 +50,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "onStartCommand action=${intent?.action ?: "none"} startId=$startId")
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val serverUrl = prefs.getString("server_url", "") ?: ""
         val secretKey = prefs.getString("secret_key", "") ?: ""
         deviceName = prefs.getString("device_name", "Android Phone") ?: "Android Phone"
 
         if (serverUrl.isEmpty() || secretKey.isEmpty()) {
+            Log.w(TAG, "Service missing settings. serverUrlSet=${serverUrl.isNotEmpty()} secretKeySet=${secretKey.isNotEmpty()}")
             updateNotification("Waiting for settings - open ClipSync app")
             return START_STICKY
         }
@@ -66,6 +68,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
 
         val settingsChanged = serverUrl != currentServerUrl || roomId != currentRoomId || wsClient == null
         if (settingsChanged) {
+            Log.i(TAG, "Connecting with settingsChanged=$settingsChanged server=$serverUrl room=${roomId.take(8)}...")
             wsClient?.disconnect()
             currentServerUrl = serverUrl
             currentRoomId = roomId
@@ -75,12 +78,18 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 roomId = roomId,
                 onMessage = { encryptedPayload -> handleIncomingPayload(encryptedPayload) },
                 onConnected = {
+                    Log.i(TAG, "WebSocket connected; queued=${pendingOutgoing.size}")
                     flushPendingOutgoing()
                     updateNotification("Connected - syncing clipboard")
                 },
-                onDisconnected = { updateNotification("Disconnected - reconnecting...") },
+                onDisconnected = { reason ->
+                    Log.w(TAG, "WebSocket disconnected: $reason")
+                    updateNotification("Disconnected - reconnecting...")
+                },
             )
             wsClient?.connect()
+        } else {
+            Log.d(TAG, "Reusing existing WebSocket for server=$serverUrl room=${roomId.take(8)}...")
         }
 
         if (!listenerRegistered) {
@@ -89,6 +98,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
 
         if (!actionText.isNullOrBlank()) {
+            Log.i(TAG, "Manual send request from ${intent.getStringExtra(EXTRA_SOURCE) ?: "external"} (${actionText.length} chars)")
             sendClipboardText(actionText, intent.getStringExtra(EXTRA_SOURCE) ?: "external")
         }
 
@@ -101,8 +111,15 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun handleIncomingPayload(encryptedPayload: String) {
-        val key = keyBytes ?: return
-        val decrypted = CryptoUtils.decryptPayload(encryptedPayload, key) ?: return
+        Log.d(TAG, "Handling incoming encrypted payload (${encryptedPayload.length} chars)")
+        val key = keyBytes ?: run {
+            Log.w(TAG, "Incoming payload ignored: encryption key is not ready")
+            return
+        }
+        val decrypted = CryptoUtils.decryptPayload(encryptedPayload, key) ?: run {
+            Log.w(TAG, "Incoming payload ignored: decrypt failed")
+            return
+        }
         val (senderDevice, content) = decrypted
 
         Log.i(TAG, "Received from $senderDevice: ${content.take(30)}...")
@@ -122,6 +139,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     override fun onPrimaryClipChanged() {
+        Log.d(TAG, "Primary clipboard changed")
         sendClipboardText(readClipboardText() ?: return, "clipboard_listener")
     }
 
@@ -132,19 +150,29 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun sendClipboardText(text: String, source: String) {
-        if (text == lastClipboardText || text.isBlank()) return
+        if (text.isBlank()) {
+            Log.d(TAG, "Ignored blank clipboard text from $source")
+            return
+        }
+        if (text == lastClipboardText) {
+            Log.d(TAG, "Ignored duplicate clipboard text from $source")
+            return
+        }
 
         lastClipboardText = text
-        val key = keyBytes ?: return
+        val key = keyBytes ?: run {
+            Log.w(TAG, "Cannot send from $source: encryption key is not ready")
+            return
+        }
 
         val payload = CryptoUtils.encryptPayload(deviceName, text, key)
         val sent = wsClient?.send(payload) ?: false
         if (sent) {
-            Log.i(TAG, "Sent from $source: ${text.take(30)}...")
+            Log.i(TAG, "Sent from $source (${text.length} chars): ${text.take(30)}...")
             updateNotification("Sent: ${text.take(25)}...")
         } else {
             pendingOutgoing.add(payload)
-            Log.i(TAG, "Queued from $source: ${text.take(30)}...")
+            Log.i(TAG, "Queued from $source (${text.length} chars). queue=${pendingOutgoing.size}: ${text.take(30)}...")
             updateNotification("Queued clipboard - reconnecting...")
         }
     }
@@ -159,6 +187,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 iterator.remove()
                 sentCount++
             } else {
+                Log.w(TAG, "Stopped flushing queue after $sentCount sent; remaining=${pendingOutgoing.size}")
                 break
             }
         }
