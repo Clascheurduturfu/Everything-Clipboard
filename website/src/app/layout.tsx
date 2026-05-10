@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ClipSync - Share Clipboard Across MacOS, Windows & Android",
   description: "Seamlessly share your clipboard between MacOS, Windows, and Android. Get ClipSync today for just $3.",
+  icons: {
+    icon: "/clipsync.png",
+  },
 };
 
 export default function RootLayout({
@@ -28,14 +30,6 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-gray-50 text-gray-900`}
     >
-      <head>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2851149974047726"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
-      </head>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
