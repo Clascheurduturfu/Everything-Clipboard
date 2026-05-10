@@ -15,9 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ClipSync - Share Clipboard Across MacOS, Windows & Android",
   description: "Seamlessly share your clipboard between MacOS, Windows, and Android. Get ClipSync today for just $3.",
-  icons: {
-    icon: "/clipsync.png",
-  },
 };
 
 export default function RootLayout({

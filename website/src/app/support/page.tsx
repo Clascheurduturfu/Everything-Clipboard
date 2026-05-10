@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import Script from "next/script";
 
 export default function Support() {
@@ -15,13 +14,7 @@ export default function Support() {
       {/* Navigation */}
       <nav className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center bg-white shadow-sm">
         <Link href="/" className="flex items-center space-x-2">
-          <Image
-            src="/clipsync.png"
-            alt="ClipSync"
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-lg object-cover"
-          />
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">C</div>
           <span className="text-xl font-bold tracking-tight text-gray-900">ClipSync</span>
         </Link>
         <Link href="/" className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
