@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const origin = getBaseUrl(request);
     const stripe = getStripe();
-    const productImageUrl = new URL('/Windows app.png', origin).toString();
+    const productImageUrl = new URL('/MacOs app.png', origin).toString();
     const successUrl = `${new URL('/success', origin).toString()}?session_id={CHECKOUT_SESSION_ID}`;
 
     // Create Checkout Sessions from body params.

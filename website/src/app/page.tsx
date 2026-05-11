@@ -1,110 +1,119 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Check, Monitor, Smartphone, MonitorUp, CreditCard, Shield } from "lucide-react";
+import { Monitor, MonitorUp, CreditCard, Shield, Zap } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="flex-grow flex flex-col bg-white">
+    <main className="flex-grow flex flex-col min-h-screen relative selection:bg-blue-500/30">
+      {/* Background Ambient Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px] animate-[pulse-glow_8s_ease-in-out_infinite] -z-10" />
+      <div className="absolute top-[20%] right-[-10%] w-[30%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] animate-[pulse-glow_10s_ease-in-out_infinite_1s] -z-10" />
+      <div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] animate-[pulse-glow_9s_ease-in-out_infinite_2s] -z-10" />
+
       {/* Navigation */}
-      <nav className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">C</div>
-          <span className="text-xl font-bold tracking-tight">ClipSync</span>
-        </div>
-        <div className="flex items-center space-x-6">
-          <Link href="/support" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Support
-          </Link>
-          <form action="/api/checkout_sessions" method="POST">
-            <button type="submit" className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors shadow-sm">
-              Buy Now - $3
-            </button>
-          </form>
+      <nav className="fixed top-0 w-full z-50 glass-nav">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">C</div>
+            <span className="text-xl font-bold tracking-tight text-white">ClipSync</span>
+          </div>
+          <div className="flex items-center space-x-6">
+            <Link href="/support" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+              Support
+            </Link>
+            <form action="/api/checkout_sessions" method="POST">
+              <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all duration-300 shadow-sm backdrop-blur-md">
+                Buy Now - $3
+              </button>
+            </form>
+          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden pt-16 pb-24 lg:pt-32 lg:pb-32">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sm:static">
-          <div className="sm:max-w-xl">
-            <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl">
+      <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex-grow flex flex-col justify-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center">
+          <div className="sm:max-w-xl text-center lg:text-left z-10">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
+              <Zap className="w-4 h-4" />
+              <span>The missing link for your devices</span>
+            </div>
+            <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-7xl mb-6">
               One Clipboard. <br />
-              <span className="text-blue-600">All Your Devices.</span>
+              <span className="text-gradient">All Your Devices.</span>
             </h1>
-            <p className="mt-6 text-xl text-gray-500">
-              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Seamlessly sync your clipboard across all your devices locally and securely.
+            <p className="mt-4 text-xl text-zinc-400 font-light leading-relaxed">
+              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Seamlessly sync your clipboard locally and securely.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4">
-              <form action="/api/checkout_sessions" method="POST">
-                <button type="submit" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-blue-600 border border-transparent rounded-full shadow-lg hover:bg-blue-700 hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  <CreditCard className="w-5 h-5 mr-2" />
+            <div className="mt-10 flex flex-col sm:flex-row items-center gap-5 justify-center lg:justify-start">
+              <form action="/api/checkout_sessions" method="POST" className="w-full sm:w-auto">
+                <button type="submit" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 focus:ring-blue-500 group">
+                  <CreditCard className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
                   Get ClipSync for $3
                 </button>
               </form>
-              <div className="flex items-center justify-center px-4 py-4 text-sm text-gray-500">
-                <Shield className="w-4 h-4 mr-2 text-green-500" />
+              <div className="flex items-center text-sm text-zinc-500">
+                <Shield className="w-4 h-4 mr-2 text-emerald-500/80" />
                 Secure One-Time Payment
               </div>
             </div>
           </div>
           
-          <div className="mt-14 lg:mt-0 lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-            <div className="relative h-[400px] w-full lg:h-full flex items-center justify-center">
-               <div className="relative w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] lg:w-[500px] lg:h-[500px]">
-                  {/* Floating App Images */}
-                  <div className="absolute top-0 right-0 z-10 w-48 shadow-2xl rounded-xl overflow-hidden animate-[float_6s_ease-in-out_infinite] transform hover:scale-105 transition-transform duration-300">
-                     <Image src="/MacOs app.png" alt="MacOS App" width={400} height={400} className="w-full h-auto" />
-                  </div>
-                  <div className="absolute bottom-10 left-0 z-20 w-48 shadow-2xl rounded-xl overflow-hidden animate-[float_6s_ease-in-out_infinite_1s] transform hover:scale-105 transition-transform duration-300">
-                     <Image src="/Windows app.png" alt="Windows App" width={400} height={400} className="w-full h-auto" />
-                  </div>
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 w-32 shadow-2xl rounded-3xl overflow-hidden border-4 border-gray-900 animate-[float_6s_ease-in-out_infinite_2s]">
-                     <Image src="/Android app.png" alt="Android App" width={200} height={400} className="w-full h-auto object-cover" />
-                  </div>
-               </div>
-            </div>
+          <div className="mt-20 lg:mt-0 lg:w-1/2 flex justify-center lg:justify-end relative w-full h-[400px] lg:h-[500px] z-10 perspective-1000">
+             <div className="relative w-full max-w-[500px] h-full flex items-center justify-center">
+                {/* Floating App Images */}
+                <div className="absolute top-[5%] right-[5%] z-10 w-[45%] rounded-xl overflow-hidden animate-[float_7s_ease-in-out_infinite] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 backdrop-blur-xl bg-zinc-900/50">
+                   <Image src="/MacOs app.png" alt="MacOS App" width={400} height={400} className="w-full h-auto opacity-90 hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="absolute bottom-[10%] left-[5%] z-20 w-[45%] rounded-xl overflow-hidden animate-[float_8s_ease-in-out_infinite_1s] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 backdrop-blur-xl bg-zinc-900/50">
+                   <Image src="/Windows app.png" alt="Windows App" width={400} height={400} className="w-full h-auto opacity-90 hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 w-[30%] rounded-3xl overflow-hidden border border-white/20 shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-[float_6s_ease-in-out_infinite_2s] ring-4 ring-zinc-950 bg-zinc-950">
+                   <Image src="/Android app.png" alt="Android App" width={200} height={400} className="w-full h-auto object-cover opacity-95 hover:opacity-100 transition-opacity" />
+                </div>
+             </div>
           </div>
         </div>
       </div>
 
       {/* Features Section */}
-      <div className="bg-gray-50 py-24 sm:py-32">
+      <div className="relative py-24 sm:py-32 border-t border-white/5 bg-zinc-950/50 backdrop-blur-sm z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="sm:text-center mb-16">
-            <h2 className="text-base text-blue-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+          <div className="text-center mb-20">
+            <h2 className="text-sm font-semibold tracking-widest text-blue-500 uppercase mb-3">Core Features</h2>
+            <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
               A better way to work across devices
             </p>
           </div>
 
-          <div className="mt-10 max-w-lg mx-auto grid gap-8 lg:grid-cols-3 lg:max-w-none">
+          <div className="grid gap-8 lg:grid-cols-3 max-w-lg mx-auto lg:max-w-none">
             {/* Feature 1 */}
-            <div className="flex flex-col rounded-2xl bg-white shadow-xl p-8 hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 inline-flex items-center justify-center rounded-xl bg-blue-100 text-blue-600 mb-6">
-                <Monitor className="w-6 h-6" />
+            <div className="glass-card rounded-3xl p-8 flex flex-col hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-2 group">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all">
+                <Monitor className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Cross-Platform Sync</h3>
-              <p className="text-gray-500 flex-grow">
+              <h3 className="text-xl font-bold text-white mb-4">Cross-Platform Sync</h3>
+              <p className="text-zinc-400 leading-relaxed flex-grow">
                 Seamlessly connects MacOS, Windows, and Android. Copy text or images on one device, paste on another instantly.
               </p>
             </div>
             {/* Feature 2 */}
-            <div className="flex flex-col rounded-2xl bg-white shadow-xl p-8 hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 inline-flex items-center justify-center rounded-xl bg-green-100 text-green-600 mb-6">
-                <Shield className="w-6 h-6" />
+            <div className="glass-card rounded-3xl p-8 flex flex-col hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-2 group">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">
+                <Shield className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Secure & Private</h3>
-              <p className="text-gray-500 flex-grow">
+              <h3 className="text-xl font-bold text-white mb-4">Secure & Private</h3>
+              <p className="text-zinc-400 leading-relaxed flex-grow">
                 Works locally on your network. Your clipboard data is encrypted and never leaves your local Wi-Fi.
               </p>
             </div>
             {/* Feature 3 */}
-            <div className="flex flex-col rounded-2xl bg-white shadow-xl p-8 hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-12 h-12 inline-flex items-center justify-center rounded-xl bg-purple-100 text-purple-600 mb-6">
-                <MonitorUp className="w-6 h-6" />
+            <div className="glass-card rounded-3xl p-8 flex flex-col hover:bg-white/[0.05] transition-all duration-300 hover:-translate-y-2 group">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+                <MonitorUp className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Lightweight & Fast</h3>
-              <p className="text-gray-500 flex-grow">
+              <h3 className="text-xl font-bold text-white mb-4">Lightweight & Fast</h3>
+              <p className="text-zinc-400 leading-relaxed flex-grow">
                 Designed to run silently in the background with minimal resource usage, ensuring your devices stay snappy.
               </p>
             </div>
@@ -113,31 +122,35 @@ export default function Home() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-blue-600">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-24 lg:px-8 lg:flex lg:items-center lg:justify-between">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            <span className="block">Ready to boost your productivity?</span>
-            <span className="block text-blue-200 mt-2">Get all apps for a one-time payment of $3.</span>
+      <div className="relative border-t border-white/5 py-24 z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-blue-600/5" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-blue-500/10 blur-[100px] rounded-full -z-10" />
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl mb-6">
+            Ready to boost your productivity?
           </h2>
-          <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
-            <form action="/api/checkout_sessions" method="POST">
-              <button type="submit" className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-medium rounded-full text-blue-600 bg-white hover:bg-gray-50 shadow-lg hover:scale-105 transition-all">
-                Buy ClipSync Now
-              </button>
-            </form>
-          </div>
+          <p className="text-xl text-zinc-400 mb-10">
+            Get all apps for a one-time payment of $3. No subscriptions, no hidden fees.
+          </p>
+          <form action="/api/checkout_sessions" method="POST" className="inline-block">
+            <button type="submit" className="inline-flex items-center justify-center px-10 py-5 text-lg font-medium text-zinc-950 bg-white rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105 transition-all duration-300 group">
+              Buy ClipSync Now
+              <Zap className="w-5 h-5 ml-2 group-hover:text-blue-600 transition-colors" />
+            </button>
+          </form>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">C</div>
-            <span className="text-gray-900 font-semibold">ClipSync</span>
+      <footer className="border-t border-white/5 bg-zinc-950/80 backdrop-blur-md relative z-10 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">C</div>
+            <span className="text-white font-semibold tracking-wide">ClipSync</span>
           </div>
-          <div className="flex space-x-6 text-sm text-gray-500">
-            <Link href="/support" className="hover:text-gray-900 transition-colors">Support & Contact</Link>
+          <div className="flex items-center space-x-6 text-sm text-zinc-500">
+            <Link href="/support" className="hover:text-white transition-colors">Support</Link>
             <span>&copy; {new Date().getFullYear()} ClipSync. All rights reserved.</span>
           </div>
         </div>
