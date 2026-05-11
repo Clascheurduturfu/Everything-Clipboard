@@ -13,10 +13,22 @@ function getStripe() {
   });
 }
 
+function getBaseUrl(request: Request) {
+  const baseUrl = request.headers.get('origin')
+    || process.env.NEXT_PUBLIC_BASE_URL
+    || new URL(request.url).origin;
+
+  return baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+    ? baseUrl
+    : `https://${baseUrl}`;
+}
+
 export async function POST(request: Request) {
   try {
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const origin = getBaseUrl(request);
     const stripe = getStripe();
+    const productImageUrl = new URL('/Windows app.png', origin).toString();
+    const successUrl = `${new URL('/success', origin).toString()}?session_id={CHECKOUT_SESSION_ID}`;
 
     // Create Checkout Sessions from body params.
     const session = await stripe.checkout.sessions.create({
@@ -28,7 +40,7 @@ export async function POST(request: Request) {
             product_data: {
               name: 'ClipSync - Full Access (MacOS, Windows, Android)',
               description: 'One-time purchase for full access to ClipSync across all platforms.',
-              images: [`${origin}/Windows app.png`], // Using one of the public images
+              images: [productImageUrl],
             },
             unit_amount: 300, // $3.00
           },
@@ -36,8 +48,8 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/`,
+      success_url: successUrl,
+      cancel_url: new URL('/', origin).toString(),
     });
 
     return NextResponse.redirect(session.url!, 303);
