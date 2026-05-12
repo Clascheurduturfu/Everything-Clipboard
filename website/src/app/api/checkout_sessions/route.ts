@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
+      allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: new URL('/', origin).toString(),
     });

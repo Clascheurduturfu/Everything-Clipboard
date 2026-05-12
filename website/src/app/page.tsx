@@ -89,7 +89,7 @@ export default function Home() {
           <div className="text-center mb-20">
             <h2 className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-3">Core Features</h2>
             <p className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-              Everything you need. Nothing you don't.
+              Everything you need. Nothing you don&apos;t.
             </p>
           </div>
 
