@@ -1,17 +1,5 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
-
-function getStripe() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error('Missing STRIPE_SECRET_KEY environment variable');
-  }
-
-  return new Stripe(secretKey, {
-    apiVersion: '2026-04-22.dahlia',
-  });
-}
+import { getStripe } from '@/lib/stripe';
 
 function getBaseUrl(request: Request) {
   const baseUrl = request.headers.get('origin')

@@ -1,79 +1,133 @@
 import Link from "next/link";
-import { CheckCircle, Download, Monitor, Smartphone, Apple } from "lucide-react";
+import { AlertCircle, CheckCircle, Download, Monitor, Smartphone, Apple } from "lucide-react";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { UnicornBackground } from "@/components/UnicornBackground";
+import { getPaidCheckoutSession } from "@/lib/stripe";
 
-export default function Success({
+export default async function Success({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  // In a real application, you would verify the session_id with Stripe here securely via a Server Component 
-  // or API route before showing the download links to prevent unauthorized access.
-  const sessionId = searchParams.session_id;
+  const resolvedSearchParams = await searchParams;
+  const sessionId = resolvedSearchParams.session_id as string | undefined;
+  const paidSession = sessionId ? await getPaidCheckoutSession(sessionId) : null;
+  const isPaid = Boolean(paidSession);
 
   return (
-    <main className="flex-grow flex flex-col bg-gray-50 min-h-screen items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl w-full space-y-8 bg-white p-10 rounded-3xl shadow-xl border border-gray-100 text-center">
+    <div className="relative z-10 flex flex-col min-h-screen">
+      {/* Background Effects */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-emerald-400/20 dark:bg-emerald-900/40 blur-[7.5rem] will-change-transform"></div>
+        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform"></div>
+        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform"></div>
+        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }}></div>
         
-        <div className="flex justify-center">
-          <CheckCircle className="h-24 w-24 text-green-500 animate-[bounce_1s_ease-in-out]" />
-        </div>
-        
-        <div>
-          <h2 className="mt-6 text-4xl font-extrabold text-gray-900">Payment Successful!</h2>
-          <p className="mt-4 text-lg text-gray-500">
-            Thank you for purchasing ClipSync. You now have full access to share your clipboard across all your devices. 
-            An email receipt has been sent to you.
-          </p>
-          {sessionId && (
-             <p className="mt-2 text-sm text-gray-400">Order Reference: {sessionId}</p>
-          )}
-        </div>
+        {/* Interactive WebGL Background */}
+        <UnicornBackground />
+      </div>
 
-        <div className="mt-10 border-t border-gray-200 pt-10">
-          <h3 className="text-2xl font-bold text-gray-900 mb-8">Download Your Apps</h3>
-          
-          <div className="grid gap-6 sm:grid-cols-3">
+      {/* Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] pt-4 px-4 sm:px-6">
+        <nav className="max-w-7xl mx-auto">
+          <div className="glass-nav rounded-full px-6 py-3 flex justify-between items-center transition-all duration-300">
+            <Link href="/" className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_2px_8px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
+                C
+              </div>
+              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">ClipSync</span>
+            </Link>
+            <div className="flex items-center space-x-6">
+              <ThemeSwitcher />
+              <Link href="/" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
+                &larr; Back to Home
+              </Link>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      <main className="relative z-10 flex-grow pt-32 pb-24 lg:pt-40 lg:pb-32 flex flex-col items-center justify-center">
+        <div className="max-w-3xl mx-auto px-6 w-full">
+          <div className="glass-card rounded-[3rem] p-10 md:p-14 text-center">
             
-            {/* Windows Download */}
-            <div className="flex flex-col items-center p-6 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-md transition-shadow">
-              <Monitor className="h-10 w-10 text-blue-600 mb-4" />
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">Windows</h4>
-              <p className="text-sm text-gray-500 mb-6 text-center">Windows 10/11 (64-bit)</p>
-              {/* Note: Connect this to actual secure download API route */}
-              <a href="/api/download?os=windows" className="mt-auto w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                <Download className="mr-2 h-4 w-4" /> Download
-              </a>
+            <div className="flex justify-center mb-8 relative">
+              <div className={`${isPaid ? "bg-emerald-400/20 dark:bg-emerald-500/20" : "bg-amber-400/20 dark:bg-amber-500/20"} absolute inset-0 blur-2xl rounded-full`}></div>
+              {isPaid ? (
+                <CheckCircle className="h-24 w-24 text-emerald-500 relative z-10 animate-[bounce_1s_ease-in-out]" />
+              ) : (
+                <AlertCircle className="h-24 w-24 text-amber-500 relative z-10" />
+              )}
+            </div>
+            
+            <div>
+              <h2 className="text-4xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white">
+                {isPaid ? "Payment Successful!" : "Payment Verification Needed"}
+              </h2>
+              <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 font-light max-w-xl mx-auto">
+                {isPaid
+                  ? "Thank you for purchasing ClipSync. You now have full access to share your clipboard across all your devices. An email receipt has been sent to you."
+                  : "We could not verify a paid checkout session for this page. Please return from Stripe after payment, or contact support with your receipt email."}
+              </p>
+              {sessionId && (
+                 <p className="mt-4 text-xs font-mono text-slate-400 dark:text-slate-500">Order Reference: {sessionId}</p>
+              )}
             </div>
 
-            {/* MacOS Download */}
-            <div className="flex flex-col items-center p-6 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-md transition-shadow">
-              <Apple className="h-10 w-10 text-gray-800 mb-4" />
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">MacOS</h4>
-              <p className="text-sm text-gray-500 mb-6 text-center">macOS 12+ (Apple Silicon/Intel)</p>
-              <a href="/api/download?os=macos" className="mt-auto w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800">
-                <Download className="mr-2 h-4 w-4" /> Download
-              </a>
-            </div>
+            {isPaid && sessionId && (
+            <div className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-12">
+              <h3 className="text-2xl font-medium text-slate-950 dark:text-white mb-8">Download Your Apps</h3>
+              
+              <div className="grid gap-6 sm:grid-cols-3">
+                
+                {/* Windows Download */}
+                <div className="group flex flex-col items-center p-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-slate-700 hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Monitor className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-950 dark:text-white mb-1">Windows</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-light">Windows 10/11 (64-bit)</p>
+                  <a href={`/api/download?os=windows&session_id=${encodeURIComponent(sessionId)}`} className="mt-auto w-full inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-blue-200 dark:border-blue-800 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </a>
+                </div>
 
-            {/* Android Download */}
-            <div className="flex flex-col items-center p-6 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-md transition-shadow">
-              <Smartphone className="h-10 w-10 text-green-600 mb-4" />
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">Android</h4>
-              <p className="text-sm text-gray-500 mb-6 text-center">Android 8.0+ (.apk)</p>
-              <a href="/api/download?os=android" className="mt-auto w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                <Download className="mr-2 h-4 w-4" /> Download
-              </a>
-            </div>
+                {/* MacOS Download */}
+                <div className="group flex flex-col items-center p-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-slate-700 hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-800 dark:text-slate-200 mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Apple className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-950 dark:text-white mb-1">MacOS</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-light">macOS 12+ (Apple/Intel)</p>
+                  <a href={`/api/download?os=macos&session_id=${encodeURIComponent(sessionId)}`} className="mt-auto w-full inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-slate-300 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </a>
+                </div>
 
+                {/* Android Download */}
+                <div className="group flex flex-col items-center p-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-slate-700 hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Smartphone className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-950 dark:text-white mb-1">Android</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-light">Android 8.0+ (.apk)</p>
+                  <a href={`/api/download?os=android&session_id=${encodeURIComponent(sessionId)}`} className="mt-auto w-full inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-emerald-200 dark:border-emerald-800 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </a>
+                </div>
+
+              </div>
+            </div>
+            )}
+            
+            <div className="pt-10">
+               <Link href="/" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                 &larr; Return to Home
+               </Link>
+            </div>
           </div>
         </div>
-        
-        <div className="pt-8">
-           <Link href="/" className="text-blue-600 hover:text-blue-500 font-medium">
-             &larr; Return to Home
-           </Link>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

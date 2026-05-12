@@ -1,9 +1,11 @@
 import Link from "next/link";
 import Script from "next/script";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { UnicornBackground } from "@/components/UnicornBackground";
 
 export default function Support() {
   return (
-    <main className="flex-grow flex flex-col bg-gray-50 min-h-screen">
+    <div className="relative z-10 flex flex-col min-h-screen">
       <Script
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2851149974047726"
@@ -11,63 +13,77 @@ export default function Support() {
         strategy="afterInteractive"
       />
 
-      {/* Navigation */}
-      <nav className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center bg-white shadow-sm">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">C</div>
-          <span className="text-xl font-bold tracking-tight text-gray-900">ClipSync</span>
-        </Link>
-        <Link href="/" className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
-          &larr; Back to Home
-        </Link>
-      </nav>
-
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex-grow flex flex-col lg:flex-row gap-8">
+      {/* Background Effects */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-400/20 dark:bg-blue-900/40 blur-[7.5rem] will-change-transform"></div>
+        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform"></div>
+        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform"></div>
+        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }}></div>
         
-        {/* Main Content Area */}
-        <div className="flex-grow lg:w-2/3 space-y-8">
+        {/* Interactive WebGL Background */}
+        <UnicornBackground />
+      </div>
+
+      {/* Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] pt-4 px-4 sm:px-6">
+        <nav className="max-w-7xl mx-auto">
+          <div className="glass-nav rounded-full px-6 py-3 flex justify-between items-center transition-all duration-300">
+            <Link href="/" className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_2px_8px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
+                C
+              </div>
+              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">ClipSync</span>
+            </Link>
+            <div className="flex items-center space-x-6">
+              <ThemeSwitcher />
+              <Link href="/" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
+                &larr; Back to Home
+              </Link>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      <main className="relative z-10 flex-grow pt-32 pb-24 lg:pt-40 lg:pb-32 flex flex-col items-center">
+        <div className="max-w-7xl mx-auto px-6 w-full flex flex-col lg:flex-row gap-8">
           
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Support & FAQ</h1>
+          {/* Main Content Area */}
+          <div className="flex-grow lg:w-2/3 space-y-8">
+          
+          <div className="glass-card rounded-[2rem] p-8">
+            <h1 className="text-3xl md:text-4xl font-light tracking-tight text-slate-950 dark:text-white mb-8">Support & FAQ</h1>
             
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">How do I download the app after purchase?</h3>
-                <p className="mt-2 text-gray-600">After completing your payment via Stripe, you will be redirected to a success page containing the download links for MacOS, Windows, and Android. You will also receive an email receipt.</p>
+                <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">How do I download the app after purchase?</h3>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">After completing your payment via Stripe, you will be redirected to a success page containing the download links for MacOS, Windows, and Android. You will also receive an email receipt.</p>
               </div>
               
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Are my clipboard contents secure?</h3>
-                <p className="mt-2 text-gray-600">Yes! ClipSync works entirely on your local network. Your clipboard data is encrypted during transfer and never leaves your Wi-Fi, ensuring total privacy.</p>
+                <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">Are my clipboard contents secure?</h3>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Yes. ClipSync lets you choose between local Wi-Fi, self-hosted, or our fully encrypted relay mode. Your clipboard data is always secure.</p>
               </div>
               
               <div>
-                <h3 className="text-lg font-bold text-gray-900">I need help setting it up.</h3>
-                <p className="mt-2 text-gray-600">Ensure all your devices are connected to the same Wi-Fi network. Open the app on your host machine (e.g., your PC or Mac), and then connect your other devices using the IP address shown on the host app.</p>
+                <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">I need help setting it up.</h3>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Start by choosing the connection mode that fits your setup: local Wi-Fi for nearby devices, self-hosted if you want to run your own relay, or encrypted relay mode for the simplest cross-network setup.</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-             <h2 className="text-2xl font-bold text-gray-900 mb-4">Contact Us</h2>
-             <p className="text-gray-600 mb-6">If you have any other questions, feel free to reach out to our support team.</p>
-             <form className="space-y-4">
-                <div>
-                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
-                   <input type="email" id="email" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border" placeholder="you@example.com" />
-                </div>
-                <div>
-                   <label htmlFor="message" className="block text-sm font-medium text-gray-700">Message</label>
-                   <textarea id="message" rows={4} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border" placeholder="How can we help?"></textarea>
-                </div>
-                <button type="button" className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                   Send Message
-                </button>
-             </form>
+          <div className="glass-card rounded-[2rem] p-8">
+             <h2 className="text-2xl md:text-3xl font-light tracking-tight text-slate-950 dark:text-white mb-4">Contact Us</h2>
+             <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed mb-8">If you have any questions, send us your message and include your Stripe receipt email if it is about a purchase.</p>
+             <a
+               href="mailto:support@everything-clipboard.online"
+               className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 transition-all duration-300"
+             >
+               support@everything-clipboard.online
+             </a>
+          </div>
           </div>
         </div>
-
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
