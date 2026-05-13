@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Monitor, MonitorUp, CreditCard, Shield, Zap, CheckCircle2, ClipboardCopy } from "lucide-react";
+import { Monitor, MonitorUp, CreditCard, Shield, Zap, CheckCircle2, ClipboardCopy, Download } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnicornBackground } from "@/components/UnicornBackground";
 import OrbitImages from "@/components/OrbitImages";
@@ -31,6 +31,10 @@ export default function Home() {
             <div className="flex items-center space-x-6">
               <Link href="/support" className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 Support
+              </Link>
+              <Link href="/success" className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <Download className="h-4 w-4" />
+                Download
               </Link>
               <ThemeSwitcher />
               <form action="/api/checkout_sessions" method="POST">

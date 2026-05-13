@@ -62,17 +62,30 @@ export default async function Success({
             
             <div>
               <h2 className="text-4xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white">
-                {isPaid ? "Payment Successful!" : "Payment Verification Needed"}
+                {isPaid ? "Payment Successful!" : "Buy ClipSync to Download"}
               </h2>
               <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 font-light max-w-xl mx-auto">
                 {isPaid
                   ? "Thank you for purchasing ClipSync. You now have full access to share your clipboard across all your devices. An email receipt has been sent to you."
-                  : "We could not verify a paid checkout session for this page. Please return from Stripe after payment, or contact support with your receipt email."}
+                  : "Downloads are unlocked after a paid checkout. Please buy ClipSync first, or return from Stripe using the link from your completed payment."}
               </p>
               {sessionId && (
                  <p className="mt-4 text-xs font-mono text-slate-400 dark:text-slate-500">Order Reference: {sessionId}</p>
               )}
             </div>
+
+            {!isPaid && (
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <form action="/api/checkout_sessions" method="POST" className="w-full sm:w-auto">
+                  <button type="submit" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 transition-all duration-300">
+                    Buy ClipSync
+                  </button>
+                </form>
+                <Link href="/support" className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+                  Need help?
+                </Link>
+              </div>
+            )}
 
             {isPaid && sessionId && (
             <div className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-12">
