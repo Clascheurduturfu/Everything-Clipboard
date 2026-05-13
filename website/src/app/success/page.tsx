@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertCircle, CheckCircle, Download, Monitor, Smartphone, Apple } from "lucide-react";
+import { StoreCheckoutSession } from "@/components/DownloadAccessLink";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnicornBackground } from "@/components/UnicornBackground";
 import { getPaidCheckoutSession } from "@/lib/stripe";
@@ -16,6 +17,8 @@ export default async function Success({
 
   return (
     <div className="relative z-10 flex flex-col min-h-screen">
+      {isPaid && sessionId && <StoreCheckoutSession sessionId={sessionId} />}
+
       {/* Background Effects */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-emerald-400/20 dark:bg-emerald-900/40 blur-[7.5rem] will-change-transform"></div>
