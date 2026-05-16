@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Script from "next/script";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnicornBackground } from "@/components/UnicornBackground";
@@ -32,7 +33,7 @@ export default function Support() {
               <div className="w-9 h-9 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_2px_8px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
                 C
               </div>
-              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">ClipSync</span>
+              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">Everything Clipboard</span>
             </Link>
             <div className="flex items-center space-x-6">
               <ThemeSwitcher />
@@ -61,12 +62,17 @@ export default function Support() {
               
               <div>
                 <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">Are my clipboard contents secure?</h3>
-                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Yes. ClipSync lets you choose between local Wi-Fi, self-hosted, or our fully encrypted relay mode. Your clipboard data is always secure.</p>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Yes. Everything Clipboard is fully encrypted with a key that you choose. You can configure it for your local network, host your own server, or let us host it securely for you.</p>
               </div>
               
               <div>
                 <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">I need help setting it up.</h3>
-                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Start by choosing the connection mode that fits your setup: local Wi-Fi for nearby devices, self-hosted if you want to run your own relay, or encrypted relay mode for the simplest cross-network setup.</p>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Start by choosing your hosting setup: self-hosted on your own infrastructure, local-only configuration for privacy, or our fully encrypted relay network for zero-setup syncing.</p>
+              </div>
+              
+              <div>
+                <h3 className="text-xl font-medium text-slate-950 dark:text-white mb-2">Can I sync images or files?</h3>
+                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">Currently, Everything Clipboard supports seamless text synchronization. We are actively exploring image support for a future update!</p>
               </div>
             </div>
           </div>

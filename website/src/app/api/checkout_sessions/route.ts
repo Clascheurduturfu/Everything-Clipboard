@@ -26,8 +26,8 @@ export async function POST(request: Request) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'ClipSync - Full Access (MacOS, Windows, Android)',
-              description: 'One-time purchase for full access to ClipSync across all platforms.',
+              name: 'Everything Clipboard - Full Access (MacOS, Windows, Android)',
+              description: 'One-time purchase for full access to Everything Clipboard across all platforms.',
               images: [productImageUrl],
             },
             unit_amount: 300, // $3.00

@@ -24,12 +24,13 @@ export default function Home() {
         <nav className="max-w-7xl mx-auto">
           <div className="glass-nav rounded-full px-6 py-3 flex justify-between items-center transition-all duration-300">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_2px_8px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
-                C
-              </div>
-              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">ClipSync</span>
+              <Image src="/logo.png" alt="Everything Clipboard Logo" width={36} height={36} className="rounded-xl shadow-[0_2px_8px_rgba(59,130,246,0.3)]" />
+              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">Everything Clipboard</span>
             </div>
             <div className="flex items-center space-x-6">
+              <Link href="/features" className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                Features
+              </Link>
               <Link href="/support" className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 Support
               </Link>
@@ -37,7 +38,7 @@ export default function Home() {
               <ThemeSwitcher />
               <form action="/api/checkout_sessions" method="POST">
                 <button type="submit" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md">
-                  Get ClipSync
+                  Get Everything Clipboard
                 </button>
               </form>
             </div>
@@ -66,7 +67,7 @@ export default function Home() {
             </h1>
             
             <p className="mt-6 text-lg md:text-xl text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Seamlessly sync your clipboard locally and securely.
+              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Fully encrypted text sync with a custom key. Host yourself, locally, or let us host it.
             </p>
             
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -180,9 +181,9 @@ export default function Home() {
                 <Shield className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Secure & Private</h3>
+                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Encrypted & Flexible</h3>
                 <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Choose between local Wi-Fi, self-hosted, or our fully encrypted relay mode. Your clipboard data is always secure.
+                  Fully encrypted with a key you choose. Host the server yourself, configure for local networks, or let us host it securely.
                 </p>
               </div>
             </div>
@@ -193,9 +194,9 @@ export default function Home() {
                 <MonitorUp className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Lightweight</h3>
+                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Images Coming Soon</h3>
                 <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Designed to run silently in the background with minimal resource usage, ensuring your devices stay snappy.
+                  Currently syncs all your text effortlessly. We're actively developing support for image synchronization in a future update!
                 </p>
               </div>
             </div>
@@ -216,7 +217,7 @@ export default function Home() {
             </p>
             <form action="/api/checkout_sessions" method="POST" className="inline-block relative z-10">
               <button type="submit" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-lg font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 transition-all duration-300">
-                Buy ClipSync Now
+                Buy Everything Clipboard Now
                 <Zap className="w-5 h-5" />
               </button>
             </form>
@@ -228,12 +229,13 @@ export default function Home() {
       <footer className="relative z-10 border-t border-slate-200/50 dark:border-slate-800/50 py-12 mt-auto glass-nav rounded-t-[2rem]">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center space-x-2 opacity-80 hover:opacity-100 transition-opacity">
-            <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs">C</div>
-            <span className="text-slate-900 dark:text-white font-medium tracking-wide">ClipSync</span>
+            <Image src="/logo.png" alt="Everything Clipboard Logo" width={24} height={24} className="rounded-md" />
+            <span className="text-slate-900 dark:text-white font-medium tracking-wide">Everything Clipboard</span>
           </div>
           <div className="flex items-center space-x-6 text-sm text-slate-500 dark:text-slate-400 font-light">
+            <Link href="/features" className="hover:text-slate-900 dark:hover:text-white transition-colors">Features</Link>
             <Link href="/support" className="hover:text-slate-900 dark:hover:text-white transition-colors">Support</Link>
-            <span>&copy; {new Date().getFullYear()} ClipSync. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} Everything Clipboard. All rights reserved.</span>
           </div>
         </div>
       </footer>

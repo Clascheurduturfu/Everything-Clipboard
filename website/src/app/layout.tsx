@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClipSync - Share Clipboard Across MacOS, Windows & Android",
-  description: "Seamlessly share your clipboard between MacOS, Windows, and Android. Get ClipSync today for just $3.",
+  title: "Everything Clipboard - Sync Across MacOS, Windows & Android",
+  description: "Seamlessly share your clipboard between MacOS, Windows, and Android. Host it yourself, locally, or use our encrypted relay. Get Everything Clipboard today.",
 };
 
 import { LenisProvider } from "@/components/LenisProvider";
