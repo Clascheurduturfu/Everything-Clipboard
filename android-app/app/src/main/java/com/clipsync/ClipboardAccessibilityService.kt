@@ -25,8 +25,12 @@ class ClipboardAccessibilityService : AccessibilityService(),
         super.onServiceConnected()
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(this)
-        startClipSyncService()
-        Log.i(TAG, "Accessibility clipboard bridge connected")
+
+        // Only start ClipSyncService if the user has opted in via the toggle
+        if (isServiceEnabled()) {
+            startClipSyncService()
+        }
+        Log.i(TAG, "Accessibility clipboard bridge connected (service_running=${isServiceEnabled()})")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -41,7 +45,15 @@ class ClipboardAccessibilityService : AccessibilityService(),
         forwardCurrentClipboard("accessibility_clipboard_listener")
     }
 
+    private fun isServiceEnabled(): Boolean {
+        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("service_running", false)
+    }
+
     private fun forwardCurrentClipboard(source: String) {
+        // Don't forward if the user has disabled the service
+        if (!isServiceEnabled()) return
+
         val text = readClipboardText() ?: return
         if (text.isBlank() || text == lastSentText) return
 

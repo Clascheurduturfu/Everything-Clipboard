@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -18,9 +20,19 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_POST_NOTIFICATIONS = 1001
+        private const val STATUS_REFRESH_MS = 1000L
     }
 
     private var startServiceAfterNotificationPrompt = false
+    private lateinit var tvStatus: TextView
+    private lateinit var switchService: Switch
+    private val statusHandler = Handler(Looper.getMainLooper())
+    private val statusRefreshRunnable = object : Runnable {
+        override fun run() {
+            refreshStatusDisplay()
+            statusHandler.postDelayed(this, STATUS_REFRESH_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,9 +43,9 @@ class MainActivity : AppCompatActivity() {
         val editSecretKey = findViewById<EditText>(R.id.editSecretKey)
         val btnSave = findViewById<Button>(R.id.btnSave)
         val btnAccessibility = findViewById<Button>(R.id.btnAccessibility)
-        val switchService = findViewById<Switch>(R.id.switchService)
+        switchService = findViewById(R.id.switchService)
         val switchSendNotificationAction = findViewById<Switch>(R.id.switchSendNotificationAction)
-        val tvStatus = findViewById<TextView>(R.id.tvStatus)
+        tvStatus = findViewById(R.id.tvStatus)
 
         // Load saved prefs
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
@@ -46,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         // Check if service is supposed to be running
         val wasRunning = prefs.getBoolean("service_running", false)
         switchService.isChecked = wasRunning
-        tvStatus.text = if (wasRunning) "Service: Running" else "Service: Stopped"
+        refreshStatusDisplay()
 
         btnSave.setOnClickListener {
             val url = editServerUrl.text.toString().trim()
@@ -70,7 +82,6 @@ class MainActivity : AppCompatActivity() {
             if (switchService.isChecked) {
                 stopClipSyncService()
                 startClipSyncServiceWithPermissionPrompt()
-                tvStatus.text = "Service: Restarting..."
             }
         }
 
@@ -87,8 +98,16 @@ class MainActivity : AppCompatActivity() {
                 requestNotificationPermissionIfNeeded()
             }
 
+            // Tell the running service to rebuild its notification with/without the action button
             if (switchService.isChecked) {
-                startClipSyncServiceWithPermissionPrompt()
+                val refreshIntent = Intent(this, ClipSyncService::class.java).apply {
+                    action = ClipSyncService.ACTION_REFRESH_NOTIFICATION
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(refreshIntent)
+                } else {
+                    startService(refreshIntent)
+                }
             }
         }
 
@@ -103,12 +122,40 @@ class MainActivity : AppCompatActivity() {
                     return@setOnCheckedChangeListener
                 }
                 startClipSyncServiceWithPermissionPrompt()
-                tvStatus.text = "Service: Running"
             } else {
                 stopClipSyncService()
-                tvStatus.text = "Service: Stopped"
             }
+            refreshStatusDisplay()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshStatusDisplay()
+        statusHandler.postDelayed(statusRefreshRunnable, STATUS_REFRESH_MS)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        statusHandler.removeCallbacks(statusRefreshRunnable)
+    }
+
+    /**
+     * Reads the live service status from SharedPreferences (written by ClipSyncService)
+     * and displays it in tvStatus. Shows "Stopped" when the service isn't running.
+     */
+    private fun refreshStatusDisplay() {
+        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        val isRunning = prefs.getBoolean("service_running", false)
+
+        if (!isRunning) {
+            tvStatus.text = "Service stopped"
+            return
+        }
+
+        // The service writes its live status (connection state, last clipboard, etc.)
+        val liveStatus = prefs.getString(ClipSyncService.PREF_SERVICE_STATUS, null)
+        tvStatus.text = liveStatus ?: "Service starting..."
     }
 
     private fun startClipSyncServiceWithPermissionPrompt() {

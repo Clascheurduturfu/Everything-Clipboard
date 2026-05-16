@@ -24,8 +24,10 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         private const val CHANNEL_ID = "clipsync_channel"
         private const val PREFS_NAME = "clipsync_prefs"
         const val PREF_SHOW_SEND_NOTIFICATION_ACTION = "show_send_notification_action"
+        const val PREF_SERVICE_STATUS = "service_status"
 
         const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
+        const val ACTION_REFRESH_NOTIFICATION = "com.clipsync.action.REFRESH_NOTIFICATION"
         const val EXTRA_TEXT = "com.clipsync.extra.TEXT"
         const val EXTRA_SOURCE = "com.clipsync.extra.SOURCE"
     }
@@ -51,6 +53,16 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "onStartCommand action=${intent?.action ?: "none"} startId=$startId")
+
+        // Handle notification refresh without touching WebSocket
+        if (intent?.action == ACTION_REFRESH_NOTIFICATION) {
+            Log.i(TAG, "Refreshing notification (action button toggled)")
+            val currentText = if (wsClient != null && currentServerUrl.isNotEmpty())
+                "Connected - syncing clipboard" else "ClipSync is running"
+            updateNotification(currentText)
+            return START_NOT_STICKY
+        }
+
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val serverUrl = prefs.getString("server_url", "") ?: ""
         val secretKey = prefs.getString("secret_key", "") ?: ""
@@ -59,7 +71,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         if (serverUrl.isEmpty() || secretKey.isEmpty()) {
             Log.w(TAG, "Service missing settings. serverUrlSet=${serverUrl.isNotEmpty()} secretKeySet=${secretKey.isNotEmpty()}")
             updateNotification("Waiting for settings - open ClipSync app")
-            return START_STICKY
+            return START_NOT_STICKY
         }
 
         keyBytes = CryptoUtils.deriveKey(secretKey)
@@ -107,7 +119,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
 
         Log.i(TAG, "Service started with server=$serverUrl")
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun handleIncomingPayload(encryptedPayload: String) {
@@ -249,6 +261,12 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     private fun updateNotification(text: String) {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(NOTIFICATION_ID, buildNotification(text))
+
+        // Mirror status to SharedPreferences so MainActivity can display it
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_SERVICE_STATUS, text)
+            .apply()
     }
 
     override fun onDestroy() {
@@ -258,6 +276,13 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             listenerRegistered = false
         }
         wsClient?.disconnect()
+
+        // Clear live status so the Activity shows "Stopped"
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(PREF_SERVICE_STATUS)
+            .apply()
+
         super.onDestroy()
     }
 
