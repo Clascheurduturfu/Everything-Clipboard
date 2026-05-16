@@ -30,9 +30,7 @@ export default function Support() {
         <nav className="max-w-7xl mx-auto">
           <div className="glass-nav rounded-full px-6 py-3 flex justify-between items-center transition-all duration-300">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_2px_8px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
-                C
-              </div>
+              <Image src="/logo.png" alt="Everything Clipboard Logo" width={36} height={36} className="rounded-xl shadow-[0_2px_8px_rgba(59,130,246,0.3)]" />
               <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">Everything Clipboard</span>
             </Link>
             <div className="flex items-center space-x-6">

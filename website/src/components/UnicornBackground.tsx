@@ -11,6 +11,15 @@ export function UnicornBackground() {
       // @ts-expect-error UnicornStudio is on window
       window.UnicornStudio.init();
     }
+
+    // Cleanup function to prevent WebGL context memory leaks on page navigation
+    return () => {
+      // @ts-expect-error UnicornStudio is on window
+      if (typeof window !== "undefined" && window.UnicornStudio) {
+        // @ts-expect-error UnicornStudio is on window
+        window.UnicornStudio.destroy();
+      }
+    };
   }, []);
 
   return (
