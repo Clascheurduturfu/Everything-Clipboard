@@ -24,8 +24,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private var startServiceAfterNotificationPrompt = false
+    private var pendingServiceAction: String? = null
     private lateinit var tvStatus: TextView
     private lateinit var switchService: Switch
+    private lateinit var switchSendNotificationAction: Switch
+    private lateinit var switchSensitiveClipboard: Switch
+    private lateinit var editDeviceName: EditText
+    private lateinit var editServerUrl: EditText
+    private lateinit var editSecretKey: EditText
     private val statusHandler = Handler(Looper.getMainLooper())
     private val statusRefreshRunnable = object : Runnable {
         override fun run() {
@@ -38,13 +44,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val editDeviceName = findViewById<EditText>(R.id.editDeviceName)
-        val editServerUrl = findViewById<EditText>(R.id.editServerUrl)
-        val editSecretKey = findViewById<EditText>(R.id.editSecretKey)
+        editDeviceName = findViewById(R.id.editDeviceName)
+        editServerUrl = findViewById(R.id.editServerUrl)
+        editSecretKey = findViewById(R.id.editSecretKey)
         val btnSave = findViewById<Button>(R.id.btnSave)
         val btnAccessibility = findViewById<Button>(R.id.btnAccessibility)
         switchService = findViewById(R.id.switchService)
-        val switchSendNotificationAction = findViewById<Switch>(R.id.switchSendNotificationAction)
+        switchSendNotificationAction = findViewById(R.id.switchSendNotificationAction)
+        switchSensitiveClipboard = findViewById(R.id.switchSensitiveClipboard)
         tvStatus = findViewById(R.id.tvStatus)
 
         // Load saved prefs
@@ -54,9 +61,11 @@ class MainActivity : AppCompatActivity() {
         editSecretKey.setText(prefs.getString("secret_key", ""))
         switchSendNotificationAction.isChecked =
             prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
+        switchSensitiveClipboard.isChecked =
+            prefs.getBoolean(ClipSyncService.PREF_USE_SENSITIVE_CLIPBOARD, true)
 
-        // Check if service is supposed to be running
-        val wasRunning = prefs.getBoolean("service_running", false)
+        // This toggle means "keep ClipSync alive after the app closes".
+        val wasRunning = prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
         switchService.isChecked = wasRunning
         refreshStatusDisplay()
 
@@ -79,9 +88,8 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Settings saved!", Toast.LENGTH_SHORT).show()
 
             // Restart service if it's running to apply new settings
-            if (switchService.isChecked) {
-                stopClipSyncService()
-                startClipSyncServiceWithPermissionPrompt()
+            if (hasUsableSettings()) {
+                startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
             }
         }
 
@@ -94,36 +102,33 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, isChecked)
                 .apply()
 
-            if (isChecked) {
-                requestNotificationPermissionIfNeeded()
+            if (hasUsableSettings()) {
+                startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_REFRESH_NOTIFICATION)
             }
+            refreshStatusDisplay()
+        }
 
-            // Tell the running service to rebuild its notification with/without the action button
-            if (switchService.isChecked) {
-                val refreshIntent = Intent(this, ClipSyncService::class.java).apply {
-                    action = ClipSyncService.ACTION_REFRESH_NOTIFICATION
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(refreshIntent)
-                } else {
-                    startService(refreshIntent)
-                }
-            }
+        switchSensitiveClipboard.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit()
+                .putBoolean(ClipSyncService.PREF_USE_SENSITIVE_CLIPBOARD, isChecked)
+                .apply()
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("service_running", isChecked).apply()
+            prefs.edit().putBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, isChecked).apply()
             if (isChecked) {
-                val url = editServerUrl.text.toString().trim()
-                val key = editSecretKey.text.toString().trim()
-                if (url.isEmpty() || key.isEmpty()) {
+                if (!hasUsableSettings()) {
                     Toast.makeText(this, "Set Server URL and Secret Key first!", Toast.LENGTH_SHORT).show()
                     switchService.isChecked = false
                     return@setOnCheckedChangeListener
                 }
-                startClipSyncServiceWithPermissionPrompt()
+                startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
             } else {
-                stopClipSyncService()
+                if (hasUsableSettings()) {
+                    startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_REFRESH_NOTIFICATION)
+                } else {
+                    stopClipSyncService()
+                }
             }
             refreshStatusDisplay()
         }
@@ -131,13 +136,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (hasUsableSettings()) {
+            startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
+        }
         refreshStatusDisplay()
         statusHandler.postDelayed(statusRefreshRunnable, STATUS_REFRESH_MS)
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
         statusHandler.removeCallbacks(statusRefreshRunnable)
+        val closeIntent = Intent(this, ClipSyncService::class.java).apply {
+            action = ClipSyncService.ACTION_APP_CLOSED
+        }
+        startService(closeIntent)
     }
 
     /**
@@ -146,10 +158,11 @@ class MainActivity : AppCompatActivity() {
      */
     private fun refreshStatusDisplay() {
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
-        val isRunning = prefs.getBoolean("service_running", false)
+        val isRunning = prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
+        val isVisible = prefs.getBoolean(ClipSyncService.PREF_APP_VISIBLE, false)
 
-        if (!isRunning) {
-            tvStatus.text = "Service stopped"
+        if (!isRunning && !isVisible) {
+            tvStatus.text = "Opens when the app is open"
             return
         }
 
@@ -158,12 +171,13 @@ class MainActivity : AppCompatActivity() {
         tvStatus.text = liveStatus ?: "Service starting..."
     }
 
-    private fun startClipSyncServiceWithPermissionPrompt() {
-        if (requestNotificationPermissionIfNeeded()) {
+    private fun startClipSyncServiceWithPermissionPrompt(action: String? = null) {
+        if (needsPersistentNotification() && requestNotificationPermissionIfNeeded()) {
             startServiceAfterNotificationPrompt = true
+            pendingServiceAction = action
             return
         }
-        startClipSyncService()
+        startClipSyncService(action)
     }
 
     private fun requestNotificationPermissionIfNeeded(): Boolean {
@@ -176,9 +190,11 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun startClipSyncService() {
-        val intent = Intent(this, ClipSyncService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    private fun startClipSyncService(action: String? = null) {
+        val intent = Intent(this, ClipSyncService::class.java).apply {
+            if (action != null) this.action = action
+        }
+        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
             startService(intent)
@@ -187,6 +203,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopClipSyncService() {
         stopService(Intent(this, ClipSyncService::class.java))
+    }
+
+    private fun hasUsableSettings(): Boolean {
+        return editServerUrl.text.toString().trim().isNotEmpty() &&
+            editSecretKey.text.toString().trim().isNotEmpty()
+    }
+
+    private fun needsPersistentNotification(): Boolean {
+        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false) ||
+            prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
     }
 
     override fun onRequestPermissionsResult(
@@ -207,7 +234,8 @@ class MainActivity : AppCompatActivity() {
 
         if (startServiceAfterNotificationPrompt) {
             startServiceAfterNotificationPrompt = false
-            startClipSyncService()
+            startClipSyncService(pendingServiceAction)
+            pendingServiceAction = null
         }
     }
 }

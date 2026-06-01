@@ -48,13 +48,19 @@ class SendClipboardActivity : AppCompatActivity() {
             putExtra(ClipSyncService.EXTRA_SOURCE, "manual_send_activity")
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
             startService(intent)
         }
 
-        Toast.makeText(this, "Clipboard sent", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Sending clipboard", Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    private fun needsPersistentNotification(): Boolean {
+        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false) ||
+            prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
     }
 }

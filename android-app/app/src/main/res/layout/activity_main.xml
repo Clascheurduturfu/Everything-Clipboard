@@ -13,108 +13,173 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
             android:text="ClipSync"
             android:textColor="#e7eef8"
             android:textSize="28sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/tvStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="Service: Stopped"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:text="Clipboard sync"
             android:textColor="#95a3b8"
             android:textSize="14sp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Device Name"
-            android:textColor="#b8c3d4"
-            android:textSize="12sp" />
-
-        <EditText
-            android:id="@+id/editDeviceName"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:backgroundTint="#3c4a5f"
-            android:hint="e.g. My Pixel"
-            android:textColor="#ffffff"
-            android:textColorHint="#66758a" />
+            android:background="@drawable/status_bg"
+            android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Server URL"
-            android:textColor="#b8c3d4"
-            android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Opens when the app is open"
+                android:textColor="#d7f3ff"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
-        <EditText
-            android:id="@+id/editServerUrl"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:backgroundTint="#3c4a5f"
-            android:hint="wss://your-server.example"
-            android:inputType="textUri"
-            android:textColor="#ffffff"
-            android:textColorHint="#66758a" />
+            android:background="@drawable/panel_bg"
+            android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Secret Key"
-            android:textColor="#b8c3d4"
-            android:textSize="12sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Connection"
+                android:textColor="#e7eef8"
+                android:textSize="17sp"
+                android:textStyle="bold" />
 
-        <EditText
-            android:id="@+id/editSecretKey"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Device name"
+                android:textColor="#b8c3d4"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/editDeviceName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:backgroundTint="#3c4a5f"
+                android:hint="e.g. My Pixel"
+                android:textColor="#ffffff"
+                android:textColorHint="#66758a" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Server URL"
+                android:textColor="#b8c3d4"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/editServerUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:backgroundTint="#3c4a5f"
+                android:hint="ws://your-server:8000"
+                android:inputType="textUri"
+                android:textColor="#ffffff"
+                android:textColorHint="#66758a" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Secret key"
+                android:textColor="#b8c3d4"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/editSecretKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="18dp"
+                android:backgroundTint="#3c4a5f"
+                android:hint="Your shared secret"
+                android:inputType="textPassword"
+                android:textColor="#ffffff"
+                android:textColorHint="#66758a" />
+
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#4a90d9"
+                android:text="Save"
+                android:textColor="#ffffff" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:backgroundTint="#3c4a5f"
-            android:hint="Your shared secret"
-            android:inputType="textPassword"
-            android:textColor="#ffffff"
-            android:textColorHint="#66758a" />
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/panel_bg"
+            android:orientation="vertical">
 
-        <Button
-            android:id="@+id/btnSave"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:backgroundTint="#4a90d9"
-            android:text="Save Settings"
-            android:textColor="#ffffff" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Behavior"
+                android:textColor="#e7eef8"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Switch
+                android:id="@+id/switchService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Run in background"
+                android:textColor="#e7eef8"
+                android:textSize="16sp" />
+
+            <Switch
+                android:id="@+id/switchSendNotificationAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Show Send Clipboard notification button"
+                android:textColor="#e7eef8"
+                android:textSize="15sp" />
+
+            <Switch
+                android:id="@+id/switchSensitiveClipboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Mark desktop clips as sensitive"
+                android:textColor="#e7eef8"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Helps keep clips received from desktop out of Android keyboard history. You can still paste the latest clip."
+                android:textColor="#95a3b8"
+                android:textSize="13sp" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnAccessibility"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
             android:backgroundTint="#00a6a6"
-            android:text="Enable Clipboard Bridge"
+            android:text="Open Clipboard Bridge Settings"
             android:textColor="#ffffff" />
-
-        <Switch
-            android:id="@+id/switchSendNotificationAction"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="Show Send Clipboard notification button"
-            android:textColor="#e7eef8"
-            android:textSize="15sp" />
-
-        <Switch
-            android:id="@+id/switchService"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Run ClipSync in Background"
-            android:textColor="#e7eef8"
-            android:textSize="16sp" />
 
     </LinearLayout>
 </ScrollView>

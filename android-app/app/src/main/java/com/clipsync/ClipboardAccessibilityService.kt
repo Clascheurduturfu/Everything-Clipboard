@@ -26,7 +26,7 @@ class ClipboardAccessibilityService : AccessibilityService(),
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(this)
 
-        // Only start ClipSyncService if the user has opted in via the toggle
+        // Only keep ClipSyncService alive if the user has opted in to background sync.
         if (isServiceEnabled()) {
             startClipSyncService()
         }
@@ -47,7 +47,7 @@ class ClipboardAccessibilityService : AccessibilityService(),
 
     private fun isServiceEnabled(): Boolean {
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
-        return prefs.getBoolean("service_running", false)
+        return prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
     }
 
     private fun forwardCurrentClipboard(source: String) {
@@ -64,7 +64,7 @@ class ClipboardAccessibilityService : AccessibilityService(),
             putExtra(ClipSyncService.EXTRA_SOURCE, source)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
             startService(intent)
@@ -73,11 +73,17 @@ class ClipboardAccessibilityService : AccessibilityService(),
 
     private fun startClipSyncService() {
         val intent = Intent(this, ClipSyncService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
             startService(intent)
         }
+    }
+
+    private fun needsPersistentNotification(): Boolean {
+        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false) ||
+            prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
     }
 
     private fun readClipboardText(): String? {
