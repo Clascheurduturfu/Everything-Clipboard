@@ -1,0 +1,42 @@
+name: ClipSync
+options:
+  bundleIdPrefix: com.clipsync
+  deploymentTarget:
+    iOS: 16.0
+targets:
+  ClipSync:
+    type: application
+    platform: iOS
+    sources:
+      - path: ClipSync
+    settings:
+      CODE_SIGN_ENTITLEMENTS: ClipSync/ClipSync.entitlements
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      INFOPLIST_FILE: ClipSync/Info.plist
+      GENERATE_INFOPLIST_FILE: YES
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_STYLE: Automatic
+      PRODUCT_BUNDLE_IDENTIFIER: com.clipsync.ios
+      MARKETING_VERSION: 1.0
+      CURRENT_PROJECT_VERSION: 1
+    dependencies:
+      - target: ShareExtension
+  
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: ClipSync/CryptoUtils.swift
+      - path: ClipSync/WebSocketClient.swift
+    settings:
+      CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+      INFOPLIST_FILE: ShareExtension/Info.plist
+      GENERATE_INFOPLIST_FILE: YES
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_STYLE: Automatic
+      PRODUCT_BUNDLE_IDENTIFIER: com.clipsync.ios.ShareExtension
+      SKIP_INSTALL: YES
+      MARKETING_VERSION: 1.0
+      CURRENT_PROJECT_VERSION: 1
+      INFOPLIST_KEY_CFBundleDisplayName: "Send to ClipSync"

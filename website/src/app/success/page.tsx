@@ -92,7 +92,7 @@ export default async function Success({
             <div className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-12">
               <h3 className="text-2xl font-medium text-slate-950 dark:text-white mb-8">Download Your Apps</h3>
               
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 
                 {/* Windows Download */}
                 <div className="group flex flex-col items-center p-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-slate-700 hover:-translate-y-1 transition-all duration-300">
@@ -126,6 +126,18 @@ export default async function Success({
                   <h4 className="text-lg font-medium text-slate-950 dark:text-white mb-1">Android</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-light">Android 8.0+ (.apk)</p>
                   <a href={`/api/download?os=android&session_id=${encodeURIComponent(sessionId)}`} className="mt-auto w-full inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-emerald-200 dark:border-emerald-800 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </a>
+                </div>
+
+                {/* iOS Download */}
+                <div className="group flex flex-col items-center p-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-[2rem] border border-slate-200 dark:border-slate-700 hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Apple className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-950 dark:text-white mb-1">iOS</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-light">iOS 15.0+ (.ipa)</p>
+                  <a href={`/api/download?os=ios&session_id=${encodeURIComponent(sessionId)}`} className="mt-auto w-full inline-flex items-center justify-center px-4 py-2.5 rounded-full border border-indigo-200 dark:border-indigo-800 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
                     <Download className="mr-2 h-4 w-4" /> Download
                   </a>
                 </div>

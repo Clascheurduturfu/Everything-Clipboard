@@ -14,12 +14,16 @@ const downloads = {
     env: 'CLIPSYNC_ANDROID_DOWNLOAD_URL',
     label: 'Android',
   },
+  ios: {
+    env: 'CLIPSYNC_IOS_DOWNLOAD_URL',
+    label: 'iOS',
+  },
 } as const;
 
 type DownloadOs = keyof typeof downloads;
 
 function isDownloadOs(os: string | null): os is DownloadOs {
-  return os === 'windows' || os === 'macos' || os === 'android';
+  return os === 'windows' || os === 'macos' || os === 'android' || os === 'ios';
 }
 
 export async function GET(request: Request) {

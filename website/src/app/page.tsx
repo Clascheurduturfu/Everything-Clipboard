@@ -134,6 +134,9 @@ export default function Home() {
                     responsive={true}
                     baseWidth={600}
                     items={[
+                      <div key="ios" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
+                        <Image src="/IOS app.png" alt="iOS App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
+                      </div>,
                       <div key="android" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
                         <Image src="/Android app.png" alt="Android App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
                       </div>,
