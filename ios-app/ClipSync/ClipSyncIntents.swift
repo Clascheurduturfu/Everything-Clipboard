@@ -2,6 +2,7 @@ import AppIntents
 import SwiftUI
 import UniformTypeIdentifiers
 
+@available(iOS 16.0, *)
 struct SendClipboardIntent: AppIntent {
     static var title: LocalizedStringResource = "Send Clipboard to ClipSync"
     static var description = IntentDescription("Sends your current iOS clipboard to all connected ClipSync devices.")
@@ -64,6 +65,7 @@ struct SendClipboardIntent: AppIntent {
     }
 }
 
+@available(iOS 16.0, *)
 struct ReceiveClipboardIntent: AppIntent {
     static var title: LocalizedStringResource = "Receive Clipboard from ClipSync"
     static var description = IntentDescription("Connects to ClipSync, fetches the latest clipboard, and copies it to your iOS device.")

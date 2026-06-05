@@ -2,7 +2,7 @@ name: ClipSync
 options:
   bundleIdPrefix: com.clipsync
   deploymentTarget:
-    iOS: 16.0
+    iOS: 15.0
 targets:
   ClipSync:
     type: application

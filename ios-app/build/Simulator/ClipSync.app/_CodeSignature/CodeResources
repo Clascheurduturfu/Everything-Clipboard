@@ -14,19 +14,19 @@
 		</data>
 		<key>Assets.car</key>
 		<data>
-		ZVCxvO80QLOOfAGORz1Pao4WceI=
+		ZaS7yg3tXiIYvXq3V0SFHz2776w=
 		</data>
 		<key>ClipSync.debug.dylib</key>
 		<data>
-		MIgA/m5B83w1tDN9wKnwt90qm3s=
+		Oyx9Vp8kGmk7NIpPS571x6oHO54=
 		</data>
 		<key>Info.plist</key>
 		<data>
-		SFwqrIb7bbKps4aTP+VlLIblba8=
+		GGvQzudhfhXC/zRIW77RGhaAk6Y=
 		</data>
 		<key>Metadata.appintents/extract.actionsdata</key>
 		<data>
-		Uh6ZBZ3FEh1Piqm854X2WkfZMuk=
+		uDZ12gj9MybGr67Ogh90HowAgrk=
 		</data>
 		<key>Metadata.appintents/version.json</key>
 		<data>
@@ -38,27 +38,27 @@
 		</data>
 		<key>PlugIns/ShareExtension.appex/Info.plist</key>
 		<data>
-		mCQG1L3ASqTTs4bUYKahroUlPsg=
+		UBB/+HuFWroUKMERYEZ7XTmki0s=
 		</data>
 		<key>PlugIns/ShareExtension.appex/ShareExtension</key>
 		<data>
-		H01K56AiyHuEr6Tr/6Rnejj6D1o=
+		xyOJtahtY7y6Q5uwj0Vv4S3C+ss=
 		</data>
 		<key>PlugIns/ShareExtension.appex/ShareExtension.debug.dylib</key>
 		<data>
-		b8FH65bLahlZiXmD2Ryh/YL94cY=
+		njGDmLmD+vMh+Dn1OJjYVsXyhgI=
 		</data>
 		<key>PlugIns/ShareExtension.appex/_CodeSignature/CodeResources</key>
 		<data>
-		kl/z08oN8ZqPvlYdu82wY8uYi2g=
+		IGzKiwxO8GrG+AMWgBEvckJGfbQ=
 		</data>
 		<key>PlugIns/ShareExtension.appex/__preview.dylib</key>
 		<data>
-		EhlDULlW5VM9U4E/+573hO2RLGQ=
+		B88+pSgROM6BjSJS6K+YtrQ/Dp4=
 		</data>
 		<key>__preview.dylib</key>
 		<data>
-		bHoaubIyl0OT/rXp7absxh71AzI=
+		OlpnMP/7W46pbs1oMSnBxTRm8kQ=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -81,21 +81,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			7C3XiJEffzficzyST5CQxBhR3GSzagqMN93wHUD+9uc=
+			fpMZmXhm+mopxlzzKyukAu5f/q0xzKhVkmxJgyNVBbk=
 			</data>
 		</dict>
 		<key>ClipSync.debug.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			yfkqF6pskCOQ1H3V7prPggz4hgUDd5jgqyuHN4UC0hw=
+			mXrSH0Yn4aKn/Duj4jJ0Tv1qM6uQBMeqqz7EqkAJZmA=
 			</data>
 		</dict>
 		<key>Metadata.appintents/extract.actionsdata</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			0R57urSTBpgpbBA0dCniOaY8NUJuyXkUsfDq/LSLVgk=
+			ZwezvlKJ4Pnyr6sFpon0pqIVUQmT60gt2IhsYYhmq6A=
 			</data>
 		</dict>
 		<key>Metadata.appintents/version.json</key>
@@ -109,42 +109,42 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			l9nA3iIYfxtGRnL0xPZOVjmXK92728kHq2U/Svio1Q0=
+			c87BzeurLO8sAvMXPy5Z6uqgJtdgM/h4UKFP2f82MBQ=
 			</data>
 		</dict>
 		<key>PlugIns/ShareExtension.appex/ShareExtension</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			AyMjD7aem79adovPTeO34bgiOFXqtKLFa4tdinyXrC4=
+			+McNLegN/al7kf0/H/3OUYyYeIENEmyTVoF+Oqk3kFA=
 			</data>
 		</dict>
 		<key>PlugIns/ShareExtension.appex/ShareExtension.debug.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			9XyU8jJC4hp+UjrPT1AYsvIPcq3spaQcirbEm5nODs4=
+			wl5rpIYMoIsgXo5I79FlTJOdh/36c+n6cO3D13Tg7vI=
 			</data>
 		</dict>
 		<key>PlugIns/ShareExtension.appex/_CodeSignature/CodeResources</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			aAbkJ+fOAGClQiMzI4FEJl5uUQyfeQELBeFlc+ZPsVg=
+			w9vZFOUQpLpDJJ8R3aHdR0TBhRChUrjwldB/4XTZIEI=
 			</data>
 		</dict>
 		<key>PlugIns/ShareExtension.appex/__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			4M7egPWxdxrMU4MquqryETKxDmSKArBNr8buGjcBRhU=
+			XRBE+I6FNdjPGCO9bnSR7GSVbf8N8EteLQ3DCrbm9+w=
 			</data>
 		</dict>
 		<key>__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			P5fvp9ypdWEEDgXNaIgyIE+nwsXxZthSbCTSlfO2/dY=
+			e8+ixM01Rxp0O7c0J8sKKCIR9wBJ8JvzV1uRZ2Cb79c=
 			</data>
 		</dict>
 	</dict>
