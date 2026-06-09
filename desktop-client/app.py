@@ -33,6 +33,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
+_IS_MACOS = platform.system() == "Darwin"
+
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 LOG_FILE = os.path.join(CONFIG_DIR, "clipsync.log")
@@ -215,7 +217,26 @@ class ClipSyncApp:
         self.icon.title = "ClipSync - Disconnected"
         self._rebuild_menu()
 
-    def _rebuild_menu(self):
+    def _run_on_main_thread(self, fn):
+        """Dispatch *fn* to the main thread on macOS.
+
+        macOS 27 enforces that NSStatusItem UI mutations happen on the
+        main run-loop queue.  If we are already on the main thread (e.g.
+        during __init__) the callback is invoked directly.
+        On Windows / Linux this is a no-op wrapper.
+        """
+        if _IS_MACOS and threading.current_thread() is not threading.main_thread():
+            try:
+                from PyObjCTools import AppHelper
+
+                AppHelper.callAfter(fn)
+                return
+            except ImportError:
+                pass
+        fn()
+
+    def _build_menu(self):
+        """Build and return the tray menu (pure computation, thread-safe)."""
         status = "Connected" if self.is_connected else "Disconnected"
         if self.status_message:
             status = self.status_message
@@ -255,14 +276,32 @@ class ClipSyncApp:
                 pystray.MenuItem("Quit", self._quit),
             ]
         )
-        self.icon.menu = pystray.Menu(*items)
+        return pystray.Menu(*items)
+
+    def _update_tray(self, icon_image=None, title=None, rebuild_menu=True):
+        """Batch-update tray icon properties on the main thread."""
+        menu = self._build_menu() if rebuild_menu else None
+
+        def _apply():
+            if icon_image is not None:
+                self.icon.icon = icon_image
+            if title is not None:
+                self.icon.title = title
+            if menu is not None:
+                self.icon.menu = menu
+
+        self._run_on_main_thread(_apply)
+
+    def _rebuild_menu(self):
+        self._update_tray(rebuild_menu=True)
 
     def _set_status(self, message: str, icon_color: str | None = None):
         self.status_message = message
-        if icon_color:
-            self.icon.icon = create_icon_image(icon_color)
-        self.icon.title = f"ClipSync - {message}"
-        self._rebuild_menu()
+        self._update_tray(
+            icon_image=create_icon_image(icon_color) if icon_color else None,
+            title=f"ClipSync - {message}",
+            rebuild_menu=True,
+        )
 
     def _open_preferences_from_tray(self, icon=None, item=None):
         self.open_preferences()
@@ -500,9 +539,11 @@ class ClipSyncApp:
     def _disconnect(self):
         self.stop_event.set()
         self.is_connected = False
-        self.icon.icon = create_icon_image("gray")
-        self.icon.title = "ClipSync - Disconnected"
-        self._rebuild_menu()
+        self._update_tray(
+            icon_image=create_icon_image("gray"),
+            title="ClipSync - Disconnected",
+            rebuild_menu=True,
+        )
 
     def _reconnect_if_configured(self):
         self._disconnect()
@@ -519,9 +560,11 @@ class ClipSyncApp:
             logger.error("WS thread crashed: %s", exc)
         finally:
             self.is_connected = False
-            self.icon.icon = create_icon_image("gray")
-            self.icon.title = "ClipSync - Disconnected"
-            self._rebuild_menu()
+            self._update_tray(
+                icon_image=create_icon_image("gray"),
+                title="ClipSync - Disconnected",
+                rebuild_menu=True,
+            )
             self.ws_thread = None
 
     async def _ws_client_loop(self):
@@ -547,9 +590,11 @@ class ClipSyncApp:
                 ) as ws:
                     self.is_connected = True
                     self.status_message = ""
-                    self.icon.icon = create_icon_image("green")
-                    self.icon.title = "ClipSync - Connected"
-                    self._rebuild_menu()
+                    self._update_tray(
+                        icon_image=create_icon_image("green"),
+                        title="ClipSync - Connected",
+                        rebuild_menu=True,
+                    )
                     logger.info("Connected to server")
 
                     recv_task = asyncio.create_task(self._receive_loop(ws))
