@@ -37,7 +37,7 @@ export default function Home() {
               </Link>
               <DownloadAccessLink />
               <ThemeSwitcher />
-              <PurchaseButton buyLabel="Get Everything Clipboard" downloadLabel="Download" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md" />
+              <PurchaseButton buyLabel="Buy – $3" downloadLabel="Download" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md" />
             </div>
           </div>
         </nav>

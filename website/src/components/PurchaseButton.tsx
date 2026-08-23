@@ -18,7 +18,7 @@ type PurchaseButtonProps = {
 
 export function PurchaseButton({
   className = "",
-  buyLabel = "Buy Everything Clipboard",
+  buyLabel = "Buy for $3",
   downloadLabel = "Download",
 }: PurchaseButtonProps) {
   const [account, setAccount] = useState<AccountState | null>(null);
@@ -32,7 +32,21 @@ export function PurchaseButton({
       .catch(() => setAccount({ signedIn: false }));
   }, []);
 
-  async function signIn() {
+  async function handleBuy() {
+    if (account?.signedIn && account.purchased) {
+      window.location.assign("/account");
+      return;
+    }
+
+    if (account?.signedIn) {
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/api/checkout_sessions";
+      document.body.appendChild(form);
+      form.submit();
+      return;
+    }
+
     setBusy(true);
     setError(null);
     try {
@@ -48,9 +62,25 @@ export function PurchaseButton({
 
       if (!response.ok) throw new Error("Unable to create your secure session");
       await signOut(auth);
-      setAccount({ signedIn: true, purchased: false });
-    } catch (signInError) {
-      console.error("Google sign-in failed:", signInError);
+      
+      const updated = await fetch("/api/account", { cache: "no-store" }).then((r) => r.json());
+      setAccount(updated);
+
+      if (updated?.purchased) {
+        window.location.assign("/account");
+      } else {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "/api/checkout_sessions";
+        document.body.appendChild(form);
+        form.submit();
+      }
+    } catch (signInError: unknown) {
+      console.error("Sign-in failed:", signInError);
+      const err = signInError as { code?: string; message?: string };
+      if (err?.code === "auth/popup-closed-by-user") {
+        return;
+      }
       setError("Google sign-in could not be completed. Please try again.");
     } finally {
       setBusy(false);
@@ -58,23 +88,24 @@ export function PurchaseButton({
   }
 
   if (account?.signedIn && account.purchased) {
-    return <Link href="/account" className={className}>{downloadLabel}</Link>;
-  }
-
-  if (account?.signedIn) {
     return (
-      <form action="/api/checkout_sessions" method="POST">
-        <button type="submit" className={className}>{buyLabel}</button>
-      </form>
+      <Link href="/account" className={className}>
+        {downloadLabel}
+      </Link>
     );
   }
 
   return (
-    <div className="inline-flex flex-col items-center gap-2">
-      <button type="button" onClick={signIn} disabled={busy} className={className}>
-        {busy ? "Signing in..." : "Sign in with Google"}
+    <div className="inline-flex flex-col items-center gap-1.5">
+      <button
+        type="button"
+        onClick={handleBuy}
+        disabled={busy}
+        className={className}
+      >
+        {busy ? "Connecting..." : buyLabel}
       </button>
-      {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
+      {error && <span className="text-xs text-red-500 max-w-xs text-center">{error}</span>}
     </div>
   );
 }
