@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClipSync Store
 
-## Getting Started
+The ClipSync store uses Google-backed Firebase accounts, Stripe live Checkout, Firestore entitlements, and private Vercel Blob downloads.
 
-First, run the development server:
+## Local development
 
 ```bash
+copy .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The Firebase Admin credentials, Stripe keys, and Blob token remain server-only. Do not commit `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Vercel preview setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a Vercel project named `clipsync-preview`, rooted at `website/`, and deploy it to obtain its stable `clipsync-preview.vercel.app` URL.
+2. In Firebase Console for `clipsync-store-20260823`, add that hostname under Authentication > Settings > Authorized domains, then enable Google as a sign-in provider.
+3. Create a Firebase Web App and a Firebase Admin service account. Add every value in `.env.example` to Vercel Project Settings > Environment Variables for Preview and Production. Never expose the Admin private key.
+4. Create a **private** Vercel Blob store named `clipsync-downloads` and attach it to the project. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically.
+5. Upload the current application artifacts:
 
-## Learn More
+```bash
+npm run upload:downloads
+```
 
-To learn more about Next.js, take a look at the following resources:
+The script uploads the Windows ZIP, macOS DMG, Android APK, and iOS IPA using the protected `downloads/` paths configured in `.env.example`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+6. In Stripe, add `https://clipsync-preview.vercel.app/api/stripe/webhook` as a live webhook endpoint. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, and `charge.refunded`; add the returned signing secret as `STRIPE_WEBHOOK_SECRET`.
+7. Deploy. Checkout requires a Google-backed HttpOnly session, Stripe webhooks grant/revoke access, and the app streams paid downloads from the private Blob store.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Firestore rules
 
-## Deploy on Vercel
+Deploy the included rules after signing in to Firebase CLI:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx firebase-tools login
+npx firebase-tools deploy --project clipsync-store-20260823 --only firestore:rules
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The paid account page displays `wss://serv.everything-clipboard.com` as the public relay URL.

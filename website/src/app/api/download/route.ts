@@ -1,58 +1,50 @@
-import { NextResponse } from 'next/server';
-import { getPaidCheckoutSession } from '@/lib/stripe';
+import { get } from "@vercel/blob";
+import { NextRequest, NextResponse } from "next/server";
+import { getAccountProfile } from "@/lib/entitlements";
+import { getSessionUser } from "@/lib/session";
+
+export const runtime = "nodejs";
 
 const downloads = {
-  windows: {
-    env: 'CLIPSYNC_WINDOWS_DOWNLOAD_URL',
-    label: 'Windows',
-  },
-  macos: {
-    env: 'CLIPSYNC_MACOS_DOWNLOAD_URL',
-    label: 'macOS',
-  },
-  android: {
-    env: 'CLIPSYNC_ANDROID_DOWNLOAD_URL',
-    label: 'Android',
-  },
-  ios: {
-    env: 'CLIPSYNC_IOS_DOWNLOAD_URL',
-    label: 'iOS',
-  },
+  windows: { pathname: process.env.CLIPSYNC_WINDOWS_BLOB_PATH ?? "downloads/clipsync-windows.zip", filename: "ClipSync-windows.zip" },
+  macos: { pathname: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg", filename: "ClipSync-macos.dmg" },
+  android: { pathname: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk", filename: "ClipSync-android.apk" },
+  ios: { pathname: process.env.CLIPSYNC_IOS_BLOB_PATH ?? "downloads/clipsync-ios.ipa", filename: "ClipSync-ios.ipa" },
 } as const;
 
 type DownloadOs = keyof typeof downloads;
 
 function isDownloadOs(os: string | null): os is DownloadOs {
-  return os === 'windows' || os === 'macos' || os === 'android' || os === 'ios';
+  return os === "windows" || os === "macos" || os === "android" || os === "ios";
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const os = searchParams.get('os');
-  const sessionId = searchParams.get('session_id');
-
+export async function GET(request: NextRequest) {
+  const os = request.nextUrl.searchParams.get("os");
   if (!isDownloadOs(os)) {
-    return NextResponse.json({ error: 'Unknown download platform' }, { status: 400 });
+    return NextResponse.json({ error: "Unknown download platform" }, { status: 400 });
   }
 
-  if (!sessionId) {
-    return NextResponse.json({ error: 'Missing checkout session' }, { status: 401 });
+  const user = await getSessionUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "Sign in to download ClipSync" }, { status: 401 });
   }
 
-  const session = await getPaidCheckoutSession(sessionId);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Payment verification failed' }, { status: 403 });
+  const account = await getAccountProfile(user.uid);
+  if (!account.purchased) {
+    return NextResponse.json({ error: "Purchase required" }, { status: 403 });
   }
 
-  const downloadUrl = process.env[downloads[os].env];
-
-  if (!downloadUrl) {
-    return NextResponse.json(
-      { error: `${downloads[os].label} download is not configured yet` },
-      { status: 503 },
-    );
+  const result = await get(downloads[os].pathname, { access: "private" });
+  if (!result || result.statusCode !== 200 || !result.stream) {
+    return NextResponse.json({ error: "This download is not available yet" }, { status: 404 });
   }
 
-  return NextResponse.redirect(downloadUrl);
+  return new NextResponse(result.stream, {
+    headers: {
+      "Content-Type": result.blob.contentType,
+      "Content-Length": String(result.blob.size),
+      "Content-Disposition": `attachment; filename="${downloads[os].filename}"`,
+      "Cache-Control": "private, no-store",
+    },
+  });
 }

@@ -81,7 +81,7 @@ export default function Features() {
                   <Lock className="w-8 h-8 text-blue-500" /> End-to-End Encryption
                </h2>
                <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-6">
-                  Security isn't an afterthought. With Everything Clipboard, your data is encrypted locally on your device before it ever leaves. 
+                  Security isn&apos;t an afterthought. With Everything Clipboard, your data is encrypted locally on your device before it ever leaves. 
                   You configure a custom encryption key across your devices. Without this key, the synchronized data is completely unreadable.
                </p>
                <div className="flex items-center gap-4 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-6 py-4 rounded-2xl border border-blue-100 dark:border-blue-800/50">
@@ -95,7 +95,7 @@ export default function Features() {
                   <Monitor className="w-8 h-8 text-purple-500" /> Cross-Platform
                </h2>
                <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-8">
-                  Your workflow isn't limited to one operating system. Your clipboard shouldn't be either.
+                  Your workflow isn&apos;t limited to one operating system. Your clipboard shouldn&apos;t be either.
                </p>
                <div className="space-y-4">
                   <div className="flex items-center gap-4">

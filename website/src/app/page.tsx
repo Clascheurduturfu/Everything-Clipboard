@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Monitor, MonitorUp, CreditCard, Shield, Zap, CheckCircle2, ClipboardCopy } from "lucide-react";
+import { Monitor, MonitorUp, Shield, Zap, CheckCircle2, ClipboardCopy } from "lucide-react";
 import { DownloadAccessLink } from "@/components/DownloadAccessLink";
+import { PurchaseButton } from "@/components/PurchaseButton";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnicornBackground } from "@/components/UnicornBackground";
 import OrbitImages from "@/components/OrbitImages";
@@ -36,11 +37,7 @@ export default function Home() {
               </Link>
               <DownloadAccessLink />
               <ThemeSwitcher />
-              <form action="/api/checkout_sessions" method="POST">
-                <button type="submit" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md">
-                  Get Everything Clipboard
-                </button>
-              </form>
+              <PurchaseButton buyLabel="Get Everything Clipboard" downloadLabel="Download" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md" />
             </div>
           </div>
         </nav>
@@ -71,12 +68,7 @@ export default function Home() {
             </p>
             
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <form action="/api/checkout_sessions" method="POST" className="w-full sm:w-auto">
-                <button type="submit" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300">
-                  <CreditCard className="w-5 h-5" />
-                  Buy for $3
-                </button>
-              </form>
+              <PurchaseButton buyLabel="Buy for $3" downloadLabel="Download" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" />
               <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full sm:w-auto">
                 <Shield className="w-5 h-5 text-emerald-500" />
                 One-Time Payment
@@ -199,7 +191,7 @@ export default function Home() {
               <div>
                 <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Images Coming Soon</h3>
                 <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Currently syncs all your text effortlessly. We're actively developing support for image synchronization in a future update!
+                  Currently syncs all your text effortlessly. We&apos;re actively developing support for image synchronization in a future update!
                 </p>
               </div>
             </div>
@@ -218,12 +210,7 @@ export default function Home() {
             <p className="text-lg text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto font-light">
               Get all apps for a one-time payment of $3. No subscriptions, no hidden fees.
             </p>
-            <form action="/api/checkout_sessions" method="POST" className="inline-block relative z-10">
-              <button type="submit" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-lg font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 transition-all duration-300">
-                Buy Everything Clipboard Now
-                <Zap className="w-5 h-5" />
-              </button>
-            </form>
+            <PurchaseButton buyLabel="Buy Everything Clipboard Now" downloadLabel="Download" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-lg font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 transition-all duration-300" />
           </div>
         </div>
       </section>

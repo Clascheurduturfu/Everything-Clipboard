@@ -1,5 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { getAccountProfile } from '@/lib/entitlements';
+import { getSessionUser, isSameOrigin } from '@/lib/session';
+
+export const runtime = 'nodejs';
 
 function getBaseUrl(request: Request) {
   const baseUrl = request.headers.get('origin')
@@ -11,12 +15,28 @@ function getBaseUrl(request: Request) {
     : `https://${baseUrl}`;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    if (!isSameOrigin(request)) {
+      return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
+    }
+
+    const user = await getSessionUser(request);
+
+    if (!user) {
+      return NextResponse.redirect(new URL('/account?signin=required', getBaseUrl(request)), 303);
+    }
+
+    const account = await getAccountProfile(user.uid);
+
+    if (account.purchased) {
+      return NextResponse.redirect(new URL('/account', getBaseUrl(request)), 303);
+    }
+
     const origin = getBaseUrl(request);
     const stripe = getStripe();
     const productImageUrl = new URL('/MacOs app.png', origin).toString();
-    const successUrl = `${new URL('/success', origin).toString()}?session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${new URL('/account', origin).toString()}?purchase=success&session_id={CHECKOUT_SESSION_ID}`;
 
     // Create Checkout Sessions from body params.
     const session = await stripe.checkout.sessions.create({
@@ -37,6 +57,11 @@ export async function POST(request: Request) {
       ],
       mode: 'payment',
       allow_promotion_codes: true,
+      customer_email: user.email,
+      client_reference_id: user.uid,
+      metadata: {
+        firebaseUid: user.uid,
+      },
       success_url: successUrl,
       cancel_url: new URL('/', origin).toString(),
     });
