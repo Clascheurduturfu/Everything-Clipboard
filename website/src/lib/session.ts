@@ -40,7 +40,22 @@ export function isSameOrigin(request: NextRequest) {
   }
 
   try {
-    return new URL(origin).host === request.nextUrl.host;
+    const originHost = new URL(origin).host.toLowerCase();
+    const host = (
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host
+    ).toLowerCase();
+
+    if (originHost === host) return true;
+    if (
+      originHost.endsWith(".vercel.app") ||
+      originHost === "everything-clipboard.com" ||
+      originHost.startsWith("localhost")
+    ) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

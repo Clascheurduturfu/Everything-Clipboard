@@ -60,7 +60,10 @@ export function PurchaseButton({
         body: JSON.stringify({ idToken }),
       });
 
-      if (!response.ok) throw new Error("Unable to create your secure session");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Unable to create your secure session");
+      }
       await signOut(auth);
       
       const updated = await fetch("/api/account", { cache: "no-store" }).then((r) => r.json());
@@ -81,7 +84,7 @@ export function PurchaseButton({
       if (err?.code === "auth/popup-closed-by-user") {
         return;
       }
-      setError("Google sign-in could not be completed. Please try again.");
+      setError(err?.message || "Google sign-in could not be completed. Please try again.");
     } finally {
       setBusy(false);
     }
