@@ -9,6 +9,9 @@
     "lint": "eslint",
     "upload:downloads": "node scripts/upload-downloads.mjs"
   },
+  "overrides": {
+    "jose": "4.15.9"
+  },
   "dependencies": {
     "@stripe/stripe-js": "^9.4.0",
     "@vercel/blob": "^2.8.0",
