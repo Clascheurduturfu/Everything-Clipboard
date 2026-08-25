@@ -49,9 +49,8 @@ export default function Home() {
             
             <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <PurchaseButton 
-                buyLabel="Buy Lifetime Access – $3" 
-                downloadLabel="Open Downloads" 
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base font-semibold shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-500 hover:to-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer" 
+                buyLabel="Buy for $3" 
+                downloadLabel="Download Everything Clipboard" 
               />
               <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full sm:w-auto">
                 <Shield className="w-5 h-5 text-emerald-500" />

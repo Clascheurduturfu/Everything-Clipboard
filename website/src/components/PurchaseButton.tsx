@@ -4,7 +4,7 @@ import Link from "next/link";
 import { inMemoryPersistence, setPersistence, signInWithPopup, signOut } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
-import { Download, Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { Download, CreditCard, Loader2 } from "lucide-react";
 
 type AccountState = {
   signedIn: boolean;
@@ -24,7 +24,7 @@ type PurchaseButtonProps = {
 export function PurchaseButton({
   className = "",
   buyLabel = "Buy for $3",
-  downloadLabel = "Download Apps",
+  downloadLabel = "Download",
   hideIfPurchased = false,
   showIcon = true,
 }: PurchaseButtonProps) {
@@ -109,7 +109,7 @@ export function PurchaseButton({
     return (
       <Link 
         href="/account" 
-        className={className || "inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white text-base font-semibold shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 transition-all duration-300"}
+        className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300"}
       >
         {showIcon && <Download className="w-5 h-5" />}
         {downloadLabel}
@@ -123,7 +123,7 @@ export function PurchaseButton({
         type="button"
         onClick={handleBuy}
         disabled={busy}
-        className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-base font-semibold shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer"}
+        className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer"}
       >
         {busy ? (
           <>
@@ -132,9 +132,8 @@ export function PurchaseButton({
           </>
         ) : (
           <>
-            {showIcon && <Sparkles className="w-5 h-5 text-blue-200" />}
+            {showIcon && <CreditCard className="w-5 h-5" />}
             <span>{buyLabel}</span>
-            <ArrowRight className="w-4 h-4 opacity-70" />
           </>
         )}
       </button>

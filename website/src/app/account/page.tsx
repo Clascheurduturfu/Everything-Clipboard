@@ -18,7 +18,7 @@ import { ServerUrl } from "@/components/ServerUrl";
 import { AndroidQrModal } from "@/components/AndroidQrModal";
 import { PurchaseButton } from "@/components/PurchaseButton";
 import { UnicornBackground } from "@/components/UnicornBackground";
-import { getAccountProfile } from "@/lib/entitlements";
+import { getAccountProfile, fulfillCheckoutSession } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +62,11 @@ const downloads = [
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ purchase?: string; session_id?: string }> }) {
   const user = await getSessionUser();
   const query = await searchParams;
+  
+  if (user && query.session_id) {
+    await fulfillCheckoutSession(query.session_id, user.uid);
+  }
+
   const account = user ? await getAccountProfile(user.uid) : null;
 
   return (
