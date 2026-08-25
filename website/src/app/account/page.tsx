@@ -9,7 +9,6 @@ import {
   ShieldCheck, 
   Sparkles, 
   ArrowRight,
-  ExternalLink,
   HelpCircle
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -51,11 +50,10 @@ const downloads = [
   { 
     os: "ios", 
     label: "iOS", 
-    detail: "TestFlight Preview", 
+    detail: "iOS 15.0+ (.ipa package)", 
     Icon: Apple,
-    color: "from-slate-500/20 to-slate-600/20",
-    badge: "Roadmap",
-    disabled: true
+    color: "from-sky-500/20 to-blue-500/20",
+    badge: "Direct IPA"
   },
 ];
 
@@ -93,14 +91,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                 <Lock className="w-8 h-8" />
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 dark:text-white mb-4">
-                Sign in to your Account
+                Login / Register
               </h1>
               <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-lg mx-auto mb-8">
-                Sign in with Google to unlock or access your downloads on any device, manage your server settings, and keep your lifetime license permanently tied to your email.
+                Login or create your account with Google to access your downloads on any device, manage your server settings, and keep your lifetime license permanently tied to your email.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <PurchaseButton 
-                  buyLabel="Sign In with Google" 
+                  buyLabel="Login / Register with Google" 
                   showIcon={false}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base font-semibold shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
                 />
@@ -161,7 +159,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                     Unlock ClipSync Everywhere for <span className="text-gradient">$3</span>
                   </h2>
                   <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-8">
-                    Get full unlimited access to Windows, macOS, and Android apps, our low-latency encrypted cloud relay, or self-hosting support. No subscriptions, ever.
+                    Get full unlimited access to Windows, macOS, Android, and iOS apps, our low-latency encrypted cloud relay, or self-hosting support. No subscriptions, ever.
                   </p>
 
                   <div className="grid sm:grid-cols-2 gap-3 mb-8 text-xs text-slate-700 dark:text-slate-300 font-medium">
@@ -171,7 +169,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Windows, Mac & Android apps
+                      Windows, Mac, Android & iOS apps
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -274,29 +272,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {downloads.map(({ os, label, detail, Icon, badge, disabled }) => {
+                  {downloads.map(({ os, label, detail, Icon, badge }) => {
                     const downloadUrl = `/api/download?os=${os}`;
-
-                    if (disabled) {
-                      return (
-                        <div
-                          key={os}
-                          className="rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 bg-slate-50/40 dark:bg-slate-900/30 opacity-60 flex flex-col justify-between"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <Icon className="h-7 w-7 text-slate-500" />
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-500">
-                                {badge}
-                              </span>
-                            </div>
-                            <h3 className="mt-4 font-semibold text-slate-950 dark:text-white">{label}</h3>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
-                          </div>
-                          <span className="mt-6 text-xs text-slate-400 font-medium">Coming Soon</span>
-                        </div>
-                      );
-                    }
 
                     return (
                       <div
@@ -324,7 +301,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                           </a>
 
                           {os === "android" && (
-                            <AndroidQrModal downloadUrl={typeof window !== "undefined" ? `${window.location.origin}${downloadUrl}` : downloadUrl} />
+                            <AndroidQrModal />
                           )}
                         </div>
                       </div>
@@ -346,7 +323,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   <li className="p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
                     <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mb-2">1</span>
                     <strong className="text-slate-900 dark:text-white block mb-1">Install the Apps</strong>
-                    Download and open Everything Clipboard on your Mac, Windows PC, and Android phone.
+                    Download and open Everything Clipboard on your Mac, Windows PC, Android phone, and iOS device.
                   </li>
                   <li className="p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
                     <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mb-2">2</span>

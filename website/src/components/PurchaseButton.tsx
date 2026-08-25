@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { inMemoryPersistence, setPersistence, signInWithPopup, signOut } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
 import { Download, CreditCard, Loader2 } from "lucide-react";
+import { AuthModal } from "@/components/AuthModal";
 
 type AccountState = {
   signedIn: boolean;
@@ -24,12 +23,12 @@ type PurchaseButtonProps = {
 export function PurchaseButton({
   className = "",
   buyLabel = "Buy for $3",
-  downloadLabel = "Download",
+  downloadLabel = "Download Everything Clipboard",
   hideIfPurchased = false,
   showIcon = true,
 }: PurchaseButtonProps) {
   const [account, setAccount] = useState<AccountState | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -46,6 +45,7 @@ export function PurchaseButton({
     }
 
     if (account?.signedIn) {
+      setBusy(true);
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "/api/checkout_sessions";
@@ -54,49 +54,8 @@ export function PurchaseButton({
       return;
     }
 
-    // If not signed in, sign in first then proceed to checkout
-    setBusy(true);
-    setError(null);
-    try {
-      const auth = firebaseAuth();
-      await setPersistence(auth, inMemoryPersistence);
-      const credential = await signInWithPopup(auth, googleProvider);
-      const idToken = await credential.user.getIdToken(true);
-      
-      const response = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Unable to create your secure session");
-      }
-      await signOut(auth);
-      
-      const updated = await fetch("/api/account", { cache: "no-store" }).then((r) => r.json());
-      setAccount(updated);
-
-      if (updated?.purchased) {
-        window.location.assign("/account");
-      } else {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "/api/checkout_sessions";
-        document.body.appendChild(form);
-        form.submit();
-      }
-    } catch (signInError: unknown) {
-      console.error("Sign-in failed:", signInError);
-      const err = signInError as { code?: string; message?: string };
-      if (err?.code === "auth/popup-closed-by-user") {
-        return;
-      }
-      setError(err?.message || "Google sign-in could not be completed. Please try again.");
-    } finally {
-      setBusy(false);
-    }
+    // If not signed in, open the intermediate Login / Register modal
+    setAuthModalOpen(true);
   }
 
   // If already purchased and asked to hide:
@@ -118,26 +77,33 @@ export function PurchaseButton({
   }
 
   return (
-    <div className="inline-flex flex-col items-center gap-1.5 w-full sm:w-auto">
-      <button
-        type="button"
-        onClick={handleBuy}
-        disabled={busy}
-        className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer"}
-      >
-        {busy ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Connecting...</span>
-          </>
-        ) : (
-          <>
-            {showIcon && <CreditCard className="w-5 h-5" />}
-            <span>{buyLabel}</span>
-          </>
-        )}
-      </button>
-      {error && <span className="text-xs text-red-500 max-w-xs text-center">{error}</span>}
-    </div>
+    <>
+      <div className="inline-flex flex-col items-center gap-1.5 w-full sm:w-auto">
+        <button
+          type="button"
+          onClick={handleBuy}
+          disabled={busy}
+          className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer"}
+        >
+          {busy ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Redirecting...</span>
+            </>
+          ) : (
+            <>
+              {showIcon && <CreditCard className="w-5 h-5" />}
+              <span>{buyLabel}</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        isBuying={true}
+      />
+    </>
   );
 }
