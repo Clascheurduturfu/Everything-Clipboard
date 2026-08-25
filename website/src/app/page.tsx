@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Monitor, MonitorUp, Shield, Zap, CheckCircle2, ClipboardCopy } from "lucide-react";
-import { DownloadAccessLink } from "@/components/DownloadAccessLink";
+import { Monitor, MonitorUp, Shield, Zap, CheckCircle2, ClipboardCopy, ArrowRight } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnicornBackground } from "@/components/UnicornBackground";
 import OrbitImages from "@/components/OrbitImages";
 
@@ -12,44 +12,24 @@ export default function Home() {
     <div className="relative z-10 flex flex-col min-h-screen">
       {/* Background Effects */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-400/20 dark:bg-blue-900/40 blur-[7.5rem] will-change-transform"></div>
-        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform"></div>
-        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform"></div>
-        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }}></div>
+        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-400/20 dark:bg-blue-900/40 blur-[7.5rem] will-change-transform" />
+        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform" />
+        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform" />
+        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }} />
         {/* Interactive WebGL Background */}
         <UnicornBackground />
       </div>
 
-      {/* Navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] pt-4 px-4 sm:px-6">
-        <nav className="max-w-7xl mx-auto">
-          <div className="glass-nav rounded-full px-6 py-3 flex justify-between items-center transition-all duration-300">
-            <div className="flex items-center space-x-3">
-              <Image src="/logo.png" alt="Everything Clipboard Logo" width={36} height={36} className="rounded-xl shadow-[0_2px_8px_rgba(59,130,246,0.3)]" />
-              <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">Everything Clipboard</span>
-            </div>
-            <div className="flex items-center space-x-6">
-              <Link href="/features" className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Features
-              </Link>
-              <Link href="/support" className="hidden sm:block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Support
-              </Link>
-              <DownloadAccessLink />
-              <ThemeSwitcher />
-              <PurchaseButton buyLabel="Buy – $3" downloadLabel="Download" className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md" />
-            </div>
-          </div>
-        </nav>
-      </header>
+      {/* Global Unified Navigation */}
+      <Navbar />
 
       {/* Hero Section */}
-      <main className="relative z-10 flex-grow pt-32 pb-24 lg:pt-40 lg:pb-32 flex flex-col items-center">
-        <div className="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-[1.02fr_0.98fr] gap-12 lg:gap-16 items-center">
+      <main className="relative z-10 flex-grow pt-28 pb-20 lg:pt-36 lg:pb-32 flex flex-col items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full grid lg:grid-cols-[1.02fr_0.98fr] gap-12 lg:gap-16 items-center">
           
           {/* Hero Text */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white dark:border-slate-700 px-3.5 py-2 shadow-sm mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white dark:border-slate-700 px-3.5 py-2 shadow-sm mb-6 sm:mb-8">
               <span className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </span>
@@ -58,35 +38,41 @@ export default function Home() {
               </span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-light tracking-[-0.04em] text-slate-950 dark:text-white leading-[1.1] mb-6">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[-0.04em] text-slate-950 dark:text-white leading-[1.1] mb-6">
               <span className="block">One Clipboard.</span>
               <span className="block mt-2 font-medium text-gradient">All Your Devices.</span>
             </h1>
             
-            <p className="mt-6 text-lg md:text-xl text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Fully encrypted text sync with a custom key. Host yourself, locally, or let us host it.
             </p>
             
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <PurchaseButton buyLabel="Buy for $3" downloadLabel="Download" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300" />
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+              <PurchaseButton 
+                buyLabel="Buy Lifetime Access – $3" 
+                downloadLabel="Open Downloads" 
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base font-semibold shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-500 hover:to-indigo-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer" 
+              />
               <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full sm:w-auto">
                 <Shield className="w-5 h-5 text-emerald-500" />
                 One-Time Payment
               </div>
             </div>
             
-            <div className="mt-8 flex items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 dark:text-slate-400 font-light">
+            <div className="mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-slate-500 dark:text-slate-400 font-light">
                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-blue-500" /> Works Locally</span>
-               <span className="hidden sm:block w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+               <span className="hidden sm:block w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
                <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-blue-500" /> End-to-End Encrypted</span>
+               <span className="hidden sm:block w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-blue-500" /> Lifetime Updates</span>
             </div>
           </div>
           
           {/* Hero Images Showcase */}
-          <div className="relative lg:pl-4 mt-12 lg:mt-0">
-            <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-blue-200/40 via-white/20 to-sky-200/30 dark:from-blue-900/40 dark:via-slate-800/20 dark:to-sky-900/30 blur-3xl"></div>
+          <div className="relative lg:pl-4 mt-6 lg:mt-0">
+            <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-blue-200/40 via-white/20 to-sky-200/30 dark:from-blue-900/40 dark:via-slate-800/20 dark:to-sky-900/30 blur-3xl" />
             
-            <div className="relative rounded-[2rem] glass-card p-4 sm:p-5 h-[400px] sm:h-[500px] lg:h-[600px] flex items-center justify-center overflow-hidden">
+            <div className="relative rounded-[2rem] glass-card p-4 sm:p-5 h-[380px] sm:h-[480px] lg:h-[580px] flex items-center justify-center overflow-hidden">
               
               {/* Floating Bubbles (Aura style) */}
               <div className="hidden md:block absolute inset-0 z-30 pointer-events-none">
@@ -109,7 +95,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-900 dark:text-white font-medium">Encrypted</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">All Networks</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Zero-Knowledge</p>
                     </div>
                   </div>
                 </div>
@@ -147,10 +133,12 @@ export default function Home() {
       </main>
 
       {/* Features Section */}
-      <section className="relative z-10 py-24 sm:py-32">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="relative z-10 py-20 sm:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="font-mono text-xs font-medium tracking-widest text-blue-600 dark:text-blue-400 uppercase mb-4">Core Features</h2>
+            <h2 className="font-mono text-xs font-semibold tracking-widest text-blue-600 dark:text-blue-400 uppercase mb-3">
+              Core Capabilities
+            </h2>
             <p className="text-3xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white max-w-2xl mx-auto">
               Everything you need. <br/><span className="font-normal text-slate-500 dark:text-slate-400">Nothing you don&apos;t.</span>
             </p>
@@ -200,35 +188,27 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative z-10 py-24 mt-12 mb-12">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className="glass-card rounded-[3rem] p-12 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 pointer-events-none"></div>
-            <h2 className="text-3xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white mb-6">
+      <section className="relative z-10 py-16 sm:py-24 mb-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div className="glass-card rounded-[3rem] p-8 sm:p-14 relative overflow-hidden border border-blue-200/60 dark:border-blue-900/60 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 pointer-events-none" />
+            <h2 className="text-3xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white mb-4 sm:mb-6">
               Ready to boost your productivity?
             </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto font-light">
-              Get all apps for a one-time payment of $3. No subscriptions, no hidden fees.
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-xl mx-auto font-light">
+              Get all apps for a one-time payment of $3. No subscriptions, no renewals, all future updates included.
             </p>
-            <PurchaseButton buyLabel="Buy Everything Clipboard Now" downloadLabel="Download" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-lg font-medium text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 transition-all duration-300" />
+            <PurchaseButton 
+              buyLabel="Get Lifetime Access – $3" 
+              downloadLabel="Download Everything Clipboard"
+              className="inline-flex items-center justify-center gap-2 px-10 py-5 text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-[0_10px_30px_rgba(59,130,246,0.3)] hover:from-blue-500 hover:to-indigo-500 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer" 
+            />
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-200/50 dark:border-slate-800/50 py-12 mt-auto glass-nav rounded-t-[2rem]">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center space-x-2 opacity-80 hover:opacity-100 transition-opacity">
-            <Image src="/logo.png" alt="Everything Clipboard Logo" width={24} height={24} className="rounded-md" />
-            <span className="text-slate-900 dark:text-white font-medium tracking-wide">Everything Clipboard</span>
-          </div>
-          <div className="flex items-center space-x-6 text-sm text-slate-500 dark:text-slate-400 font-light">
-            <Link href="/features" className="hover:text-slate-900 dark:hover:text-white transition-colors">Features</Link>
-            <Link href="/support" className="hover:text-slate-900 dark:hover:text-white transition-colors">Support</Link>
-            <span>&copy; {new Date().getFullYear()} Everything Clipboard. All rights reserved.</span>
-          </div>
-        </div>
-      </footer>
+      {/* Global Unified Footer */}
+      <Footer />
     </div>
   );
 }
