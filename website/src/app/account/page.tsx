@@ -14,7 +14,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ServerUrl } from "@/components/ServerUrl";
-import { AndroidQrModal } from "@/components/AndroidQrModal";
+import { QrModalButton } from "@/components/QrModal";
 import { PurchaseButton } from "@/components/PurchaseButton";
 import { UnicornBackground } from "@/components/UnicornBackground";
 import { getAccountProfile, fulfillCheckoutSession } from "@/lib/entitlements";
@@ -300,8 +300,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                             Download
                           </a>
 
-                          {os === "android" && (
-                            <AndroidQrModal />
+                          {(os === "android" || os === "ios") && (
+                            <QrModalButton platform={os} />
                           )}
                         </div>
                       </div>

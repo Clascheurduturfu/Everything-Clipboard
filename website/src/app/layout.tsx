@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import { LenisProvider } from "@/components/LenisProvider";
+import { GoogleOneTap } from "@/components/GoogleOneTap";
 
 export default function RootLayout({
   children,
@@ -35,6 +36,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LenisProvider>
             {children}
+            <GoogleOneTap />
           </LenisProvider>
         </ThemeProvider>
       </body>
