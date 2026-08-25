@@ -141,7 +141,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   </div>
                 </div>
                 <span className="px-3.5 py-1.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-semibold tracking-wide">
-                  Free Tier / Unlicensed
+                  Unlicensed
                 </span>
               </div>
 
