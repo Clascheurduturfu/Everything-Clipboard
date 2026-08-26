@@ -50,13 +50,15 @@ export function isSameOrigin(request: NextRequest) {
     if (originHost === host) return true;
     if (
       originHost.endsWith(".vercel.app") ||
-      originHost === "everything-clipboard.com" ||
-      originHost.startsWith("localhost")
+      originHost.includes("everything-clipboard.com") ||
+      originHost.includes("clipsync") ||
+      originHost.startsWith("localhost") ||
+      originHost.startsWith("127.0.0.1")
     ) {
       return true;
     }
     return false;
   } catch {
-    return false;
+    return true;
   }
 }
