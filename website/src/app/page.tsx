@@ -152,7 +152,7 @@ export default function Home() {
               <div>
                 <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Cross-Platform</h3>
                 <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Seamlessly connects MacOS, Windows, and Android. Copy text on one device, paste on another instantly.
+                  Seamlessly connects MacOS, Windows, Android, and iOS. Copy text on one device, paste on another instantly.
                 </p>
               </div>
             </div>

@@ -71,7 +71,7 @@ export default function Support() {
                     Is the \$3 price a one-time fee or a recurring subscription?
                   </h3>
                   <p className="font-light leading-relaxed">
-                    It is a 100% one-time payment. You get lifetime access on Windows, macOS, Android, all future platform releases, and all feature updates without recurring charges.
+                    It is a 100% one-time payment. You get lifetime access on Windows, macOS, Android, iOS, all future platform releases, and all feature updates without recurring charges.
                   </p>
                 </div>
               </div>

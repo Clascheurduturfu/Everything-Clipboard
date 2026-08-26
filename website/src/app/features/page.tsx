@@ -103,6 +103,12 @@ export default function Features() {
                      </div>
                      <span className="font-medium text-slate-900 dark:text-white">Android 8.0+</span>
                   </div>
+                  <div className="flex items-center gap-4">
+                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                        <Apple className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                     </div>
+                     <span className="font-medium text-slate-900 dark:text-white">iOS 15.0+</span>
+                  </div>
                </div>
             </div>
           </div>
