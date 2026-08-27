@@ -356,6 +356,7 @@ export function Navbar() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
+        onSuccess={fetchAccount}
         isBuying={authModalIsBuying}
       />
     </>
