@@ -16,7 +16,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
 
   const handleAuthSuccess = useCallback(async () => {
     onClose();

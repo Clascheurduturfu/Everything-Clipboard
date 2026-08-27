@@ -31,7 +31,7 @@ declare global {
 }
 
 export function GoogleOneTap() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
 
   async function handleCredentialResponse(response: GoogleCredentialResponse) {
     if (!response.credential) return;
