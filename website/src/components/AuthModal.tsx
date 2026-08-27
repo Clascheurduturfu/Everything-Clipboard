@@ -39,6 +39,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     // 1. Primary Flow: FedCM in Active Mode (Chrome-native centered modal dialog)
     if (typeof navigator !== "undefined" && "credentials" in navigator && clientId) {
       try {
+        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
         const credential = (await navigator.credentials.get({
           identity: {
             context: "signin",
@@ -47,6 +48,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
               {
                 configURL: "https://accounts.google.com/gsi/fedcm.json",
                 clientId: clientId,
+                nonce: nonce,
               },
             ],
           },
