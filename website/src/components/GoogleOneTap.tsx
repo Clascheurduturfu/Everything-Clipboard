@@ -58,19 +58,9 @@ export function GoogleOneTap() {
     }
   }
 
-  const checkAuthAndInit = useCallback(async () => {
+  const initOneTap = useCallback(() => {
     if (!clientId || typeof window === "undefined" || !window.google?.accounts?.id) {
       return;
-    }
-
-    // Never prompt One Tap if the user is already authenticated
-    try {
-      const res = await fetch("/api/account", { method: "GET" });
-      if (res.ok) {
-        return; // User has active session
-      }
-    } catch {
-      // ignore
     }
 
     try {
@@ -83,6 +73,7 @@ export function GoogleOneTap() {
         itp_support: true,
       });
 
+      // Prompt One Tap / Chrome SSO integration on the page
       window.google.accounts.id.prompt();
     } catch (err) {
       console.error("Google One Tap initialization error:", err);
@@ -91,15 +82,15 @@ export function GoogleOneTap() {
 
   useEffect(() => {
     if (clientId && window.google?.accounts?.id) {
-      checkAuthAndInit();
+      initOneTap();
     }
-  }, [clientId, checkAuthAndInit]);
+  }, [clientId, initOneTap]);
 
   return (
     <Script
       src="https://accounts.google.com/gsi/client"
       strategy="afterInteractive"
-      onLoad={checkAuthAndInit}
+      onLoad={initOneTap}
     />
   );
 }
