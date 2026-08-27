@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { GoogleAuthProvider, signInWithCredential, signOut } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
 
@@ -20,6 +20,7 @@ declare global {
             callback: (response: GoogleCredentialResponse) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            use_fedcm_for_prompt?: boolean;
             itp_support?: boolean;
           }) => void;
           prompt: (notification?: (notification: unknown) => void) => void;
@@ -57,9 +58,19 @@ export function GoogleOneTap() {
     }
   }
 
-  function initOneTap() {
+  const checkAuthAndInit = useCallback(async () => {
     if (!clientId || typeof window === "undefined" || !window.google?.accounts?.id) {
       return;
+    }
+
+    // Never prompt One Tap if the user is already authenticated
+    try {
+      const res = await fetch("/api/account", { method: "GET" });
+      if (res.ok) {
+        return; // User has active session
+      }
+    } catch {
+      // ignore
     }
 
     try {
@@ -76,19 +87,19 @@ export function GoogleOneTap() {
     } catch (err) {
       console.error("Google One Tap initialization error:", err);
     }
-  }
+  }, [clientId]);
 
   useEffect(() => {
     if (clientId && window.google?.accounts?.id) {
-      initOneTap();
+      checkAuthAndInit();
     }
-  }, [clientId]);
+  }, [clientId, checkAuthAndInit]);
 
   return (
     <Script
       src="https://accounts.google.com/gsi/client"
       strategy="afterInteractive"
-      onLoad={initOneTap}
+      onLoad={checkAuthAndInit}
     />
   );
 }
