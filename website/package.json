@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.4.0",
+    "@types/google.accounts": "^0.0.18",
     "@vercel/blob": "^2.8.0",
     "firebase": "^12.18.0",
     "firebase-admin": "^14.3.0",
