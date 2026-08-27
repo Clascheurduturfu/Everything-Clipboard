@@ -36,51 +36,61 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     setBusy(true);
     setError(null);
 
-    // 1. Primary Flow: FedCM in Active Mode (Chrome-native centered modal dialog)
-    if (typeof navigator !== "undefined" && "credentials" in navigator && clientId) {
+    // 1. Primary Flow: Google Identity Services FedCM (Native Chrome Modal Flow)
+    if (typeof window !== "undefined" && window.google?.accounts?.id && clientId) {
       try {
-        const credential = (await navigator.credentials.get({
-          identity: {
-            context: "signin",
-            mode: "active",
-            providers: [
-              {
-                configURL: "https://accounts.google.com/gsi/fedcm.json",
-                clientId: clientId,
-              },
-            ],
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          use_fedcm_for_prompt: true,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          callback: async (response) => {
+            if (!response.credential) {
+              setBusy(false);
+              return;
+            }
+            try {
+              const auth = firebaseAuth();
+              const credential = GoogleAuthProvider.credential(response.credential);
+              const userCredential = await signInWithCredential(auth, credential);
+              const idToken = await userCredential.user.getIdToken(true);
+
+              const res = await fetch("/api/auth/session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken }),
+              });
+
+              if (!res.ok) throw new Error("Unable to create session");
+              await signOut(auth);
+              await handleAuthSuccess();
+            } catch (err) {
+              console.error("Sign in failed:", err);
+              setError("Sign-in could not be completed. Please try again.");
+              setBusy(false);
+            }
           },
-          mediation: "optional",
-        } as unknown as CredentialRequestOptions)) as { token?: string } | null;
+        });
 
-        if (credential && credential.token) {
-          const auth = firebaseAuth();
-          const googleCred = GoogleAuthProvider.credential(credential.token);
-          const userCredential = await signInWithCredential(auth, googleCred);
-          const idToken = await userCredential.user.getIdToken(true);
-
-          const res = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!res.ok) throw new Error("Unable to create session");
-          await signOut(auth);
-          await handleAuthSuccess();
-          return;
-        }
-      } catch (fedcmErr: unknown) {
-        const err = fedcmErr as { name?: string; message?: string };
-        // User cancelled, dismissed, or aborted FedCM dialog -> Stop busy and do NOT open popups
-        if (err?.name === "AbortError" || err?.name === "NotAllowedError") {
-          setBusy(false);
-          return;
-        }
-        console.warn("FedCM Active Mode note:", err);
+        // Prompt FedCM active dialog via Google Identity Services
+        window.google.accounts.id.prompt((notification: unknown) => {
+          const notif = notification as {
+            isNotDisplayed?: () => boolean;
+            isSkippedMoment?: () => boolean;
+            isDismissedMoment?: () => boolean;
+          };
+          if (
+            notif?.isNotDisplayed?.() ||
+            notif?.isSkippedMoment?.() ||
+            notif?.isDismissedMoment?.()
+          ) {
+            setBusy(false);
+          }
+        });
+        return;
+      } catch (err) {
+        console.warn("GIS FedCM invocation note:", err);
       }
-      setBusy(false);
-      return;
     }
 
     // 2. Fallback for non-Chromium browsers without FedCM support (e.g. Safari, Firefox)
@@ -145,7 +155,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
           </p>
         </div>
 
-        {/* Native FedCM Active Mode Button */}
+        {/* Custom Native Google Button */}
         <div className="flex flex-col items-center justify-center space-y-3">
           <button
             type="button"
