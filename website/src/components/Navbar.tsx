@@ -150,7 +150,7 @@ export function Navbar() {
               ) : account?.purchased ? (
                 <Link
                   href="/account"
-                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 rounded-full transition-all duration-300 shadow-md inline-flex items-center gap-1.5"
+                  className="hidden sm:inline-flex px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 rounded-full transition-all duration-300 shadow-md items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download</span>
@@ -160,7 +160,7 @@ export function Navbar() {
                   type="button"
                   onClick={handleCheckout}
                   disabled={authBusy}
-                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                  className="hidden sm:inline-flex px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 rounded-full transition-all duration-300 shadow-md items-center gap-1.5 cursor-pointer"
                 >
                   <span>Get Everything Clipboard</span>
                 </button>
@@ -326,6 +326,29 @@ export function Navbar() {
                   >
                     Support & Help
                   </Link>
+
+                  {account?.purchased ? (
+                    <Link
+                      href="/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full text-center px-4 py-3 my-1 rounded-2xl text-sm font-bold uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 transition-colors inline-flex justify-center items-center gap-2 shadow-md"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download App</span>
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleCheckout();
+                      }}
+                      disabled={authBusy}
+                      className="w-full text-center px-4 py-3 my-1 rounded-2xl text-sm font-bold uppercase tracking-wider text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-md cursor-pointer"
+                    >
+                      Get Everything Clipboard
+                    </button>
+                  )}
                   {!account?.signedIn && (
                     <button
                       type="button"

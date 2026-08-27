@@ -92,7 +92,7 @@ export function GoogleOneTap() {
         callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: true,
+        use_fedcm_for_prompt: false, // Forces iframe mode so it respects prompt_parent_id (bottom-right)
         itp_support: true,
         prompt_parent_id: "google-one-tap-container",
       });
