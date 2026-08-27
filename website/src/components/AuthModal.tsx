@@ -47,10 +47,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
               {
                 configURL: "https://accounts.google.com/gsi/fedcm.json",
                 clientId: clientId,
-                params: {
-                  client_id: clientId,
-                  response_type: "id_token",
-                },
               },
             ],
           },
