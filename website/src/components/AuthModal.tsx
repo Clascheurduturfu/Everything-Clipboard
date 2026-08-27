@@ -39,19 +39,41 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     // 1. Primary Flow: FedCM in Active Mode (Chrome-native modal dialog)
     if (typeof navigator !== "undefined" && "credentials" in navigator && clientId) {
       try {
-        const credential = (await navigator.credentials.get({
-          identity: {
-            context: "signin",
-            mode: "button",
-            providers: [
-              {
-                configURL: "https://accounts.google.com/gsi/fedcm.json",
-                clientId: clientId,
-              },
-            ],
-          },
-          mediation: "optional",
-        } as unknown as CredentialRequestOptions)) as { token?: string } | null;
+        let credential: { token?: string } | null = null;
+        try {
+          credential = (await navigator.credentials.get({
+            identity: {
+              context: "signin",
+              mode: "active",
+              providers: [
+                {
+                  configURL: "https://accounts.google.com/gsi/fedcm.json",
+                  clientId: clientId,
+                },
+              ],
+            },
+            mediation: "optional",
+          } as unknown as CredentialRequestOptions)) as { token?: string } | null;
+        } catch (modeErr: unknown) {
+          const mErr = modeErr as { name?: string; message?: string };
+          if (mErr?.name === "AbortError" || mErr?.name === "NotAllowedError") {
+            setBusy(false);
+            return;
+          }
+          // Try fallback mode if active threw TypeError
+          credential = (await navigator.credentials.get({
+            identity: {
+              context: "signin",
+              providers: [
+                {
+                  configURL: "https://accounts.google.com/gsi/fedcm.json",
+                  clientId: clientId,
+                },
+              ],
+            },
+            mediation: "optional",
+          } as unknown as CredentialRequestOptions)) as { token?: string } | null;
+        }
 
         if (credential && credential.token) {
           const auth = firebaseAuth();
@@ -77,7 +99,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
           setBusy(false);
           return;
         }
-        console.warn("FedCM Active Mode fallback to popup:", err);
+        console.warn("FedCM Active Mode note:", err);
       }
     }
 
