@@ -36,44 +36,22 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     setBusy(true);
     setError(null);
 
-    // 1. Primary Flow: FedCM in Active Mode (Chrome-native modal dialog)
+    // 1. Primary Flow: FedCM in Active Mode (Chrome-native centered modal dialog)
     if (typeof navigator !== "undefined" && "credentials" in navigator && clientId) {
       try {
-        let credential: { token?: string } | null = null;
-        try {
-          credential = (await navigator.credentials.get({
-            identity: {
-              context: "signin",
-              mode: "active",
-              providers: [
-                {
-                  configURL: "https://accounts.google.com/gsi/fedcm.json",
-                  clientId: clientId,
-                },
-              ],
-            },
-            mediation: "optional",
-          } as unknown as CredentialRequestOptions)) as { token?: string } | null;
-        } catch (modeErr: unknown) {
-          const mErr = modeErr as { name?: string; message?: string };
-          if (mErr?.name === "AbortError" || mErr?.name === "NotAllowedError") {
-            setBusy(false);
-            return;
-          }
-          // Try fallback mode if active threw TypeError
-          credential = (await navigator.credentials.get({
-            identity: {
-              context: "signin",
-              providers: [
-                {
-                  configURL: "https://accounts.google.com/gsi/fedcm.json",
-                  clientId: clientId,
-                },
-              ],
-            },
-            mediation: "optional",
-          } as unknown as CredentialRequestOptions)) as { token?: string } | null;
-        }
+        const credential = (await navigator.credentials.get({
+          identity: {
+            context: "signin",
+            mode: "active",
+            providers: [
+              {
+                configURL: "https://accounts.google.com/gsi/fedcm.json",
+                clientId: clientId,
+              },
+            ],
+          },
+          mediation: "optional",
+        } as unknown as CredentialRequestOptions)) as { token?: string } | null;
 
         if (credential && credential.token) {
           const auth = firebaseAuth();
@@ -94,16 +72,18 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
         }
       } catch (fedcmErr: unknown) {
         const err = fedcmErr as { name?: string; message?: string };
-        // If the user dismissed or cancelled the native FedCM modal dialog, exit cleanly without opening popups
+        // User cancelled, dismissed, or aborted FedCM dialog -> Stop busy and do NOT open popups
         if (err?.name === "AbortError" || err?.name === "NotAllowedError") {
           setBusy(false);
           return;
         }
         console.warn("FedCM Active Mode note:", err);
       }
+      setBusy(false);
+      return;
     }
 
-    // 2. Fallback for browsers without FedCM Active Mode (e.g. Safari, Firefox)
+    // 2. Fallback for non-Chromium browsers without FedCM support (e.g. Safari, Firefox)
     try {
       const auth = firebaseAuth();
       await setPersistence(auth, inMemoryPersistence);
@@ -165,7 +145,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
           </p>
         </div>
 
-        {/* Pure Native FedCM Active Mode Button */}
+        {/* Native FedCM Active Mode Button */}
         <div className="flex flex-col items-center justify-center space-y-3">
           <button
             type="button"
