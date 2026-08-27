@@ -36,56 +36,74 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     setBusy(true);
     setError(null);
 
-    // 1. Primary Flow: FedCM in Active Mode (Chrome-native centered modal dialog)
-    if (typeof navigator !== "undefined" && "credentials" in navigator && clientId) {
+    // 1. Primary Flow: GIS SDK FedCM Button Mode (Chrome-native dialog)
+    //    Re-initialize GIS with use_fedcm_for_button: true inside this click handler.
+    //    This fulfills the "transient user activation" requirement for FedCM active mode
+    //    and lets Google's SDK handle token issuance correctly (no response_type error).
+    if (typeof window !== "undefined" && window.google?.accounts?.id && clientId) {
       try {
-        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        const credential = (await navigator.credentials.get({
-          identity: {
-            context: "signin",
-            mode: "active",
-            providers: [
-              {
-                configURL: "https://accounts.google.com/gsi/fedcm.json",
-                clientId: clientId,
-                nonce: nonce,
-              },
-            ],
+        // Re-initialize with button mode enabled for this click interaction
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: async (response: { credential?: string }) => {
+            if (!response.credential) {
+              setBusy(false);
+              return;
+            }
+            try {
+              const auth = firebaseAuth();
+              const googleCred = GoogleAuthProvider.credential(response.credential);
+              const userCredential = await signInWithCredential(auth, googleCred);
+              const idToken = await userCredential.user.getIdToken(true);
+
+              const res = await fetch("/api/auth/session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken }),
+              });
+
+              if (!res.ok) throw new Error("Unable to create session");
+              await signOut(auth);
+              await handleAuthSuccess();
+            } catch (err) {
+              console.error("FedCM Button Mode sign-in error:", err);
+              setError("Sign-in could not be completed. Please try again.");
+              setBusy(false);
+            }
           },
-          mediation: "optional",
-        } as unknown as CredentialRequestOptions)) as { token?: string } | null;
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          use_fedcm_for_prompt: true,
+          use_fedcm_for_button: true,
+        } as Parameters<typeof window.google.accounts.id.initialize>[0]);
 
-        if (credential && credential.token) {
-          const auth = firebaseAuth();
-          const googleCred = GoogleAuthProvider.credential(credential.token);
-          const userCredential = await signInWithCredential(auth, googleCred);
-          const idToken = await userCredential.user.getIdToken(true);
+        // Trigger the FedCM active/button mode prompt (Chrome-native dialog)
+        window.google.accounts.id.prompt((notification: unknown) => {
+          const n = notification as { isNotDisplayed?: () => boolean; getNotDisplayedReason?: () => string; isSkippedMoment?: () => boolean; getSkippedReason?: () => string };
+          if (n?.isNotDisplayed?.() || n?.isSkippedMoment?.()) {
+            console.warn("FedCM Button Mode not displayed:", n?.getNotDisplayedReason?.() || n?.getSkippedReason?.());
+            // Fall through to signInWithPopup fallback
+            handlePopupFallback();
+          }
+        });
 
-          const res = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!res.ok) throw new Error("Unable to create session");
-          await signOut(auth);
-          await handleAuthSuccess();
-          return;
-        }
+        return;
       } catch (fedcmErr: unknown) {
         const err = fedcmErr as { name?: string; message?: string };
-        console.warn("FedCM Active Mode note:", err?.name, err?.message);
+        console.warn("FedCM Button Mode error:", err?.name, err?.message);
         if (err?.name === "AbortError" || err?.name === "NotAllowedError") {
           setBusy(false);
           return;
         }
-      } finally {
-        setBusy(false);
+        // Fall through to popup fallback
       }
-      return;
     }
 
-    // 2. Fallback for non-Chromium browsers without FedCM support (e.g. Safari, Firefox)
+    // 2. Fallback for non-Chromium browsers without FedCM/GIS support
+    await handlePopupFallback();
+  }
+
+  async function handlePopupFallback() {
     try {
       const auth = firebaseAuth();
       await setPersistence(auth, inMemoryPersistence);
