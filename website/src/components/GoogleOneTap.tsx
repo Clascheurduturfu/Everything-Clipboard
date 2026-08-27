@@ -22,6 +22,7 @@ declare global {
             cancel_on_tap_outside?: boolean;
             use_fedcm_for_prompt?: boolean;
             itp_support?: boolean;
+            prompt_parent_id?: string;
           }) => void;
           prompt: (notification?: (notification: unknown) => void) => void;
           renderButton?: (parent: HTMLElement, options: unknown) => void;
@@ -71,6 +72,7 @@ export function GoogleOneTap() {
         cancel_on_tap_outside: true,
         use_fedcm_for_prompt: true,
         itp_support: true,
+        prompt_parent_id: "google-one-tap-container",
       });
 
       // Prompt One Tap / Chrome SSO integration on the page
@@ -87,10 +89,16 @@ export function GoogleOneTap() {
   }, [clientId, initOneTap]);
 
   return (
-    <Script
-      src="https://accounts.google.com/gsi/client"
-      strategy="afterInteractive"
-      onLoad={initOneTap}
-    />
+    <>
+      <div 
+        id="google-one-tap-container" 
+        className="fixed bottom-6 right-6 z-[9999] pointer-events-auto" 
+      />
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={initOneTap}
+      />
+    </>
   );
 }
