@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { GoogleAuthProvider, signInWithCredential, signOut } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
 
@@ -27,14 +27,18 @@ declare global {
           }) => void;
           prompt: (notification?: (notification: unknown) => void) => void;
           renderButton?: (parent: HTMLElement, options: unknown) => void;
+          cancel?: () => void;
         };
       };
     };
+    // Shared flag so AuthModal can re-trigger One Tap after closing
+    __reinitOneTap?: () => void;
   }
 }
 
 export function GoogleOneTap() {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   async function handleCredentialResponse(response: GoogleCredentialResponse) {
     if (!response.credential) return;
@@ -60,10 +64,27 @@ export function GoogleOneTap() {
     }
   }
 
-  const initOneTap = useCallback(() => {
+  const initOneTap = useCallback(async () => {
     if (!clientId || typeof window === "undefined" || !window.google?.accounts?.id) {
       return;
     }
+
+    // Check if user is already signed in — don't show One Tap if so
+    try {
+      const res = await fetch("/api/account", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.signedIn) {
+        return; // User is already logged in, skip One Tap
+      }
+    } catch {
+      // If check fails, proceed with showing One Tap anyway
+    }
+
+    // Small delay so the page has time to settle and the user isn't immediately bombarded
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Re-check in case the user signed in during the delay
+    if (typeof window === "undefined" || !window.google?.accounts?.id) return;
 
     try {
       window.google.accounts.id.initialize({
@@ -76,18 +97,25 @@ export function GoogleOneTap() {
         prompt_parent_id: "google-one-tap-container",
       });
 
-      // Prompt One Tap / Chrome SSO integration on the page
       window.google.accounts.id.prompt();
     } catch (err) {
       console.error("Google One Tap initialization error:", err);
     }
   }, [clientId]);
 
+  // Expose re-init so AuthModal can restore One Tap after closing
   useEffect(() => {
-    if (clientId && window.google?.accounts?.id) {
+    window.__reinitOneTap = initOneTap;
+    return () => {
+      delete window.__reinitOneTap;
+    };
+  }, [initOneTap]);
+
+  useEffect(() => {
+    if (scriptLoaded && clientId && window.google?.accounts?.id) {
       initOneTap();
     }
-  }, [clientId, initOneTap]);
+  }, [scriptLoaded, clientId, initOneTap]);
 
   return (
     <>
@@ -98,7 +126,7 @@ export function GoogleOneTap() {
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
-        onLoad={initOneTap}
+        onLoad={() => setScriptLoaded(true)}
       />
     </>
   );

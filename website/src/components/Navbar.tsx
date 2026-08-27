@@ -66,15 +66,10 @@ export function Navbar() {
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
       await signOut(firebaseAuth());
-      setAccount({ signedIn: false });
-      setUserDropdownOpen(false);
-      setMobileMenuOpen(false);
-      if (pathname.startsWith("/account")) {
-        window.location.assign("/");
-      }
+      // Always reload so the entire UI resets cleanly
+      window.location.assign(pathname.startsWith("/account") ? "/" : pathname);
     } catch (err) {
       console.error("Sign-out error:", err);
-    } finally {
       setAuthBusy(false);
     }
   }
