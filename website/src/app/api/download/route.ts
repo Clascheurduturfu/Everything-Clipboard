@@ -12,9 +12,8 @@ const downloads = {
     contentType: "application/zip",
   },
   macos: {
-    pathname: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg",
+    url: process.env.CLIPSYNC_MACOS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.dmg",
     filename: "ClipSync-macos.dmg",
-    contentType: "application/x-apple-diskimage",
   },
   android: {
     pathname: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk",
@@ -48,6 +47,12 @@ export async function GET(request: NextRequest) {
   const account = await getAccountProfile(user.uid);
   if (!account.purchased) {
     return NextResponse.json({ error: "Purchase required" }, { status: 403 });
+  }
+
+  // macOS temporary direct forward
+  if (os === "macos") {
+    const macDownload = downloads.macos;
+    return NextResponse.redirect(macDownload.url, 302);
   }
 
   const target = downloads[os];
