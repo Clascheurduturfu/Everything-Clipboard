@@ -1,3 +1,4 @@
+import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
@@ -6,20 +7,24 @@ export const runtime = "nodejs";
 
 const downloads = {
   windows: {
-    url: process.env.CLIPSYNC_WINDOWS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.zip",
+    pathname: process.env.CLIPSYNC_WINDOWS_BLOB_PATH ?? "downloads/clipsync-windows.zip",
     filename: "ClipSync-windows.zip",
+    contentType: "application/zip",
   },
   macos: {
-    url: process.env.CLIPSYNC_MACOS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.dmg",
+    pathname: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg",
     filename: "ClipSync-macos.dmg",
+    contentType: "application/x-apple-diskimage",
   },
   android: {
-    url: process.env.CLIPSYNC_ANDROID_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClypSync.apk",
+    pathname: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk",
     filename: "ClipSync-android.apk",
+    contentType: "application/vnd.android.package-archive",
   },
   ios: {
-    url: process.env.CLIPSYNC_IOS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.ipa",
+    pathname: process.env.CLIPSYNC_IOS_BLOB_PATH ?? "downloads/clipsync-ios.ipa",
     filename: "ClipSync-ios.ipa",
+    contentType: "application/octet-stream",
   },
 } as const;
 
@@ -45,10 +50,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Purchase required" }, { status: 403 });
   }
 
-  const downloadUrl = downloads[os].url;
-  if (!downloadUrl) {
+  const target = downloads[os];
+  const result = await get(target.pathname, { access: "private" });
+  if (!result || result.statusCode !== 200 || !result.stream) {
     return NextResponse.json({ error: "This download is not available yet" }, { status: 404 });
   }
 
-  return NextResponse.redirect(downloadUrl, 302);
+  const headers = new Headers();
+  headers.set("Content-Type", target.contentType);
+  headers.set("Content-Disposition", `attachment; filename="${target.filename}"`);
+  headers.set("Cache-Control", "private, no-store");
+
+  return new NextResponse(result.stream, { headers });
 }
