@@ -1,4 +1,3 @@
-import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
@@ -7,24 +6,20 @@ export const runtime = "nodejs";
 
 const downloads = {
   windows: {
-    pathname: process.env.CLIPSYNC_WINDOWS_BLOB_PATH ?? "downloads/clipsync-windows.zip",
+    url: process.env.CLIPSYNC_WINDOWS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.zip",
     filename: "ClipSync-windows.zip",
-    contentType: "application/zip",
   },
   macos: {
-    pathname: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg",
+    url: process.env.CLIPSYNC_MACOS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.dmg",
     filename: "ClipSync-macos.dmg",
-    contentType: "application/x-apple-diskimage",
   },
   android: {
-    pathname: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk",
+    url: process.env.CLIPSYNC_ANDROID_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClypSync.apk",
     filename: "ClipSync-android.apk",
-    contentType: "application/vnd.android.package-archive",
   },
   ios: {
-    pathname: process.env.CLIPSYNC_IOS_BLOB_PATH ?? "downloads/clipsync-ios.ipa",
+    url: process.env.CLIPSYNC_IOS_DOWNLOAD_URL || "https://perso.esiee.fr/~jouanarb/clypsinc/ClipSync.ipa",
     filename: "ClipSync-ios.ipa",
-    contentType: "application/octet-stream",
   },
 } as const;
 
@@ -50,21 +45,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Purchase required" }, { status: 403 });
   }
 
-  const target = downloads[os];
-  const result = await get(target.pathname, { access: "private" });
-  if (!result || result.statusCode !== 200 || !result.stream) {
+  const downloadUrl = downloads[os].url;
+  if (!downloadUrl) {
     return NextResponse.json({ error: "This download is not available yet" }, { status: 404 });
   }
 
-  const headers = new Headers();
-  headers.set("Content-Type", result.blob.contentType || target.contentType);
-  headers.set("Content-Disposition", `attachment; filename="${target.filename}"`);
-  headers.set("Cache-Control", "private, no-store");
-
-  // Only set Content-Length if a valid non-zero size was returned by the storage provider
-  if (result.blob.size && result.blob.size > 0) {
-    headers.set("Content-Length", String(result.blob.size));
-  }
-
-  return new NextResponse(result.stream, { headers });
+  return NextResponse.redirect(downloadUrl, 302);
 }
