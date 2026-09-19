@@ -1,9 +1,10 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { GoogleAuthProvider, signInWithCredential, signOut } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
+import { acquire, getGis, holdsLease, initializeFor, onRelease, release } from "@/lib/gis";
 
 type GoogleCredentialResponse = {
   credential?: string;
@@ -36,11 +37,17 @@ declare global {
   }
 }
 
+const ONE_TAP_OWNER = "google-one-tap";
+const SETTLE_DELAY_MS = 2000;
+
 export function GoogleOneTap() {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  async function handleCredentialResponse(response: GoogleCredentialResponse) {
+  // Tracks the in-flight attempt so a second call (or unmount) can abandon it.
+  const attemptRef = useRef(0);
+
+  const handleCredentialResponse = useCallback(async (response: GoogleCredentialResponse) => {
     if (!response.credential) return;
 
     try {
@@ -62,12 +69,15 @@ export function GoogleOneTap() {
     } catch (err) {
       console.error("Google One Tap sign-in error:", err);
     }
-  }
+  }, []);
 
   const initOneTap = useCallback(async () => {
-    if (!clientId || typeof window === "undefined" || !window.google?.accounts?.id) {
+    if (!clientId || typeof window === "undefined" || !getGis()) {
       return;
     }
+
+    const attempt = ++attemptRef.current;
+    const abandoned = () => attempt !== attemptRef.current;
 
     // Check if user is already signed in — don't show One Tap if so
     try {
@@ -79,29 +89,40 @@ export function GoogleOneTap() {
     } catch {
       // If check fails, proceed with showing One Tap anyway
     }
+    if (abandoned()) return;
 
     // Small delay so the page has time to settle and the user isn't immediately bombarded
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, SETTLE_DELAY_MS));
 
-    // Re-check in case the user signed in during the delay
-    if (typeof window === "undefined" || !window.google?.accounts?.id) return;
+    // Re-check in case the user signed in, navigated, or opened the sign-in
+    // dialog during the delay. Previously this resumed unconditionally and
+    // re-initialized the GIS singleton, silently rebinding any button the
+    // AuthModal had just rendered — which is why the sign-in button so often
+    // did nothing.
+    if (abandoned() || typeof window === "undefined" || !getGis()) return;
+
+    // Passive One Tap is the lowest priority holder: refused while a dialog is
+    // open. We re-arm from the onRelease subscription below instead.
+    if (!acquire(ONE_TAP_OWNER, "onetap")) return;
+
+    const initialised = initializeFor(ONE_TAP_OWNER, {
+      client_id: clientId,
+      callback: handleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      use_fedcm_for_prompt: false, // Forces iframe mode so it respects prompt_parent_id (bottom-right)
+      itp_support: true,
+      prompt_parent_id: "google-one-tap-container",
+    });
+
+    if (!initialised) return;
 
     try {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: false, // Forces iframe mode so it respects prompt_parent_id (bottom-right)
-        itp_support: true,
-        prompt_parent_id: "google-one-tap-container",
-      });
-
-      window.google.accounts.id.prompt();
+      getGis()?.prompt();
     } catch (err) {
       console.error("Google One Tap initialization error:", err);
     }
-  }, [clientId]);
+  }, [clientId, handleCredentialResponse]);
 
   // Expose re-init so AuthModal can restore One Tap after closing
   useEffect(() => {
@@ -111,11 +132,23 @@ export function GoogleOneTap() {
     };
   }, [initOneTap]);
 
+  // Re-arm automatically whenever a dialog hands the GIS lease back.
+  useEffect(() => onRelease(() => void initOneTap()), [initOneTap]);
+
   useEffect(() => {
-    if (scriptLoaded && clientId && window.google?.accounts?.id) {
-      initOneTap();
+    if (scriptLoaded && clientId && getGis()) {
+      void initOneTap();
     }
   }, [scriptLoaded, clientId, initOneTap]);
+
+  // Abandon any in-flight attempt and drop the lease on unmount.
+  useEffect(() => {
+    const attempts = attemptRef;
+    return () => {
+      attempts.current++;
+      if (holdsLease(ONE_TAP_OWNER)) release(ONE_TAP_OWNER);
+    };
+  }, []);
 
   return (
     <>

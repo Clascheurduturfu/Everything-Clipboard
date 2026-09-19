@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useId, useRef } from "react";
 import { GoogleAuthProvider, signInWithCredential, signInWithPopup, inMemoryPersistence, setPersistence, signOut } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
+import { acquire, cancelPrompt, getGis, holdsLease, initializeFor, onGisReady, release } from "@/lib/gis";
 import { X, Shield, Sparkles, Loader2 } from "lucide-react";
 
 type AuthModalProps = {
@@ -19,6 +20,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
 
+  // Every mounted AuthModal needs its own identity: the homepage renders three
+  // of them (Navbar + two PurchaseButtons) and only the open one may drive GIS.
+  const ownerId = useId();
+
   const handleAuthSuccess = useCallback(async () => {
     onClose();
     if (onSuccess) {
@@ -34,31 +39,45 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     }
   }, [isBuying, onClose, onSuccess]);
 
-  // When the modal opens, render the invisible GIS button overlay for FedCM Button Mode.
-  // When it closes, restore GIS to passive One Tap mode via __reinitOneTap.
+  // Parents pass inline arrows (`onClose={() => setOpen(false)}`), so
+  // handleAuthSuccess gets a new identity on every parent render. Keeping it in
+  // a ref keeps the effect below off that treadmill - otherwise the effect
+  // re-ran constantly and renderButton wiped and redrew the Google button,
+  // sometimes out from under the user's click.
+  const authSuccessRef = useRef(handleAuthSuccess);
   useEffect(() => {
-    if (!isOpen) {
-      // Modal just closed — restore GIS to passive One Tap mode
-      if (gisReady) {
-        setGisReady(false);
-        // Small delay to let React unmount, then re-init One Tap
-        setTimeout(() => {
-          window.__reinitOneTap?.();
-        }, 300);
-      }
+    authSuccessRef.current = handleAuthSuccess;
+  }, [handleAuthSuccess]);
+
+  const isBuyingRef = useRef(isBuying);
+  useEffect(() => {
+    isBuyingRef.current = isBuying;
+  }, [isBuying]);
+
+  // When the modal opens, take the GIS lease and render the invisible GIS
+  // button overlay for FedCM Button Mode. When it closes, hand the lease back
+  // so passive One Tap can re-arm.
+  useEffect(() => {
+    if (!isOpen || !clientId) {
       return;
     }
 
-    if (!clientId || typeof window === "undefined" || !window.google?.accounts?.id) {
-      setGisReady(false);
-      return;
-    }
+    let cancelled = false;
 
-    // Cancel any active One Tap prompt before we re-initialize for button mode
-    try { window.google.accounts.id.cancel?.(); } catch { /* ignore */ }
+    const setup = () => {
+      if (cancelled) return;
+      const gis = getGis();
+      if (!gis) return;
 
-    try {
-      window.google.accounts.id.initialize({
+      // An open dialog outranks One Tap, so this is only refused if another
+      // modal is already driving GIS - in which case we stay on the popup
+      // fallback rather than fighting over the singleton.
+      if (!acquire(ownerId, "modal")) return;
+
+      // Dismiss any One Tap prompt before switching GIS into button mode.
+      cancelPrompt();
+
+      const initialised = initializeFor(ownerId, {
         client_id: clientId,
         callback: async (response) => {
           if (!response.credential) return;
@@ -77,7 +96,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
 
             if (!res.ok) throw new Error("Unable to create session");
             await signOut(auth);
-            await handleAuthSuccess();
+            await authSuccessRef.current();
           } catch (err) {
             console.error("FedCM Button Mode sign-in error:", err);
             setError("Sign-in could not be completed. Please try again.");
@@ -88,26 +107,51 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
         cancel_on_tap_outside: true,
         use_fedcm_for_prompt: true,
         use_fedcm_for_button: true,
-      } as Parameters<typeof window.google.accounts.id.initialize>[0]);
+      } as Parameters<typeof gis.initialize>[0]);
 
-      // Render the invisible Google button into the always-mounted ref
-      if (googleBtnRef.current && window.google.accounts.id.renderButton) {
-        googleBtnRef.current.innerHTML = "";
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          shape: "pill",
-          text: isBuying ? "continue_with" : "signin_with",
-          width: 400,
-        });
-        setGisReady(true);
+      if (!initialised) return;
+
+      try {
+        if (googleBtnRef.current && gis.renderButton) {
+          // GIS caps width at 400px, but the dialog is narrower than that on
+          // phones. Asking for more than the container gives us a button whose
+          // real hit area is clipped by `overflow-hidden`.
+          const available = googleBtnRef.current.offsetWidth || 400;
+          const width = Math.max(200, Math.min(400, Math.round(available)));
+
+          googleBtnRef.current.innerHTML = "";
+          gis.renderButton(googleBtnRef.current, {
+            type: "standard",
+            theme: "outline",
+            size: "large",
+            shape: "pill",
+            text: isBuyingRef.current ? "continue_with" : "signin_with",
+            width,
+          });
+          if (!cancelled) setGisReady(true);
+        }
+      } catch (err) {
+        console.error("GIS renderButton error:", err);
+        if (!cancelled) setGisReady(false);
       }
-    } catch (err) {
-      console.error("GIS renderButton error:", err);
+    };
+
+    // Retry once the script lands, so opening the modal before GIS has loaded
+    // no longer strands the user on the popup fallback for good.
+    const unsubscribe = onGisReady(setup);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
       setGisReady(false);
-    }
-  }, [isOpen, clientId, isBuying, handleAuthSuccess]);
+      if (holdsLease(ownerId)) {
+        release(ownerId);
+        // Restore passive One Tap now that the dialog is gone.
+        window.__reinitOneTap?.();
+      }
+    };
+  }, [isOpen, clientId, ownerId]);
+
 
   // Fallback: standard Firebase signInWithPopup for browsers without GIS/FedCM
   async function handlePopupFallback() {

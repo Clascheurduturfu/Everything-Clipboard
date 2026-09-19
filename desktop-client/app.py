@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import OrderedDict
 import platform
 import plistlib
 import shutil
@@ -22,7 +23,12 @@ import pystray
 import websockets
 from PIL import Image, ImageDraw
 
-from clipboard import get_clipboard, set_clipboard
+from clipboard import (
+    clipboard_change_token,
+    clipboard_has_files,
+    get_clipboard,
+    set_clipboard,
+)
 from crypto_utils import decrypt_payload, derive_key, encrypt_payload, get_room_id
 from host_server import start_host_server
 
@@ -33,7 +39,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
+APP_VERSION = "1.0.2"
 _IS_MACOS = platform.system() == "Darwin"
+
+# A value that crossed the wire (in either direction) is remembered for this
+# long so the clipboard poller never broadcasts it a second time.
+SYNC_ECHO_TTL_SECONDS = 15.0
+SYNC_ECHO_MAX_ENTRIES = 32
 
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -212,10 +224,38 @@ class ClipSyncApp:
         self.ngrok_process: subprocess.Popen | None = None
         self.preferences_open = False
 
+        # Echo suppression.  `_recent_sync_values` holds every payload that has
+        # recently been sent or received; `_applying_remote` parks the poller
+        # while we write to the OS clipboard.
+        self._clip_lock = threading.RLock()
+        self._recent_sync_values: "OrderedDict[str, float]" = OrderedDict()
+        self._applying_remote = False
+        self._last_change_token = clipboard_change_token()
+
         self.icon = pystray.Icon("ClipSync")
         self.icon.icon = create_icon_image("gray")
         self.icon.title = "ClipSync - Disconnected"
+        if platform.system() == "Windows":
+            self._setup_windows_shutdown_handler()
         self._rebuild_menu()
+
+    def _setup_windows_shutdown_handler(self):
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+            def ctrl_handler(ctrl_type):
+                # 0: CTRL_C, 1: CTRL_BREAK, 2: CTRL_CLOSE, 5: CTRL_LOGOFF, 6: CTRL_SHUTDOWN
+                logger.info("Shutdown/Logoff signal received (%d). Stopping ClipSync...", ctrl_type)
+                self.is_running = False
+                self.stop_event.set()
+                return False
+
+            self._ctrl_handler_ref = ctrl_handler
+            ctypes.windll.kernel32.SetConsoleCtrlHandler(ctrl_handler, True)
+        except Exception as exc:
+            logger.warning("Could not register console control handler: %s", exc)
 
     def _run_on_main_thread(self, fn):
         """Dispatch *fn* to the main thread on macOS.
@@ -254,6 +294,7 @@ class ClipSyncApp:
         )
 
         items = [
+            pystray.MenuItem(f"ClipSync v{APP_VERSION}", None, enabled=False),
             pystray.MenuItem(f"Status: {status}", None, enabled=False),
             pystray.MenuItem(last_text, None, enabled=False),
         ]
@@ -477,8 +518,10 @@ class ClipSyncApp:
                 with self.config_lock:
                     self.config["ngrok_public_url"] = url
                     save_config(self.config)
+                self._remember_sync_value(url)
                 self.last_clipboard = url
                 set_clipboard(url)
+                self._last_change_token = clipboard_change_token()
                 self._set_status("ngrok tunnel ready", "blue")
                 logger.info("ngrok mobile URL: %s", url)
                 return
@@ -619,6 +662,83 @@ class ClipSyncApp:
 
         self.is_connected = False
 
+    # ------------------------------------------------------------------
+    # Echo suppression helpers
+    # ------------------------------------------------------------------
+
+    def _prune_sync_values(self, now: float):
+        """Drop expired entries. Caller must hold `_clip_lock`."""
+        expired = [
+            value
+            for value, stamp in self._recent_sync_values.items()
+            if now - stamp > SYNC_ECHO_TTL_SECONDS
+        ]
+        for value in expired:
+            self._recent_sync_values.pop(value, None)
+        while len(self._recent_sync_values) > SYNC_ECHO_MAX_ENTRIES:
+            self._recent_sync_values.popitem(last=False)
+
+    def _remember_sync_value(self, value: str):
+        """Mark *value* as already synced so we never rebroadcast it."""
+        if not value:
+            return
+        now = time.monotonic()
+        with self._clip_lock:
+            self._recent_sync_values[value] = now
+            self._recent_sync_values.move_to_end(value)
+            self._prune_sync_values(now)
+
+    def _is_recent_sync_value(self, value: str) -> bool:
+        if not value:
+            return False
+        now = time.monotonic()
+        with self._clip_lock:
+            self._prune_sync_values(now)
+            return value in self._recent_sync_values
+
+    def _apply_remote_clipboard(self, content: str):
+        """Write remote *content* to the local clipboard without echoing it.
+
+        The poller runs on another thread, so we park it for the duration of
+        the write.  Without this, the poller can read the *old* clipboard after
+        `last_clipboard` has already been moved to the new value, decide the
+        clipboard changed, and ship the stale text straight back to the room.
+        That race is what made macOS bounce text around: `pbcopy` takes tens of
+        milliseconds where the Win32 path takes microseconds.
+        """
+        with self._clip_lock:
+            self._applying_remote = True
+        self._remember_sync_value(content)
+
+        try:
+            # A Finder/Explorer file copy also carries a text flavour. Writing
+            # plain text back over it would destroy the file references and the
+            # user would paste file *names* instead of the files themselves.
+            if clipboard_has_files() and get_clipboard() == content:
+                logger.info("Clipboard holds files with identical text; not overwriting")
+                return
+
+            set_clipboard(content)
+
+            # Read back what the OS actually stored instead of assuming it
+            # matches `content` - pasteboards may normalise line endings, and a
+            # mismatch here would look like a fresh local copy to the poller.
+            settled = ""
+            for _ in range(15):
+                time.sleep(0.02)
+                settled = get_clipboard()
+                if settled:
+                    break
+
+            with self._clip_lock:
+                self.last_clipboard = settled or content
+                self._last_change_token = clipboard_change_token()
+            if settled and settled != content:
+                self._remember_sync_value(settled)
+        finally:
+            with self._clip_lock:
+                self._applying_remote = False
+
     async def _receive_loop(self, ws):
         async for message in ws:
             try:
@@ -626,11 +746,15 @@ class ClipSyncApp:
                 content = payload.get("content", "")
                 device = payload.get("device_name", "Unknown")
 
+                if not content:
+                    continue
+
                 logger.info("Received from %s: %s...", device, content[:40])
-                self.last_clipboard = content
                 self.last_received_device = device
                 self.last_received_content = content
-                set_clipboard(content)
+
+                # Blocking clipboard work must not stall the websocket loop.
+                await asyncio.to_thread(self._apply_remote_clipboard, content)
                 self._rebuild_menu()
             except Exception as exc:
                 logger.error("Decrypt/receive error: %s", exc)
@@ -649,29 +773,56 @@ class ClipSyncApp:
     def _poll_clipboard(self):
         try:
             self.last_clipboard = get_clipboard()
+            self._last_change_token = clipboard_change_token()
         except Exception:
             pass
 
         while self.is_running:
             try:
-                current = get_clipboard()
-                if current and current != self.last_clipboard:
-                    self.last_clipboard = current
-                    self.last_received_device = self.config.get("device_name", "Desktop")
-                    self.last_received_content = current
-                    self._rebuild_menu()
+                with self._clip_lock:
+                    applying = self._applying_remote
+                if applying:
+                    # A remote update is landing; re-reading now would race it.
+                    time.sleep(0.05)
+                    continue
 
-                    if self.is_connected and self.send_queue and self.ws_loop:
-                        payload = encrypt_payload(
-                            self.config["device_name"],
-                            current,
-                            self.key,
-                        )
-                        asyncio.run_coroutine_threadsafe(self.send_queue.put(payload), self.ws_loop)
-                        logger.info("Sent: %s...", current[:40])
+                # Cheap early-out: if the OS exposes a change counter and it
+                # has not moved, nothing was copied since the last pass.
+                token = clipboard_change_token()
+                if token is not None and token == self._last_change_token:
+                    time.sleep(0.25)
+                    continue
+                self._last_change_token = token
+
+                current = get_clipboard()
+                if not current or current == self.last_clipboard:
+                    time.sleep(0.25)
+                    continue
+
+                if self._is_recent_sync_value(current):
+                    # This is content we just sent or just received. Adopt it
+                    # silently so it does not ping-pong around the room.
+                    self.last_clipboard = current
+                    time.sleep(0.25)
+                    continue
+
+                self.last_clipboard = current
+                self.last_received_device = self.config.get("device_name", "Desktop")
+                self.last_received_content = current
+                self._rebuild_menu()
+
+                if self.is_connected and self.send_queue and self.ws_loop:
+                    self._remember_sync_value(current)
+                    payload = encrypt_payload(
+                        self.config["device_name"],
+                        current,
+                        self.key,
+                    )
+                    asyncio.run_coroutine_threadsafe(self.send_queue.put(payload), self.ws_loop)
+                    logger.info("Sent: %s...", current[:40])
             except Exception:
                 pass
-            time.sleep(0.5)
+            time.sleep(0.25)
 
     def _set_start_on_login(self, enabled: bool):
         system = platform.system()
