@@ -5,4 +5,4 @@
  * if the version in the footer has not moved, you are looking at a cached or
  * stale deployment, not a fixed one.
  */
-export const SITE_VERSION = "1.0.2";
+export const SITE_VERSION = "1.0.3";
