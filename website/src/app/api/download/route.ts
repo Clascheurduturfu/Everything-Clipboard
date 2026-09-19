@@ -1,6 +1,7 @@
 import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
+import { pickServingSource } from "@/lib/download-source";
 import { getSessionUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -8,8 +9,6 @@ export const runtime = "nodejs";
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
 const ROUTE_VERSION = "1.0.2";
-
-const HEAD_CHECK_TIMEOUT_MS = 4000;
 
 type DownloadTarget = {
   filename: string;
@@ -61,43 +60,6 @@ function isDownloadOs(os: string | null): os is DownloadOs {
   return os !== null && Object.prototype.hasOwnProperty.call(downloads, os);
 }
 
-/**
- * A URL is only usable if it is absolute http(s) AND currently serves a
- * non-empty body. An expired or rotated blob URL left behind in an env var
- * looks fine as a string but 302s the user onto a zero-byte download, which is
- * exactly how the macOS installer broke.
- */
-async function isServing(rawUrl: string | undefined): Promise<boolean> {
-  if (!rawUrl) return false;
-
-  let url: URL;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HEAD_CHECK_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: "HEAD",
-      redirect: "follow",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    if (!res.ok) return false;
-    const length = Number(res.headers.get("content-length") ?? "0");
-    // Treat "no content-length" as usable (chunked), but never a declared zero.
-    return !res.headers.has("content-length") || length > 0;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function attachmentHeaders(target: DownloadTarget, source: string) {
   const headers = new Headers();
   headers.set("Content-Disposition", `attachment; filename="${target.filename}"`);
@@ -128,16 +90,17 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
   }
 
   // 2. Environment override, then 3. the ESIEE mirror. Both are verified live
-  //    before we hand the user a redirect.
-  for (const [candidate, source] of [
-    [target.directUrl, "direct-url"],
-    [target.mirrorUrl, "mirror"],
-  ] as const) {
-    if (await isServing(candidate)) {
-      const headers = attachmentHeaders(target, source);
-      headers.set("Location", candidate as string);
-      return new NextResponse(null, { status: 302, headers });
-    }
+  //    before we hand the user a redirect, so a stale private-blob URL left in
+  //    an env var can never turn into a "Forbidden" file named ClipSync.dmg.
+  const serving = await pickServingSource([
+    { url: target.directUrl, source: "direct-url" },
+    { url: target.mirrorUrl, source: "mirror" },
+  ]);
+
+  if (serving) {
+    const headers = attachmentHeaders(target, serving.source);
+    headers.set("Location", serving.url);
+    return new NextResponse(null, { status: 302, headers });
   }
 
   console.error(`No working download source for ${os}`);

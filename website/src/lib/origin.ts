@@ -4,13 +4,14 @@
  *
  * History: the previous check used `originHost.includes("clipsync")`, so any
  * attacker-controlled host containing that substring (clipsync.evil.com,
- * evil-clipsync.net) passed the CSRF gate. It also allow-listed
- * `everything-clipboard.com`, which is not the product's domain - the real one
- * is `everything-clipboard.online`.
+ * evil-clipsync.net) passed the CSRF gate. Both everything-clipboard.online
+ * and everything-clipboard.com belong to the project and stay allow-listed -
+ * the fix is the matching rule, not the list.
  */
 
 export const ALLOWED_ORIGIN_HOSTS = [
   "everything-clipboard.online",
+  "everything-clipboard.com",
   "clipsync.vercel.app",
   "localhost",
   "127.0.0.1",
