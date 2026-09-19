@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Shield, Sparkles } from "lucide-react";
+import { SITE_VERSION } from "@/lib/version";
 
 export function Footer() {
   return (
@@ -32,6 +33,8 @@ export function Footer() {
           </span>
           <span>•</span>
           <span>&copy; {new Date().getFullYear()} Everything Clipboard</span>
+          <span>•</span>
+          <span className="tabular-nums opacity-70">v{SITE_VERSION}</span>
         </div>
       </div>
     </footer>

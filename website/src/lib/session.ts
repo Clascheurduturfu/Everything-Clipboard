@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { getAdminAuth } from "@/lib/firebase-admin";
+import { isAllowedOrigin } from "@/lib/origin";
 
 export const SESSION_COOKIE_NAME = "clipsync_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
@@ -32,33 +33,15 @@ export async function requireSessionUser(request: NextRequest) {
   return user;
 }
 
+/**
+ * Hosts allowed to POST to the session endpoints live in `@/lib/origin`, which
+ * is kept free of Next.js imports so the CSRF rules can be unit-tested.
+ */
 export function isSameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
+  const requestHost =
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    request.nextUrl.host;
 
-  if (!origin) {
-    return true;
-  }
-
-  try {
-    const originHost = new URL(origin).host.toLowerCase();
-    const host = (
-      request.headers.get("x-forwarded-host") ||
-      request.headers.get("host") ||
-      request.nextUrl.host
-    ).toLowerCase();
-
-    if (originHost === host) return true;
-    if (
-      originHost.endsWith(".vercel.app") ||
-      originHost.includes("everything-clipboard.com") ||
-      originHost.includes("clipsync") ||
-      originHost.startsWith("localhost") ||
-      originHost.startsWith("127.0.0.1")
-    ) {
-      return true;
-    }
-    return false;
-  } catch {
-    return true;
-  }
+  return isAllowedOrigin(request.headers.get("origin"), requestHost);
 }
