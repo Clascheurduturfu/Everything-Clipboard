@@ -1,14 +1,18 @@
 import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
-import { pickServingSource } from "@/lib/download-source";
+import { fetchServingSource, pickServingSource } from "@/lib/download-source";
 import { getSessionUser } from "@/lib/session";
 
 export const runtime = "nodejs";
+// Proxying a mirror's bytes (up to ~45MB for Windows) through this function
+// can take longer than the platform default on a slow origin. Vercel caps
+// this to whatever the project's plan actually allows either way.
+export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.2";
+const ROUTE_VERSION = "1.0.3";
 
 type DownloadTarget = {
   filename: string;
@@ -73,12 +77,15 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
   const target = downloads[os];
 
   // 1. Private blob, streamed through this route so the URL stays protected.
+  //    Content-Type always comes from our own map, never from blob metadata -
+  //    see the note on tiers 2/3 below for why an origin's own idea of its
+  //    content type is not trusted here.
   if (target.blobPath) {
     try {
       const result = await get(target.blobPath, { access: "private" });
       if (result && result.statusCode === 200 && result.stream && result.blob.size > 0) {
         const headers = attachmentHeaders(target, "blob");
-        headers.set("Content-Type", result.blob.contentType || target.contentType);
+        headers.set("Content-Type", target.contentType);
         // Without Content-Length the browser shows an unknown-size download and
         // some clients report 0 bytes. The blob metadata has it, so send it.
         headers.set("Content-Length", String(result.blob.size));
@@ -89,18 +96,42 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
     }
   }
 
-  // 2. Environment override, then 3. the ESIEE mirror. Both are verified live
-  //    before we hand the user a redirect, so a stale private-blob URL left in
-  //    an env var can never turn into a "Forbidden" file named ClipSync.dmg.
-  const serving = await pickServingSource([
+  // 2. Environment override, then 3. the ESIEE mirror - proxied through this
+  //    route, never redirected to.
+  //
+  //    A redirect hands control of Content-Type, and the address bar, to the
+  //    origin. ESIEE's Apache has no MIME mapping for .ipa and sends no
+  //    Content-Type at all; combined with the nosniff header it also sends,
+  //    that left Safari nothing to go on, so opening the link rendered the
+  //    raw bytes as text instead of downloading them, while the address bar
+  //    revealed perso.esiee.fr. .dmg/.zip/.apk happen to be mapped correctly
+  //    there today, but this route no longer depends on that being true for
+  //    any of them: fetching the bytes ourselves means our own
+  //    Content-Type/Content-Disposition always win, and the mirror's raw URL
+  //    never reaches the user.
+  const candidates = [
     { url: target.directUrl, source: "direct-url" },
     { url: target.mirrorUrl, source: "mirror" },
-  ]);
+  ];
 
-  if (serving) {
-    const headers = attachmentHeaders(target, serving.source);
-    headers.set("Location", serving.url);
-    return new NextResponse(null, { status: 302, headers });
+  if (!bodyWanted) {
+    // HEAD: confirm a source is currently serving without transferring it.
+    const serving = await pickServingSource(candidates);
+    if (serving) {
+      const headers = attachmentHeaders(target, serving.source);
+      headers.set("Content-Type", target.contentType);
+      return new NextResponse(null, { headers });
+    }
+  } else {
+    const fetched = await fetchServingSource(candidates);
+    if (fetched) {
+      const headers = attachmentHeaders(target, fetched.source);
+      headers.set("Content-Type", target.contentType);
+      if (fetched.contentLength !== null) {
+        headers.set("Content-Length", String(fetched.contentLength));
+      }
+      return new NextResponse(fetched.body, { headers });
+    }
   }
 
   console.error(`No working download source for ${os}`);

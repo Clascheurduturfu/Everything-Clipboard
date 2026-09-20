@@ -88,3 +88,50 @@ export async function pickServingSource(
   }
   return null;
 }
+
+export type FetchedSource = {
+  source: string;
+  body: ReadableStream<Uint8Array>;
+  contentLength: number | null;
+};
+
+/**
+ * Like `pickServingSource`, but fetches the body instead of handing back a
+ * URL to redirect to.
+ *
+ * A redirect hands control of Content-Type - and the address bar - to the
+ * origin server. ESIEE's Apache has no MIME mapping for `.ipa` and sends no
+ * Content-Type at all; paired with `X-Content-Type-Options: nosniff`, that
+ * left Safari nothing to go on, so a direct navigation rendered the raw bytes
+ * as text instead of downloading them, while the address bar revealed
+ * perso.esiee.fr. `.dmg`, `.zip` and `.apk` happen to have mappings on that
+ * server today, but nothing stops that from changing - fetching here means
+ * the caller's own Content-Type/Content-Disposition always win, for every
+ * platform, regardless of what any origin does or doesn't send.
+ */
+export async function fetchServingSource(
+  candidates: Candidate[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<FetchedSource | null> {
+  for (const candidate of candidates) {
+    if (!candidate.url) continue;
+    const probe = await probeUrl(candidate.url, fetchImpl);
+    if (!probe.ok) continue;
+
+    try {
+      const res = await fetchImpl(candidate.url, {
+        method: "GET",
+        redirect: "follow",
+        cache: "no-store",
+      });
+      if (!res.ok || !res.body) continue;
+
+      const lengthHeader = res.headers.get("content-length");
+      const contentLength = lengthHeader ? Number(lengthHeader) : (probe.size ?? null);
+      return { source: candidate.source, body: res.body, contentLength };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
