@@ -1,7 +1,7 @@
 import { get, head } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
-// import { fetchServingSource, pickServingSource } from "@/lib/download-source";
+import { fetchServingSource, pickServingSource } from "@/lib/download-source";
 import { getSessionUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -12,13 +12,13 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.4";
+const ROUTE_VERSION = "1.0.6";
 
 type DownloadTarget = {
   filename: string;
   contentType: string;
   /** Tier 1: Private Vercel Blob path, streamed through this route when present. */
-  blobPath?: string;
+  blobPath: string;
   /** Tier 2: Always-on ESIEE mirror fallback, proxied through this route. */
   mirrorUrl: string;
 };
@@ -29,25 +29,25 @@ const downloads: Record<string, DownloadTarget> = {
   windows: {
     filename: "ClipSync-windows.zip",
     contentType: "application/zip",
-    blobPath: process.env.CLIPSYNC_WINDOWS_BLOB_PATH ?? "downloads/clipsync-windows.zip",
+    blobPath: "downloads/clipsync-windows.zip",
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.zip`,
   },
   macos: {
     filename: "ClipSync-macos.dmg",
     contentType: "application/x-apple-diskimage",
-    blobPath: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg",
+    blobPath: "downloads/clipsync-macos.dmg",
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.dmg`,
   },
   android: {
     filename: "ClipSync-android.apk",
     contentType: "application/vnd.android.package-archive",
-    blobPath: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk",
+    blobPath: "downloads/clipsync-android.apk",
     mirrorUrl: `${ESIEE_MIRROR}/ClypSync.apk`,
   },
   ios: {
     filename: "ClipSync-ios.ipa",
     contentType: "application/octet-stream",
-    blobPath: process.env.CLIPSYNC_IOS_BLOB_PATH ?? "downloads/clipsync-ios.ipa",
+    blobPath: "downloads/clipsync-ios.ipa",
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.ipa`,
   },
 };
@@ -103,8 +103,7 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
     }
   }
 
-  /*
-  // Tier 2: ESIEE mirror fallback (temporarily commented out to test Tier 1 Blob exclusively)
+  // Tier 2: ESIEE mirror fallback when private Blob is unavailable.
   const candidates = [
     { url: target.mirrorUrl, source: "mirror" },
   ];
@@ -127,7 +126,6 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
       return new NextResponse(fetched.body, { headers });
     }
   }
-  */
 
   console.error(`No working download source for ${os}`);
   return NextResponse.json(
