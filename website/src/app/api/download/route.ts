@@ -1,7 +1,7 @@
-import { get } from "@vercel/blob";
+import { get, head } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
-import { fetchServingSource, pickServingSource } from "@/lib/download-source";
+// import { fetchServingSource, pickServingSource } from "@/lib/download-source";
 import { getSessionUser } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -12,16 +12,14 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.3";
+const ROUTE_VERSION = "1.0.4";
 
 type DownloadTarget = {
   filename: string;
   contentType: string;
-  /** Private Vercel Blob path, streamed through this route when present. */
+  /** Tier 1: Private Vercel Blob path, streamed through this route when present. */
   blobPath?: string;
-  /** Explicit override, set per environment in the Vercel dashboard. */
-  directUrl?: string;
-  /** Always-on mirror, verified live before it is ever used. */
+  /** Tier 2: Always-on ESIEE mirror fallback, proxied through this route. */
   mirrorUrl: string;
 };
 
@@ -32,28 +30,24 @@ const downloads: Record<string, DownloadTarget> = {
     filename: "ClipSync-windows.zip",
     contentType: "application/zip",
     blobPath: process.env.CLIPSYNC_WINDOWS_BLOB_PATH ?? "downloads/clipsync-windows.zip",
-    directUrl: process.env.CLIPSYNC_WINDOWS_DOWNLOAD_URL,
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.zip`,
   },
   macos: {
     filename: "ClipSync-macos.dmg",
     contentType: "application/x-apple-diskimage",
     blobPath: process.env.CLIPSYNC_MACOS_BLOB_PATH ?? "downloads/clipsync-macos.dmg",
-    directUrl: process.env.CLIPSYNC_MACOS_DOWNLOAD_URL,
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.dmg`,
   },
   android: {
     filename: "ClipSync-android.apk",
     contentType: "application/vnd.android.package-archive",
     blobPath: process.env.CLIPSYNC_ANDROID_BLOB_PATH ?? "downloads/clipsync-android.apk",
-    directUrl: process.env.CLIPSYNC_ANDROID_DOWNLOAD_URL,
     mirrorUrl: `${ESIEE_MIRROR}/ClypSync.apk`,
   },
   ios: {
     filename: "ClipSync-ios.ipa",
     contentType: "application/octet-stream",
     blobPath: process.env.CLIPSYNC_IOS_BLOB_PATH ?? "downloads/clipsync-ios.ipa",
-    directUrl: process.env.CLIPSYNC_IOS_DOWNLOAD_URL,
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.ipa`,
   },
 };
@@ -76,46 +70,46 @@ function attachmentHeaders(target: DownloadTarget, source: string) {
 async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
   const target = downloads[os];
 
-  // 1. Private blob, streamed through this route so the URL stays protected.
-  //    Content-Type always comes from our own map, never from blob metadata -
-  //    see the note on tiers 2/3 below for why an origin's own idea of its
-  //    content type is not trusted here.
+  // Tier 1: Private Vercel Blob, streamed through this route so the URL stays protected.
+  // Note: For application/octet-stream blobs (.dmg and .ipa), Vercel's CDN uses chunked
+  // transfer on GET and omits Content-Length, so `result.blob.size` is reported as 0
+  // even when the stream contains the full file. We resolve the real size via `head()`.
   if (target.blobPath) {
     try {
       const result = await get(target.blobPath, { access: "private" });
-      if (result && result.statusCode === 200 && result.stream && result.blob.size > 0) {
+      if (result && result.statusCode === 200 && result.stream) {
+        let blobSize = result.blob.size;
+        if (!blobSize || blobSize <= 0) {
+          try {
+            const meta = await head(target.blobPath);
+            blobSize = meta.size;
+          } catch {
+            // If head() fails, still stream the valid body if present.
+          }
+        }
         const headers = attachmentHeaders(target, "blob");
         headers.set("Content-Type", target.contentType);
-        // Without Content-Length the browser shows an unknown-size download and
-        // some clients report 0 bytes. The blob metadata has it, so send it.
-        headers.set("Content-Length", String(result.blob.size));
-        return new NextResponse(bodyWanted ? result.stream : null, { headers });
+        if (blobSize > 0) {
+          headers.set("Content-Length", String(blobSize));
+        }
+        if (!bodyWanted) {
+          await result.stream.cancel();
+          return new NextResponse(null, { headers });
+        }
+        return new NextResponse(result.stream, { headers });
       }
     } catch (error) {
       console.error(`Blob fetch failed for ${os} (${target.blobPath}):`, error);
     }
   }
 
-  // 2. Environment override, then 3. the ESIEE mirror - proxied through this
-  //    route, never redirected to.
-  //
-  //    A redirect hands control of Content-Type, and the address bar, to the
-  //    origin. ESIEE's Apache has no MIME mapping for .ipa and sends no
-  //    Content-Type at all; combined with the nosniff header it also sends,
-  //    that left Safari nothing to go on, so opening the link rendered the
-  //    raw bytes as text instead of downloading them, while the address bar
-  //    revealed perso.esiee.fr. .dmg/.zip/.apk happen to be mapped correctly
-  //    there today, but this route no longer depends on that being true for
-  //    any of them: fetching the bytes ourselves means our own
-  //    Content-Type/Content-Disposition always win, and the mirror's raw URL
-  //    never reaches the user.
+  /*
+  // Tier 2: ESIEE mirror fallback (temporarily commented out to test Tier 1 Blob exclusively)
   const candidates = [
-    { url: target.directUrl, source: "direct-url" },
     { url: target.mirrorUrl, source: "mirror" },
   ];
 
   if (!bodyWanted) {
-    // HEAD: confirm a source is currently serving without transferring it.
     const serving = await pickServingSource(candidates);
     if (serving) {
       const headers = attachmentHeaders(target, serving.source);
@@ -133,6 +127,7 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
       return new NextResponse(fetched.body, { headers });
     }
   }
+  */
 
   console.error(`No working download source for ${os}`);
   return NextResponse.json(
