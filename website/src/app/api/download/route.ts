@@ -1,4 +1,4 @@
-// import { get, head } from "@vercel/blob";
+import { get, head } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
 import { fetchServingSource, pickServingSource } from "@/lib/download-source";
@@ -12,12 +12,12 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.7";
+const ROUTE_VERSION = "1.0.8";
 
 type DownloadTarget = {
   filename: string;
   contentType: string;
-  /** Reserved for the currently disabled Vercel Blob source. */
+  /** Primary Vercel Blob source. */
   blobPath: string;
   /** ESIEE source, proxied through this route to preserve the download headers. */
   mirrorUrl: string;
@@ -70,9 +70,7 @@ function attachmentHeaders(target: DownloadTarget, source: string) {
 async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
   const target = downloads[os];
 
-  /*
-  // Private Vercel Blob is disabled while ESIEE is the sole download source.
-  // When re-enabled, stream it through this route so the URL stays protected.
+  // Stream private Vercel Blob through this route so the URL stays protected.
   // Note: For application/octet-stream blobs (.dmg and .ipa), Vercel's CDN uses chunked
   // transfer on GET and omits Content-Length, so `result.blob.size` is reported as 0
   // even when the stream contains the full file. We resolve the real size via `head()`.
@@ -104,9 +102,8 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
       console.error(`Blob fetch failed for ${os} (${target.blobPath}):`, error);
     }
   }
-  */
 
-  // ESIEE is the active download source.
+  // Fall back to the ESIEE mirror when Blob is unavailable.
   const candidates = [
     { url: target.mirrorUrl, source: "mirror" },
   ];
