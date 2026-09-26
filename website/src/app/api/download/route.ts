@@ -1,4 +1,4 @@
-import { get, head } from "@vercel/blob";
+// import { get, head } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountProfile } from "@/lib/entitlements";
 import { fetchServingSource, pickServingSource } from "@/lib/download-source";
@@ -12,14 +12,14 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.6";
+const ROUTE_VERSION = "1.0.7";
 
 type DownloadTarget = {
   filename: string;
   contentType: string;
-  /** Tier 1: Private Vercel Blob path, streamed through this route when present. */
+  /** Reserved for the currently disabled Vercel Blob source. */
   blobPath: string;
-  /** Tier 2: Always-on ESIEE mirror fallback, proxied through this route. */
+  /** ESIEE source, proxied through this route to preserve the download headers. */
   mirrorUrl: string;
 };
 
@@ -70,7 +70,9 @@ function attachmentHeaders(target: DownloadTarget, source: string) {
 async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
   const target = downloads[os];
 
-  // Tier 1: Private Vercel Blob, streamed through this route so the URL stays protected.
+  /*
+  // Private Vercel Blob is disabled while ESIEE is the sole download source.
+  // When re-enabled, stream it through this route so the URL stays protected.
   // Note: For application/octet-stream blobs (.dmg and .ipa), Vercel's CDN uses chunked
   // transfer on GET and omits Content-Length, so `result.blob.size` is reported as 0
   // even when the stream contains the full file. We resolve the real size via `head()`.
@@ -102,8 +104,9 @@ async function resolveDownload(os: DownloadOs, bodyWanted: boolean) {
       console.error(`Blob fetch failed for ${os} (${target.blobPath}):`, error);
     }
   }
+  */
 
-  // Tier 2: ESIEE mirror fallback when private Blob is unavailable.
+  // ESIEE is the active download source.
   const candidates = [
     { url: target.mirrorUrl, source: "mirror" },
   ];
