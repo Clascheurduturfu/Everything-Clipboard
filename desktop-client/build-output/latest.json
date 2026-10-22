@@ -1,0 +1,14 @@
+{
+  "macos": {
+    "path": "desktop-client/build-output/macos/ClipSync.dmg",
+    "sha256": "e57f083fe98281d08e02012c4f393a5e6232b6d2ebddbedebb8fc200dab83468",
+    "size": 33145341,
+    "version": "2.0 beta 2"
+  },
+  "windows": {
+    "path": "desktop-client/build-output/windows/ClipSync.zip",
+    "sha256": "b774e268b233280d23e35e577a063c81c6ea15e35a785de7609adef64cd161ec",
+    "size": 46416514,
+    "version": "2.0 beta 2"
+  }
+}
