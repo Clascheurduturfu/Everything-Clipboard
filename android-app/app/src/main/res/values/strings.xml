@@ -1,13 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ClipSync</string>
-    <string name="connect">Connect</string>
-    <string name="disconnect">Disconnect</string>
+    <string name="subtitle">Clipboard sync</string>
+    <string name="connection">Connection</string>
+    <string name="device_name">Device name</string>
+    <string name="device_name_hint">My phone</string>
     <string name="server_url">Server URL</string>
-    <string name="connection_status">Status: Disconnected</string>
-    <string name="connected">Status: Connected</string>
-    <string name="disconnected">Status: Disconnected</string>
-    <string name="connecting">Status: Connecting...</string>
+    <string name="server_url_hint">wss://your-server</string>
+    <string name="secret_key">Secret key</string>
+    <string name="secret_key_hint">Shared secret</string>
+    <string name="save_and_connect">Save &amp; Connect</string>
+    <string name="clipboard">Clipboard</string>
+    <string name="copy_to_clipboard">Copy to Clipboard</string>
+    <string name="last_received_from">Last received from %1$s:</string>
+    <string name="behaviour">Behaviour</string>
+    <string name="run_in_background">Run in background</string>
+    <string name="run_in_background_hint">Keeps syncing after you leave the app (shows a small notification).</string>
+    <string name="show_send_button">Send Clipboard button in notification</string>
+    <string name="mark_sensitive">Mark desktop clips as sensitive</string>
+    <string name="mark_sensitive_hint">Keeps received clips out of keyboard history. You can still paste the latest one.</string>
+    <string name="open_bridge_settings">Open Clipboard Bridge settings</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_not_configured">Not configured</string>
     <string name="accessibility_service_label">ClipSync Clipboard Bridge</string>
     <string name="accessibility_service_description">Watches clipboard changes and sends copied text to your ClipSync devices.</string>
     <string name="send_clipboard_action">Send Clipboard</string>

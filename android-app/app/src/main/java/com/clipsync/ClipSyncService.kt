@@ -37,6 +37,8 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val ACTION_APP_CLOSED = "com.clipsync.action.APP_CLOSED"
         const val EXTRA_TEXT = "com.clipsync.extra.TEXT"
         const val EXTRA_SOURCE = "com.clipsync.extra.SOURCE"
+        // Explicit "Send Clipboard" taps resend even if that text already went out.
+        const val EXTRA_FORCE = "com.clipsync.extra.FORCE"
     }
 
     private data class PendingOutgoing(val payload: String, val oneShot: Boolean)
@@ -99,6 +101,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         if (serverUrl.isEmpty() || secretKey.isEmpty()) {
             Log.w(TAG, "Service missing settings. serverUrlSet=${serverUrl.isNotEmpty()} secretKeySet=${secretKey.isNotEmpty()}")
             setStatus("Waiting for settings - open ClipSync app")
+            ClipState.update(ClipState.Connection.DISCONNECTED, "Enter your server and secret key")
             if (isOneShotSend) maybeStopIfIdle()
             return START_NOT_STICKY
         }
@@ -121,11 +124,13 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                     Log.i(TAG, "WebSocket connected; queued=${pendingOutgoing.size}")
                     flushPendingOutgoing()
                     setStatus("Connected - syncing clipboard")
+                    ClipState.update(ClipState.Connection.CONNECTED, "Syncing clipboard")
                     syncForegroundState("Connected - syncing clipboard")
                 },
                 onDisconnected = { reason ->
                     Log.w(TAG, "WebSocket disconnected: $reason")
                     setStatus("Disconnected - reconnecting...")
+                    ClipState.update(ClipState.Connection.DISCONNECTED, "Reconnecting...")
                     syncForegroundState("Disconnected - reconnecting...")
                 },
             )
@@ -141,12 +146,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             sendClipboardText(
                 text = actionText,
                 source = intent.getStringExtra(EXTRA_SOURCE) ?: "external",
-                oneShot = isOneShotSend
+                oneShot = isOneShotSend,
+                force = intent.getBooleanExtra(EXTRA_FORCE, false)
             )
         }
 
         if (settingsChanged) {
             setStatus("Connecting to server...")
+            ClipState.update(ClipState.Connection.CONNECTING, serverUrl)
             syncForegroundState("Connecting to server...")
         }
 
@@ -187,7 +194,9 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             clipboardManager.setPrimaryClip(clip)
 
             updateClipboardListener()
-            setStatus("From $senderDevice: ${content.take(25)}...")
+            ClipState.received(senderDevice, content)
+            // Status is persisted, so it never carries clipboard content.
+            setStatus("Received from $senderDevice")
             syncForegroundState("From $senderDevice: ${content.take(25)}...")
         }
     }
@@ -203,13 +212,13 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         return clip.getItemAt(0).coerceToText(this)?.toString()
     }
 
-    private fun sendClipboardText(text: String, source: String, oneShot: Boolean) {
+    private fun sendClipboardText(text: String, source: String, oneShot: Boolean, force: Boolean = false) {
         if (text.isBlank()) {
             Log.d(TAG, "Ignored blank clipboard text from $source")
             if (oneShot) maybeStopIfIdle()
             return
         }
-        if (text == lastClipboardText) {
+        if (text == lastClipboardText && !force) {
             Log.d(TAG, "Ignored duplicate clipboard text from $source")
             if (oneShot) maybeStopIfIdle()
             return
@@ -226,13 +235,15 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         val sent = wsClient?.send(payload) ?: false
         if (sent) {
             Log.i(TAG, "Sent from $source (${text.length} chars): ${text.take(30)}...")
-            setStatus("Sent: ${text.take(25)}...")
+            setStatus("Sent clipboard (${text.length} chars)")
+            ClipState.update(detail = "Sent clipboard (${text.length} chars)")
             syncForegroundState("Sent: ${text.take(25)}...")
             if (oneShot) maybeStopIfIdle()
         } else {
             pendingOutgoing.add(PendingOutgoing(payload, oneShot))
             Log.i(TAG, "Queued from $source (${text.length} chars). queue=${pendingOutgoing.size}: ${text.take(30)}...")
             setStatus("Queued clipboard - reconnecting...")
+            ClipState.update(detail = "Queued clipboard - reconnecting...")
             syncForegroundState("Queued clipboard - reconnecting...")
         }
     }
@@ -399,6 +410,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         wsClient?.disconnect()
         cancelNotification()
 
+        ClipState.update(ClipState.Connection.IDLE, "")
         // Clear live status so the Activity shows "Stopped"
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()

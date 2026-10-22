@@ -1,5 +1,6 @@
 package com.clipsync
 
+import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -8,14 +9,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 
-class SendClipboardActivity : AppCompatActivity() {
+class SendClipboardActivity : Activity() {
     private var hasAttemptedSend = false
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
 
     override fun onResume() {
         super.onResume()
@@ -38,7 +34,7 @@ class SendClipboardActivity : AppCompatActivity() {
 
         if (text.isNullOrBlank()) {
             Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
-            finish()
+            finishAndRemoveTask()
             return
         }
 
@@ -46,6 +42,7 @@ class SendClipboardActivity : AppCompatActivity() {
             action = ClipSyncService.ACTION_SEND_TEXT
             putExtra(ClipSyncService.EXTRA_TEXT, text)
             putExtra(ClipSyncService.EXTRA_SOURCE, "manual_send_activity")
+            putExtra(ClipSyncService.EXTRA_FORCE, true)
         }
 
         if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -55,7 +52,9 @@ class SendClipboardActivity : AppCompatActivity() {
         }
 
         Toast.makeText(this, "Sending clipboard", Toast.LENGTH_SHORT).show()
-        finish()
+        // Removing the task (not just finishing) returns straight to the app
+        // the user was in, and leaves nothing behind in Recents.
+        finishAndRemoveTask()
     }
 
     private fun needsPersistentNotification(): Boolean {

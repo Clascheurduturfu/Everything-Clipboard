@@ -62,6 +62,7 @@ def build_app(fake, module):
     app.ws_loop = object()
     app._clip_lock = threading.RLock()
     app._recent_sync_values = OrderedDict()
+    app.recent_clips = module.deque(maxlen=module.RECENT_CLIPS_MAX)
     app._applying_remote = False
     app._last_change_token = fake.token()
     app._rebuild_menu = lambda *a, **k: None

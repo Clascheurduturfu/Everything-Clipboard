@@ -5,3 +5,4 @@ cryptography
 fastapi
 uvicorn[standard]
 pyinstaller
+customtkinter

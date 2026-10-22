@@ -6,10 +6,12 @@ import asyncio
 import json
 import logging
 import os
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import platform
+import re
 import plistlib
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -21,7 +23,7 @@ import urllib.request
 
 import pystray
 import websockets
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from clipboard import (
     clipboard_change_token,
@@ -39,7 +41,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "1.0.2"
+APP_VERSION = "2.0 beta 1"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -47,10 +49,17 @@ _IS_MACOS = platform.system() == "Darwin"
 SYNC_ECHO_TTL_SECONDS = 15.0
 SYNC_ECHO_MAX_ENTRIES = 32
 
+# Reconnect backoff: start fast, back off while the server stays unreachable so
+# an offline laptop is not hammering the network every few seconds.
+RECONNECT_MIN_SECONDS = 2.0
+RECONNECT_MAX_SECONDS = 60.0
+RECENT_CLIPS_MAX = 5
+
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 LOG_FILE = os.path.join(CONFIG_DIR, "clipsync.log")
-LOCAL_RELAY_URL = "ws://127.0.0.1:8000"
+LOCK_FILE = os.path.join(CONFIG_DIR, "clipsync.lock")
+DEFAULT_HOST_PORT = 8000
 RUN_KEY_NAME = "ClipSync"
 MAC_LAUNCH_AGENT = os.path.expanduser("~/Library/LaunchAgents/com.clipsync.app.plist")
 
@@ -60,9 +69,13 @@ DEFAULT_CONFIG = {
     "normal_server_url": "",
     "secret_key": "",
     "host_mode": False,
+    # False = reachable on the local network only; True = published via ngrok.
     "use_ngrok_with_host": False,
+    "host_port": DEFAULT_HOST_PORT,
     "ngrok_public_url": "",
     "start_on_login": False,
+    # macOS: keep ClipSync out of the Dock unless one of its windows is open.
+    "hide_dock_icon": True,
 }
 
 
@@ -81,6 +94,107 @@ def find_executable(name: str) -> str | None:
             if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
                 return candidate
     return None
+
+
+def host_port(config: dict) -> int:
+    try:
+        port = int(config.get("host_port") or DEFAULT_HOST_PORT)
+    except (TypeError, ValueError):
+        return DEFAULT_HOST_PORT
+    return port if 1024 <= port <= 65535 else DEFAULT_HOST_PORT
+
+
+def local_relay_url(config: dict) -> str:
+    return f"ws://127.0.0.1:{host_port(config)}"
+
+
+def is_local_relay_url(url: str) -> bool:
+    return url.startswith("ws://127.0.0.1:")
+
+
+def host_bind_address(config: dict) -> str:
+    # With ngrok the tunnel is the only way in; without it the relay must be
+    # reachable from other devices on the network.
+    return "127.0.0.1" if config.get("use_ngrok_with_host") else "0.0.0.0"
+
+
+def lan_address() -> str:
+    """This computer's address on the local network (a UDP connect sends no packet)."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("192.0.2.1", 9))
+        return probe.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        probe.close()
+
+
+def port_available(bind: str, port: int) -> bool:
+    test = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        test.bind((bind, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        test.close()
+
+
+def _ngrok_command(path: str, *args: str) -> list[str]:
+    if platform.system() == "Windows" and path.lower().endswith(".ps1"):
+        return ["powershell", "-ExecutionPolicy", "Bypass", "-File", path, *args]
+    return [path, *args]
+
+
+def _run_ngrok(path: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        _ngrok_command(path, *args),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        stdin=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0,
+    )
+
+
+def ngrok_status() -> dict:
+    """Whether ngrok is installed and has an authtoken. Never returns the token."""
+    path = find_executable("ngrok")
+    status = {"installed": bool(path), "version": "", "authenticated": False}
+    if not path:
+        return status
+    try:
+        status["version"] = _run_ngrok(path, "version").stdout.strip().replace("ngrok version ", "")
+    except Exception as exc:
+        logger.warning("ngrok version check failed: %s", exc)
+    if os.environ.get("NGROK_AUTHTOKEN"):
+        status["authenticated"] = True
+        return status
+    try:
+        output = _run_ngrok(path, "config", "check").stdout
+        match = re.search(r"configuration file at (.+)$", output.strip(), re.MULTILINE)
+        if match:
+            with open(match.group(1).strip(), encoding="utf-8") as config_file:
+                status["authenticated"] = any(
+                    re.match(r"\s*authtoken\s*:\s*\S+", line) for line in config_file
+                )
+    except Exception as exc:
+        logger.warning("ngrok config check failed: %s", exc)
+    return status
+
+
+def ngrok_add_authtoken(token: str) -> tuple[bool, str]:
+    path = find_executable("ngrok")
+    if not path:
+        return False, "ngrok is not installed"
+    try:
+        result = _run_ngrok(path, "config", "add-authtoken", token.strip())
+    except Exception as exc:
+        return False, str(exc)
+    if result.returncode != 0:
+        return False, (result.stderr or result.stdout).strip()[:200] or "ngrok rejected the token"
+    return True, "Authtoken saved"
 
 
 def load_config() -> dict:
@@ -116,6 +230,79 @@ def configure_file_logging():
     logger.info("Logging to %s", LOG_FILE)
 
 
+def set_macos_dock_visible(visible: bool, activate: bool = False):
+    """Show or hide this process's Dock icon. No-op outside macOS.
+
+    The bundle ships with LSUIElement=true, so every ClipSync process starts
+    as a menu-bar-only accessory app; this promotes it to a regular app (Dock
+    icon, app menu, Cmd-Tab) or demotes it back at runtime.
+    """
+    if not _IS_MACOS:
+        return
+    try:
+        from AppKit import (
+            NSApplication,
+            NSApplicationActivationPolicyAccessory,
+            NSApplicationActivationPolicyRegular,
+        )
+    except ImportError:
+        logger.warning("AppKit unavailable; cannot change Dock visibility")
+        return
+
+    app = NSApplication.sharedApplication()
+    app.setActivationPolicy_(
+        NSApplicationActivationPolicyRegular if visible else NSApplicationActivationPolicyAccessory
+    )
+    if activate:
+        app.activateIgnoringOtherApps_(True)
+
+
+_instance_lock = None
+
+
+def acquire_single_instance_lock() -> bool:
+    """Return False when another ClipSync tray process is already running.
+
+    macOS can start ClipSync twice at login (LaunchAgent plus Login Items, or
+    "reopen windows" restoring the previous session), and Windows can too
+    (Run key plus a manual launch). The OS drops the lock when the process
+    dies, so a crash never leaves a stale lock behind.
+    """
+    global _instance_lock
+    if platform.system() == "Windows":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        handle = kernel32.CreateMutexW(None, False, "Local\\ClipSyncTray")
+        if not handle:
+            return True  # Cannot tell; never block startup over it.
+        if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+            kernel32.CloseHandle(handle)
+            return False
+        _instance_lock = handle
+        return True
+
+    import fcntl
+
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    lock = open(LOCK_FILE, "a+")
+    try:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return False
+    _instance_lock = lock
+    return True
+
+
+def asset_path(name: str) -> str:
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, "assets", name)
+
+
 def launch_arguments(extra_args: list[str] | None = None) -> list[str]:
     args = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, os.path.abspath(__file__)]
     if extra_args:
@@ -123,11 +310,326 @@ def launch_arguments(extra_args: list[str] | None = None) -> list[str]:
     return args
 
 
-def show_preferences_dialog() -> bool:
+# Same tokens as the iOS app (ios-app/ClipSync/ContentView.swift).
+PALETTE = {
+    "bg": "#101827",
+    "panel": "#182234",
+    "panel_border": "#26354C",
+    "status_bg": "#102A3D",
+    "status_border": "#1C6F94",
+    "text": "#E7EEF8",
+    "text_secondary": "#95A3B8",
+    "label": "#B8C3D4",
+    "blue": "#4A90D9",
+    "blue_hover": "#3B7BC0",
+    "teal": "#00A6A6",
+    "green": "#34D399",
+    "orange": "#FBBF24",
+    "red": "#F87171",
+}
+STATUS_DOT_COLORS = {
+    "green": PALETTE["green"],
+    "blue": PALETTE["blue"],
+    "orange": PALETTE["orange"],
+    "red": PALETTE["red"],
+    "gray": PALETTE["text_secondary"],
+}
+
+
+def _preferences_values(device: str, server_url: str, secret: str, startup: bool,
+                        host: bool, ngrok: bool, hide_dock: bool, port) -> dict:
+    values = {
+        "device_name": device.strip() or "Desktop",
+        "normal_server_url": server_url.strip(),
+        "secret_key": secret.strip(),
+        "start_on_login": bool(startup),
+        "host_mode": bool(host),
+        "use_ngrok_with_host": bool(ngrok),
+        "hide_dock_icon": bool(hide_dock),
+        "ngrok_public_url": "",
+    }
+    values["host_port"] = host_port({"host_port": port})
+    values["server_url"] = local_relay_url(values) if host else server_url.strip()
+    return values
+
+
+def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -> bool:
+    """Styled preferences window. It runs in its own short-lived process, so
+    its UI toolkit costs nothing once the window is closed."""
+    try:
+        import customtkinter as ctk
+    except ImportError:
+        logger.warning("customtkinter unavailable; using the basic preferences window")
+        return _show_basic_preferences_dialog()
+
+    p = PALETTE
+    config = load_config()
+    saved = {"value": False}
+
+    ctk.set_appearance_mode("dark")
+    root = ctk.CTk(fg_color=p["bg"])
+    set_macos_dock_visible(True, activate=True)
+    root.title("ClipSync Preferences")
+    root.resizable(False, False)
+
+    def font(size: int, weight: str = "normal"):
+        return ctk.CTkFont(size=size, weight=weight)
+
+    body = ctk.CTkFrame(root, fg_color="transparent")
+    body.pack(fill="both", expand=True, padx=24, pady=(18, 20))
+
+    ctk.CTkLabel(body, text="ClipSync", font=font(26, "bold"), text_color=p["text"]).pack()
+    ctk.CTkLabel(
+        body, text=f"Clipboard sync  \u00b7  v{APP_VERSION}", font=font(13), text_color=p["text_secondary"]
+    ).pack(pady=(0, 14))
+
+    def card(bg: str, border: str):
+        frame = ctk.CTkFrame(body, fg_color=bg, border_color=border, border_width=1, corner_radius=12)
+        frame.pack(fill="x", pady=(0, 14))
+        return frame
+
+    def card_title(parent, text: str):
+        ctk.CTkLabel(parent, text=text, font=font(15, "bold"), text_color=p["text"], anchor="w").pack(
+            fill="x", padx=16, pady=(14, 4)
+        )
+
+    status = card(p["status_bg"], p["status_border"])
+    status_row = ctk.CTkFrame(status, fg_color="transparent")
+    status_row.pack(fill="x", padx=16, pady=12)
+    ctk.CTkLabel(
+        status_row, text="\u25cf", font=font(16),
+        text_color=STATUS_DOT_COLORS.get(status_color, p["text_secondary"]),
+    ).pack(side="left", padx=(0, 10))
+    ctk.CTkLabel(
+        status_row, text=status_text or "Not connected", font=font(14, "bold"), text_color=p["text"], anchor="w"
+    ).pack(side="left")
+
+    tabs = ctk.CTkTabview(
+        body, height=330, corner_radius=12, fg_color=p["panel"], border_color=p["panel_border"], border_width=1,
+        segmented_button_fg_color=p["bg"], segmented_button_selected_color=p["blue"],
+        segmented_button_selected_hover_color=p["blue_hover"], segmented_button_unselected_color=p["bg"],
+        segmented_button_unselected_hover_color=p["panel_border"], text_color=p["text"],
+    )
+    tabs.pack(fill="x", pady=(0, 14))
+    connection = tabs.add("Connection")
+    hosting = tabs.add("Hosting")
+    general = tabs.add("General")
+
+    def small(parent, text: str = "", color: str = p["text_secondary"]):
+        label = ctk.CTkLabel(parent, text=text, font=font(12), text_color=color, anchor="w",
+                             justify="left", wraplength=400)
+        label.pack(fill="x", padx=8, pady=(2, 2))
+        return label
+
+    def field(parent, label: str, value: str, placeholder: str, show: str = "", width: int = 360):
+        ctk.CTkLabel(parent, text=label, font=font(12), text_color=p["label"], anchor="w").pack(
+            fill="x", padx=8, pady=(6, 2)
+        )
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", padx=8)
+        entry = ctk.CTkEntry(
+            row, width=width, height=34, corner_radius=8, show=show, placeholder_text=placeholder,
+            fg_color=p["bg"], border_color=p["panel_border"], text_color=p["text"],
+        )
+        entry.pack(side="left", fill="x" if width >= 300 else None, expand=width >= 300)
+        if value:
+            entry.insert(0, str(value))
+        return row, entry
+
+    def switch(parent, text: str, var, command=None):
+        widget = ctk.CTkSwitch(
+            parent, text=text, variable=var, onvalue=True, offvalue=False, font=font(13),
+            text_color=p["text"], progress_color=p["teal"], fg_color=p["panel_border"],
+            button_color=p["text"], button_hover_color="#FFFFFF", command=command,
+        )
+        widget.pack(anchor="w", padx=8, pady=6)
+        return widget
+
+    # --- Connection tab
+    _, device_entry = field(connection, "Device name", config.get("device_name", "Desktop"), "My laptop")
+    _, server_entry = field(
+        connection, "Server URL", config.get("normal_server_url") or config.get("server_url", ""),
+        "wss://your-server",
+    )
+    # Collapses to nothing while empty, so the form has no gap.
+    hint_holder = ctk.CTkFrame(connection, fg_color="transparent", height=1)
+    hint_holder.pack(fill="x")
+    server_hint = small(hint_holder)
+    server_hint.pack_forget()
+    secret_row, secret_entry = field(
+        connection, "Secret key", config.get("secret_key", ""), "Shared secret", show="\u2022"
+    )
+
+    def toggle_secret():
+        hidden = secret_entry.cget("show") != ""
+        secret_entry.configure(show="" if hidden else "\u2022")
+        reveal.configure(text="Hide" if hidden else "Show")
+
+    reveal = ctk.CTkButton(
+        secret_row, text="Show", width=58, height=34, corner_radius=8, fg_color=p["panel_border"],
+        hover_color=p["status_border"], text_color=p["text"], command=toggle_secret,
+    )
+    reveal.pack(side="left", padx=(8, 0))
+
+    # --- Hosting tab
+    host_var = ctk.BooleanVar(value=bool(config.get("host_mode")))
+    exposure_var = ctk.StringVar(
+        value="ngrok tunnel" if config.get("use_ngrok_with_host") else "Local network"
+    )
+    small(hosting, "Run the relay on this computer instead of a server. Your other devices connect to it.")
+    switch(hosting, "Host the relay on this computer", host_var, command=lambda: refresh_hosting())
+    details = ctk.CTkFrame(hosting, fg_color="transparent")
+    reach_row = ctk.CTkFrame(details, fg_color="transparent")
+    reach_row.pack(fill="x", padx=8, pady=(4, 2))
+    ctk.CTkLabel(reach_row, text="Reachable from", font=font(12), text_color=p["label"]).pack(side="left")
+    ctk.CTkSegmentedButton(
+        reach_row, values=["Local network", "ngrok tunnel"], variable=exposure_var,
+        command=lambda _value: refresh_hosting(), selected_color=p["blue"],
+        selected_hover_color=p["blue_hover"], unselected_color=p["bg"],
+        unselected_hover_color=p["panel_border"], fg_color=p["bg"], text_color=p["text"],
+    ).pack(side="left", padx=(10, 0))
+    _, port_entry = field(details, "Port", host_port(config), "8000", width=90)
+    port_entry.bind("<KeyRelease>", lambda _event: refresh_hosting())
+    host_info = small(details, color=p["label"])
+    ngrok_box = ctk.CTkFrame(details, fg_color="transparent")
+    ngrok_install_label = small(ngrok_box, "Checking ngrok...")
+    ngrok_auth_label = small(ngrok_box, "")
+    token_row = ctk.CTkFrame(ngrok_box, fg_color="transparent")
+    token_entry = ctk.CTkEntry(
+        token_row, width=280, height=32, corner_radius=8, show="\u2022",
+        placeholder_text="ngrok authtoken (dashboard.ngrok.com)",
+        fg_color=p["bg"], border_color=p["panel_border"], text_color=p["text"],
+    )
+    token_entry.pack(side="left", fill="x", expand=True)
+    ngrok_state = {"status": None}
+
+    def save_token():
+        token = token_entry.get().strip()
+        if not token:
+            return
+        ngrok_auth_label.configure(text="Saving authtoken...", text_color=p["text_secondary"])
+
+        def work():
+            ok, message = ngrok_add_authtoken(token)
+            status = ngrok_status()
+            root.after(0, lambda: (token_entry.delete(0, "end"), render_ngrok(status, None if ok else message)))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    ctk.CTkButton(
+        token_row, text="Save token", width=96, height=32, corner_radius=8, fg_color=p["panel_border"],
+        hover_color=p["status_border"], text_color=p["text"], command=save_token,
+    ).pack(side="left", padx=(8, 0))
+
+    def render_ngrok(status: dict, error: str | None = None):
+        ngrok_state["status"] = status
+        if not status["installed"]:
+            ngrok_install_label.configure(
+                text="\u2717  ngrok is not installed. Get it from ngrok.com/download, then reopen Preferences.",
+                text_color=p["red"],
+            )
+            ngrok_auth_label.configure(text="")
+            token_row.pack_forget()
+            return
+        version = f" ({status['version']})" if status["version"] else ""
+        ngrok_install_label.configure(text=f"\u2713  ngrok installed{version}", text_color=p["green"])
+        if error:
+            ngrok_auth_label.configure(text=f"\u2717  {error}", text_color=p["red"])
+        elif status["authenticated"]:
+            ngrok_auth_label.configure(text="\u2713  Signed in (authtoken set)", text_color=p["green"])
+        else:
+            ngrok_auth_label.configure(
+                text="\u2717  No authtoken yet. Paste the one from dashboard.ngrok.com:", text_color=p["orange"]
+            )
+        if status["authenticated"] and not error:
+            token_row.pack_forget()
+        else:
+            token_row.pack(fill="x", padx=8, pady=(2, 4))
+
+    def refresh_hosting():
+        hosting_on = bool(host_var.get())
+        if hosting_on:
+            details.pack(fill="x")
+            server_entry.configure(state="disabled", text_color=p["text_secondary"])
+            server_hint.configure(text="Hosting is on: this computer connects to its own relay (Hosting tab).")
+            server_hint.pack(fill="x", padx=8, pady=(2, 2))
+        else:
+            details.pack_forget()
+            server_entry.configure(state="normal", text_color=p["text"])
+            server_hint.pack_forget()
+        port = host_port({"host_port": port_entry.get()})
+        if exposure_var.get() == "Local network":
+            ngrok_box.pack_forget()
+            host_info.configure(
+                text=(
+                    f"Listens on port {port} of every network interface. No third-party service.\n"
+                    f"Devices on this network connect to:  ws://{lan_address()}:{port}\n"
+                    "Your firewall may ask to allow ClipSync the first time."
+                )
+            )
+        else:
+            public = config.get("ngrok_public_url") if config.get("use_ngrok_with_host") else ""
+            host_info.configure(
+                text=(
+                    f"Listens on 127.0.0.1:{port} only; ngrok publishes it on the internet.\n"
+                    + (f"Current public address:  {public}" if public
+                       else "The public wss:// address is copied to your clipboard when the tunnel is up.")
+                )
+            )
+            ngrok_box.pack(fill="x", pady=(4, 0))
+
+    threading.Thread(target=lambda: (lambda st: root.after(0, lambda: render_ngrok(st)))(ngrok_status()),
+                     daemon=True).start()
+
+    # --- General tab
+    startup_var = ctk.BooleanVar(value=bool(config.get("start_on_login")))
+    hide_dock_var = ctk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
+    switch(general, "Start ClipSync on login", startup_var)
+    if _IS_MACOS:
+        switch(general, "Hide Dock icon when no window is open", hide_dock_var)
+
+    refresh_hosting()
+    root.minsize(520, 0)
+    if host_var.get():
+        tabs.set("Hosting")
+
+    def save_and_close(_event=None):
+        config.update(
+            _preferences_values(
+                device_entry.get(), server_entry.get(), secret_entry.get(), startup_var.get(),
+                host_var.get(), exposure_var.get() == "ngrok tunnel", hide_dock_var.get(), port_entry.get(),
+            )
+        )
+        save_config(config)
+        saved["value"] = True
+        root.destroy()
+
+    buttons = ctk.CTkFrame(body, fg_color="transparent")
+    buttons.pack(fill="x", pady=(2, 0))
+    ctk.CTkButton(
+        buttons, text="Save & Connect", height=38, corner_radius=10, font=font(14, "bold"),
+        fg_color=p["blue"], hover_color=p["blue_hover"], command=save_and_close,
+    ).pack(side="right")
+    ctk.CTkButton(
+        buttons, text="Cancel", width=90, height=38, corner_radius=10, font=font(14),
+        fg_color="transparent", border_width=1, border_color=p["panel_border"],
+        hover_color=p["panel"], text_color=p["text_secondary"], command=root.destroy,
+    ).pack(side="right", padx=(0, 10))
+
+    root.bind("<Return>", save_and_close)
+    root.bind("<Escape>", lambda _event: root.destroy())
+    root.mainloop()
+    return saved["value"]
+
+
+def _show_basic_preferences_dialog() -> bool:
     import tkinter as tk
 
     config = load_config()
     root = tk.Tk()
+    # The preferences window is its own process, so it owns the Dock icon only
+    # while it is open and the icon disappears again when it closes.
+    set_macos_dock_visible(True, activate=True)
     root.title("ClipSync Preferences")
     root.resizable(False, False)
     root.configure(padx=18, pady=16)
@@ -138,6 +640,7 @@ def show_preferences_dialog() -> bool:
     startup_var = tk.BooleanVar(value=bool(config.get("start_on_login")))
     host_var = tk.BooleanVar(value=bool(config.get("host_mode")))
     ngrok_var = tk.BooleanVar(value=bool(config.get("use_ngrok_with_host")))
+    hide_dock_var = tk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
     saved = {"value": False}
 
     def row(label: str, widget, idx: int):
@@ -151,29 +654,26 @@ def show_preferences_dialog() -> bool:
     tk.Checkbutton(root, text="Start ClipSync on login", variable=startup_var).grid(
         row=3, column=0, columnspan=2, sticky="w", pady=(10, 2)
     )
-    tk.Checkbutton(root, text="Host Mode", variable=host_var).grid(
+    tk.Checkbutton(root, text="Host the relay on this computer (local network)", variable=host_var).grid(
         row=4, column=0, columnspan=2, sticky="w", pady=2
     )
-    tk.Checkbutton(root, text="Use ngrok with Host Mode", variable=ngrok_var).grid(
+    tk.Checkbutton(root, text="Publish it with an ngrok tunnel", variable=ngrok_var).grid(
         row=5, column=0, columnspan=2, sticky="w", pady=2
     )
+    if _IS_MACOS:
+        tk.Checkbutton(
+            root, text="Hide Dock icon when no window is open", variable=hide_dock_var
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=2)
 
     button_frame = tk.Frame(root)
-    button_frame.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
+    button_frame.grid(row=7, column=0, columnspan=2, sticky="e", pady=(16, 0))
 
     def save_and_close():
-        server_url = server_var.get().strip()
         config.update(
-            {
-                "device_name": device_var.get().strip() or "Desktop",
-                "normal_server_url": server_url,
-                "secret_key": secret_var.get().strip(),
-                "start_on_login": bool(startup_var.get()),
-                "host_mode": bool(host_var.get()),
-                "use_ngrok_with_host": bool(ngrok_var.get()),
-                "ngrok_public_url": "",
-                "server_url": LOCAL_RELAY_URL if host_var.get() else server_url,
-            }
+            _preferences_values(
+                device_var.get(), server_var.get(), secret_var.get(), startup_var.get(),
+                host_var.get(), ngrok_var.get(), hide_dock_var.get(), host_port(config),
+            )
         )
         save_config(config)
         saved["value"] = True
@@ -185,24 +685,90 @@ def show_preferences_dialog() -> bool:
     return saved["value"]
 
 
-def create_icon_image(color: str) -> Image.Image:
+# Template alpha per status on macOS, where menu-bar icons are monochrome.
+_MENU_BAR_ALPHA = {"green": 255, "blue": 255, "orange": 170, "red": 170, "gray": 105}
+_TRAY_DOT_RGB = {
+    "gray": (125, 136, 150),
+    "green": (52, 211, 153),
+    "orange": (251, 191, 36),
+    "blue": (74, 144, 217),
+    "red": (248, 113, 113),
+}
+_icon_cache: dict[str, Image.Image] = {}
+
+
+def _menu_bar_glyph(color: str) -> Image.Image:
+    """Clipboard-with-arrow silhouette used as a macOS template image."""
     size = 64
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle([10, 12, 42, 58], radius=7, outline=255, width=5)
+    draw.rounded_rectangle([18, 5, 34, 18], radius=4, fill=255)
+    draw.rounded_rectangle([18, 27, 34, 32], radius=2, fill=255)
+
+    arrow = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(arrow).polygon(
+        [(26, 39), (44, 39), (44, 31), (60, 45), (44, 59), (44, 51), (26, 51)], fill=255
+    )
+    # Carve a gap around the arrow so it reads as separate from the board.
+    mask.paste(0, mask=arrow.filter(ImageFilter.MaxFilter(7)))
+    mask.paste(255, mask=arrow)
+
+    level = _MENU_BAR_ALPHA.get(color, 105)
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    colors = {
-        "gray": (125, 136, 150, 255),
-        "green": (0, 194, 168, 255),
-        "orange": (255, 184, 77, 255),
-        "blue": (74, 144, 217, 255),
-        "red": (224, 92, 92, 255),
-    }
-    fill = colors.get(color, colors["gray"])
-    draw.rounded_rectangle([6, 6, size - 6, size - 6], radius=14, fill=fill)
-    draw.rounded_rectangle([21, 17, 43, 49], radius=3, fill=(255, 255, 255, 230))
-    draw.rounded_rectangle([25, 12, 39, 22], radius=3, fill=(255, 255, 255, 230))
-    draw.rectangle([26, 29, 38, 32], fill=fill)
-    draw.rectangle([26, 37, 38, 40], fill=fill)
+    img.putalpha(mask.point(lambda v: v * level // 255))
     return img
+
+
+def _tray_icon_with_dot(color: str) -> Image.Image:
+    """App icon with a status dot in the corner (Windows/Linux tray)."""
+    size = 64
+    try:
+        img = Image.open(asset_path("clipsync.png")).convert("RGBA").resize((size, size), Image.LANCZOS)
+    except OSError:
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        ImageDraw.Draw(img).rounded_rectangle([6, 6, size - 6, size - 6], radius=14, fill=(0, 194, 168, 255))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([38, 38, 63, 63], fill=(16, 24, 39, 255))
+    draw.ellipse([42, 42, 59, 59], fill=_TRAY_DOT_RGB.get(color, _TRAY_DOT_RGB["gray"]) + (255,))
+    return img
+
+
+def create_icon_image(color: str) -> Image.Image:
+    if color not in _icon_cache:
+        _icon_cache[color] = _menu_bar_glyph(color) if _IS_MACOS else _tray_icon_with_dot(color)
+    return _icon_cache[color]
+
+
+if _IS_MACOS:
+
+    class _TrayIcon(pystray.Icon):
+        """Renders the icon as a crisp template image so it follows the light
+        or dark menu bar like native status items."""
+
+        def _assert_image(self):
+            if self._icon_image is not None:
+                return
+            try:
+                import io
+
+                import AppKit
+                import Foundation
+
+                buf = io.BytesIO()
+                self._icon.save(buf, "png")
+                image = AppKit.NSImage.alloc().initWithData_(Foundation.NSData(buf.getvalue()))
+                points = max(self._status_bar.thickness() - 4, 16)
+                image.setSize_((points, points))
+                image.setTemplate_(True)
+                self._icon_image = image
+                self._status_item.button().setImage_(image)
+            except Exception:
+                logger.exception("Template icon failed; using pystray default rendering")
+                super()._assert_image()
+
+else:
+    _TrayIcon = pystray.Icon
 
 
 class ClipSyncApp:
@@ -223,6 +789,12 @@ class ClipSyncApp:
         self.ws_thread: threading.Thread | None = None
         self.ngrok_process: subprocess.Popen | None = None
         self.preferences_open = False
+        self.status_color = "gray"
+        self.host_lan_address = ""
+        self.ngrok_problem = ""
+        self.status_title = "Disconnected"
+        self.recent_clips: "deque[tuple[str, str]]" = deque(maxlen=RECENT_CLIPS_MAX)
+        self._reconnect_lock = threading.Lock()
 
         # Echo suppression.  `_recent_sync_values` holds every payload that has
         # recently been sent or received; `_applying_remote` parks the poller
@@ -232,11 +804,13 @@ class ClipSyncApp:
         self._applying_remote = False
         self._last_change_token = clipboard_change_token()
 
-        self.icon = pystray.Icon("ClipSync")
+        self.icon = _TrayIcon("ClipSync")
         self.icon.icon = create_icon_image("gray")
         self.icon.title = "ClipSync - Disconnected"
         if platform.system() == "Windows":
             self._setup_windows_shutdown_handler()
+        # pystray has created NSApp by now; settle the Dock icon before run().
+        self._apply_dock_policy()
         self._rebuild_menu()
 
     def _setup_windows_shutdown_handler(self):
@@ -275,39 +849,58 @@ class ClipSyncApp:
                 pass
         fn()
 
+    def _apply_dock_policy(self):
+        if _IS_MACOS:
+            hidden = bool(self.config.get("hide_dock_icon", True))
+            self._run_on_main_thread(lambda: set_macos_dock_visible(not hidden))
+
+    def _toggle_dock_icon_from_tray(self, icon=None, item=None):
+        with self.config_lock:
+            self.config["hide_dock_icon"] = not self.config.get("hide_dock_icon", True)
+            save_config(self.config)
+        self._apply_dock_policy()
+        self._rebuild_menu()
+
     def _build_menu(self):
         """Build and return the tray menu (pure computation, thread-safe)."""
         status = "Connected" if self.is_connected else "Disconnected"
         if self.status_message:
             status = self.status_message
 
-        last_text = "Last: none"
-        if self.last_received_content:
-            short = textwrap.shorten(self.last_received_content, width=38, placeholder="...")
-            last_text = f'Last: "{short}" from {self.last_received_device}'
-
-        host_text = "Host Mode: ON" if self.config.get("host_mode") else "Host Mode: OFF"
-        ngrok_text = (
-            "Use ngrok with Host: ON"
-            if self.config.get("use_ngrok_with_host")
-            else "Use ngrok with Host: OFF"
-        )
-
         items = [
             pystray.MenuItem(f"ClipSync v{APP_VERSION}", None, enabled=False),
             pystray.MenuItem(f"Status: {status}", None, enabled=False),
-            pystray.MenuItem(last_text, None, enabled=False),
+            self._recent_clips_item(),
         ]
-        if self.config.get("ngrok_public_url"):
-            items.append(pystray.MenuItem(f"Mobile URL: {self.config['ngrok_public_url']}", None, enabled=False))
 
         items.extend(
             [
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Preferences...", self._open_preferences_from_tray),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem(host_text, self._toggle_host_mode_from_tray),
-                pystray.MenuItem(ngrok_text, self._toggle_ngrok_from_tray),
+                pystray.MenuItem(self._hosting_summary(), None, enabled=False),
+                pystray.MenuItem(
+                    "Host relay on this computer",
+                    self._toggle_host_mode_from_tray,
+                    checked=lambda item: bool(self.config.get("host_mode")),
+                ),
+                pystray.MenuItem(
+                    "Publish with ngrok",
+                    self._toggle_ngrok_from_tray,
+                    checked=lambda item: bool(self.config.get("use_ngrok_with_host")),
+                ),
+            ]
+        )
+        if _IS_MACOS:
+            items.append(
+                pystray.MenuItem(
+                    "Show Dock Icon",
+                    self._toggle_dock_icon_from_tray,
+                    checked=lambda item: not self.config.get("hide_dock_icon", True),
+                )
+            )
+        items.extend(
+            [
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
                     "Connect" if not self.is_connected else "Disconnect",
@@ -319,9 +912,48 @@ class ClipSyncApp:
         )
         return pystray.Menu(*items)
 
-    def _update_tray(self, icon_image=None, title=None, rebuild_menu=True):
+    def _hosting_summary(self) -> str:
+        if not self.config.get("host_mode"):
+            return "Hosting: off"
+        port = host_port(self.config)
+        if not self.config.get("use_ngrok_with_host"):
+            return f"Hosting: devices connect to ws://{self.host_lan_address or lan_address()}:{port}"
+        if self.ngrok_problem:
+            return f"Hosting (ngrok): {self.ngrok_problem}"
+        public = self.config.get("ngrok_public_url")
+        return f"Hosting (ngrok): {public}" if public else f"Hosting (ngrok): starting on port {port}..."
+
+    def _recent_clips_item(self):
+        clips = list(self.recent_clips)
+        if not clips:
+            return pystray.MenuItem("Recent clips: none", None, enabled=False)
+        entries = []
+        for device, content in reversed(clips):
+            label = textwrap.shorten(" ".join(content.split()), width=40, placeholder="...")
+            entries.append(pystray.MenuItem(f"{label}  \u2014 {device}", self._make_recopy_action(content)))
+        return pystray.MenuItem("Recent clips", pystray.Menu(*entries))
+
+    def _make_recopy_action(self, content: str):
+        def _recopy(icon, item):
+            # Copying it back counts as a fresh local copy, so the poller syncs it.
+            threading.Thread(target=set_clipboard, args=(content,), daemon=True).start()
+
+        return _recopy
+
+    def _remember_recent_clip(self, device: str, content: str):
+        for entry in list(self.recent_clips):
+            if entry[1] == content:
+                self.recent_clips.remove(entry)
+        self.recent_clips.append((device, content))
+
+    def _update_tray(self, icon_color=None, title=None, rebuild_menu=True):
         """Batch-update tray icon properties on the main thread."""
         menu = self._build_menu() if rebuild_menu else None
+        icon_image = create_icon_image(icon_color) if icon_color else None
+        if icon_color:
+            self.status_color = icon_color
+        if title:
+            self.status_title = title.replace("ClipSync - ", "", 1)
 
         def _apply():
             if icon_image is not None:
@@ -339,7 +971,7 @@ class ClipSyncApp:
     def _set_status(self, message: str, icon_color: str | None = None):
         self.status_message = message
         self._update_tray(
-            icon_image=create_icon_image(icon_color) if icon_color else None,
+            icon_color=icon_color,
             title=f"ClipSync - {message}",
             rebuild_menu=True,
         )
@@ -355,7 +987,15 @@ class ClipSyncApp:
             self.preferences_open = True
             try:
                 process = subprocess.Popen(
-                    launch_arguments(["--preferences"]),
+                    launch_arguments(
+                        [
+                            "--preferences",
+                            "--status-color",
+                            self.status_color,
+                            "--status-text",
+                            self.status_title,
+                        ]
+                    ),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
@@ -376,6 +1016,7 @@ class ClipSyncApp:
             self.config = {**DEFAULT_CONFIG, **disk_config}
 
         self._set_start_on_login(bool(self.config.get("start_on_login")))
+        self._apply_dock_policy()
         if self.config.get("host_mode"):
             self._enable_host_mode(reconnect=False)
         else:
@@ -397,9 +1038,9 @@ class ClipSyncApp:
 
             if self.config["host_mode"]:
                 normal_url = self.config.get("normal_server_url") or old.get("normal_server_url")
-                if normal_url and normal_url != LOCAL_RELAY_URL:
+                if normal_url and not is_local_relay_url(normal_url):
                     self.config["normal_server_url"] = normal_url
-                self.config["server_url"] = LOCAL_RELAY_URL
+                self.config["server_url"] = local_relay_url(self.config)
             else:
                 self.config["server_url"] = self.config.get("normal_server_url", "")
                 self.config["ngrok_public_url"] = ""
@@ -428,18 +1069,19 @@ class ClipSyncApp:
 
     def _enable_host_mode(self, reconnect: bool = True):
         with self.config_lock:
-            if self.config.get("server_url") and self.config.get("server_url") != LOCAL_RELAY_URL:
+            if self.config.get("server_url") and not is_local_relay_url(self.config["server_url"]):
                 self.config["normal_server_url"] = self.config["server_url"]
             self.config["host_mode"] = True
-            self.config["server_url"] = LOCAL_RELAY_URL
+            self.config["server_url"] = local_relay_url(self.config)
             save_config(self.config)
 
-        self._start_host()
+        if not self._start_host():
+            return
         if self.config.get("use_ngrok_with_host"):
             self._start_ngrok()
         else:
             self._stop_ngrok()
-        self._set_status("Host Mode running", "blue")
+            self._set_status(f"Hosting on port {host_port(self.config)}", "blue")
         if reconnect:
             self._reconnect_if_configured()
 
@@ -451,7 +1093,7 @@ class ClipSyncApp:
             self.config["ngrok_public_url"] = ""
             self.config["server_url"] = self.config.get("normal_server_url", "")
             save_config(self.config)
-        self._set_status("Host Mode stopped", "gray")
+        self._set_status("Hosting stopped", "gray")
         if reconnect:
             self._reconnect_if_configured()
 
@@ -462,21 +1104,35 @@ class ClipSyncApp:
             save_config(self.config)
 
         if self.config.get("host_mode"):
+            # Switching modes changes which interface the relay listens on.
+            self._start_host()
             if enabled:
                 self._start_ngrok()
             else:
                 self._stop_ngrok()
+                self._set_status(f"Hosting on port {host_port(self.config)}", "blue")
         self._rebuild_menu()
 
-    def _start_host(self):
+    def _start_host(self) -> bool:
+        port = host_port(self.config)
+        bind = host_bind_address(self.config)
         if self.server_thread and self.server_thread.is_alive:
-            return
+            if (self.server_thread.host, self.server_thread.port) == (bind, port):
+                return True
+            self._stop_host()
+        if not port_available(bind, port):
+            logger.error("Hosting: port %s is already in use", port)
+            self._set_status(f"Port {port} is already in use", "red")
+            return False
         try:
-            self.server_thread = start_host_server(host="127.0.0.1", port=8000)
-            logger.info("Host Mode local relay started on %s", LOCAL_RELAY_URL)
+            self.server_thread = start_host_server(host=bind, port=port)
+            self.host_lan_address = lan_address()
+            logger.info("Hosting relay on %s:%s", bind, port)
+            return True
         except Exception as exc:
-            logger.error("Could not start Host Mode: %s", exc)
+            logger.error("Could not start hosting: %s", exc)
             self._set_status(f"Host error: {exc}", "red")
+            return False
 
     def _stop_host(self):
         if self.server_thread:
@@ -484,18 +1140,26 @@ class ClipSyncApp:
             self.server_thread = None
 
     def _start_ngrok(self):
+        # The status checks shell out to ngrok; keep them off the tray thread.
+        threading.Thread(target=self._start_ngrok_worker, daemon=True).start()
+
+    def _start_ngrok_worker(self):
         if self.ngrok_process and self.ngrok_process.poll() is None:
             return
 
-        ngrok_path = find_executable("ngrok")
-        if not ngrok_path:
-            self._set_status("ngrok not found", "orange")
-            logger.warning("ngrok is not installed or not visible to ClipSync")
+        status = ngrok_status()
+        if not status["installed"]:
+            self.ngrok_problem = "ngrok is not installed"
+        elif not status["authenticated"]:
+            self.ngrok_problem = "no ngrok authtoken (Preferences > Hosting)"
+        else:
+            self.ngrok_problem = ""
+        if self.ngrok_problem:
+            logger.warning("Cannot start ngrok: %s", self.ngrok_problem)
+            self._set_status(self.ngrok_problem, "orange")
             return
 
-        cmd = [ngrok_path, "http", "8000"]
-        if platform.system() == "Windows" and ngrok_path.lower().endswith(".ps1"):
-            cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", ngrok_path, "http", "8000"]
+        cmd = _ngrok_command(find_executable("ngrok"), "http", str(host_port(self.config)))
 
         try:
             self.ngrok_process = subprocess.Popen(
@@ -513,6 +1177,10 @@ class ClipSyncApp:
 
     def _wait_for_ngrok_url(self):
         for _ in range(30):
+            if self.ngrok_process is None or self.ngrok_process.poll() is not None:
+                self.ngrok_problem = "ngrok exited (check its authtoken)"
+                self._set_status(self.ngrok_problem, "orange")
+                return
             url = self._read_ngrok_url()
             if url:
                 with self.config_lock:
@@ -526,6 +1194,7 @@ class ClipSyncApp:
                 logger.info("ngrok mobile URL: %s", url)
                 return
             time.sleep(0.5)
+        self.ngrok_problem = "tunnel not ready yet"
         self._set_status("ngrok tunnel not ready", "orange")
 
     def _read_ngrok_url(self) -> str:
@@ -583,15 +1252,31 @@ class ClipSyncApp:
         self.stop_event.set()
         self.is_connected = False
         self._update_tray(
-            icon_image=create_icon_image("gray"),
+            icon_color="gray",
             title="ClipSync - Disconnected",
             rebuild_menu=True,
         )
 
     def _reconnect_if_configured(self):
-        self._disconnect()
-        time.sleep(0.2)
-        self._connect()
+        # Waiting for the old socket to close can take a few seconds; never do
+        # that on the tray's (main) thread.
+        threading.Thread(target=self._reconnect_worker, daemon=True).start()
+
+    def _reconnect_worker(self):
+        with self._reconnect_lock:
+            old_thread = self.ws_thread
+            self._disconnect()
+            if old_thread and old_thread.is_alive():
+                old_thread.join(timeout=8)
+                if old_thread.is_alive():
+                    logger.warning("Previous connection did not stop in time; skipping reconnect")
+                    return
+            self._connect()
+
+    async def _sleep_unless_stopped(self, seconds: float):
+        deadline = time.monotonic() + seconds
+        while not self.stop_event.is_set() and time.monotonic() < deadline:
+            await asyncio.sleep(0.2)
 
     def _ws_thread(self):
         self.ws_loop = asyncio.new_event_loop()
@@ -604,11 +1289,12 @@ class ClipSyncApp:
         finally:
             self.is_connected = False
             self._update_tray(
-                icon_image=create_icon_image("gray"),
+                icon_color="gray",
                 title="ClipSync - Disconnected",
                 rebuild_menu=True,
             )
-            self.ws_thread = None
+            if self.ws_thread is threading.current_thread():
+                self.ws_thread = None
 
     async def _ws_client_loop(self):
         with self.config_lock:
@@ -622,6 +1308,7 @@ class ClipSyncApp:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
 
+        retry_delay = RECONNECT_MIN_SECONDS
         while not self.stop_event.is_set():
             try:
                 async with websockets.connect(
@@ -633,8 +1320,9 @@ class ClipSyncApp:
                 ) as ws:
                     self.is_connected = True
                     self.status_message = ""
+                    retry_delay = RECONNECT_MIN_SECONDS
                     self._update_tray(
-                        icon_image=create_icon_image("green"),
+                        icon_color="green",
                         title="ClipSync - Connected",
                         rebuild_menu=True,
                     )
@@ -655,10 +1343,11 @@ class ClipSyncApp:
             except Exception as exc:
                 if self.stop_event.is_set():
                     break
-                logger.warning("Connection failed: %s. Retrying in 3s...", exc)
+                logger.warning("Connection failed: %s. Retrying in %.0fs...", exc, retry_delay)
                 self.is_connected = False
-                self._set_status("Reconnecting...", "orange")
-                await asyncio.sleep(3)
+                self._set_status(f"Reconnecting in {retry_delay:.0f}s...", "orange")
+                await self._sleep_unless_stopped(retry_delay)
+                retry_delay = min(retry_delay * 2, RECONNECT_MAX_SECONDS)
 
         self.is_connected = False
 
@@ -752,6 +1441,7 @@ class ClipSyncApp:
                 logger.info("Received from %s: %s...", device, content[:40])
                 self.last_received_device = device
                 self.last_received_content = content
+                self._remember_recent_clip(device, content)
 
                 # Blocking clipboard work must not stall the websocket loop.
                 await asyncio.to_thread(self._apply_remote_clipboard, content)
@@ -809,6 +1499,7 @@ class ClipSyncApp:
                 self.last_clipboard = current
                 self.last_received_device = self.config.get("device_name", "Desktop")
                 self.last_received_content = current
+                self._remember_recent_clip("this computer", current)
                 self._rebuild_menu()
 
                 if self.is_connected and self.send_queue and self.ws_loop:
@@ -909,13 +1600,26 @@ class ClipSyncApp:
             raise
 
 
+def _arg_value(flag: str, default: str = "") -> str:
+    try:
+        return sys.argv[sys.argv.index(flag) + 1]
+    except (ValueError, IndexError):
+        return default
+
+
 if __name__ == "__main__":
     if "--preferences" in sys.argv:
         configure_file_logging()
         try:
-            raise SystemExit(0 if show_preferences_dialog() else 1)
+            saved = show_preferences_dialog(_arg_value("--status-color", "gray"), _arg_value("--status-text"))
         except Exception:
             logger.exception("Preferences dialog crashed")
             raise
+        raise SystemExit(0 if saved else 1)
+
+    if not acquire_single_instance_lock():
+        configure_file_logging()
+        logger.info("ClipSync is already running; this second launch exits")
+        raise SystemExit(0)
 
     ClipSyncApp().run()

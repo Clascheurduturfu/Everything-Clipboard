@@ -1,185 +1,287 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Mirrors ios-app/ClipSync/ContentView.swift: header, status, connection,
+     clipboard, then the Android-only behaviour settings. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#101827">
+    android:background="@color/cs_background"
+    android:fillViewport="true"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingStart="24dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="40dp">
 
+        <!-- Header -->
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/tvTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ClipSync"
-            android:textColor="#e7eef8"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="@string/app_name"
+            android:textColor="@color/cs_text_primary"
             android:textSize="28sp"
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="16dp"
-            android:text="Clipboard sync"
-            android:textColor="#95a3b8"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"
+            android:text="@string/subtitle"
+            android:textColor="@color/cs_text_secondary"
             android:textSize="14sp" />
 
+        <!-- Status -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
             android:background="@drawable/status_bg"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="match_parent"
+            <FrameLayout
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="12dp">
+
+                <View
+                    android:id="@+id/statusHalo"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center"
+                    android:alpha="0"
+                    android:background="@drawable/dot" />
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/dot" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Opens when the app is open"
-                android:textColor="#d7f3ff"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvStatusTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/cs_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="2"
+                    android:textColor="@color/cs_text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
         </LinearLayout>
 
+        <!-- Connection -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="20dp"
             android:background="@drawable/panel_bg"
             android:orientation="vertical">
 
             <TextView
+                style="@style/ClipSync.CardTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Connection"
-                android:textColor="#e7eef8"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:text="@string/connection" />
 
             <TextView
+                style="@style/ClipSync.FieldLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="Device name"
-                android:textColor="#b8c3d4"
-                android:textSize="12sp" />
+                android:layout_marginTop="0dp"
+                android:text="@string/device_name" />
 
             <EditText
                 android:id="@+id/editDeviceName"
+                style="@style/ClipSync.Input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:backgroundTint="#3c4a5f"
-                android:hint="e.g. My Pixel"
-                android:textColor="#ffffff"
-                android:textColorHint="#66758a" />
+                android:hint="@string/device_name_hint"
+                android:importantForAutofill="no"
+                android:inputType="textPersonName" />
 
             <TextView
+                style="@style/ClipSync.FieldLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Server URL"
-                android:textColor="#b8c3d4"
-                android:textSize="12sp" />
+                android:text="@string/server_url" />
 
             <EditText
                 android:id="@+id/editServerUrl"
+                style="@style/ClipSync.Input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:backgroundTint="#3c4a5f"
-                android:hint="ws://your-server:8000"
-                android:inputType="textUri"
-                android:textColor="#ffffff"
-                android:textColorHint="#66758a" />
+                android:hint="@string/server_url_hint"
+                android:importantForAutofill="no"
+                android:inputType="textUri" />
 
             <TextView
+                style="@style/ClipSync.FieldLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Secret key"
-                android:textColor="#b8c3d4"
-                android:textSize="12sp" />
+                android:text="@string/secret_key" />
 
             <EditText
                 android:id="@+id/editSecretKey"
+                style="@style/ClipSync.Input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="18dp"
-                android:backgroundTint="#3c4a5f"
-                android:hint="Your shared secret"
-                android:inputType="textPassword"
-                android:textColor="#ffffff"
-                android:textColorHint="#66758a" />
+                android:hint="@string/secret_key_hint"
+                android:importantForAutofill="no"
+                android:inputType="textPassword" />
 
             <Button
                 android:id="@+id/btnSave"
+                style="@style/ClipSync.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#4a90d9"
-                android:text="Save"
-                android:textColor="#ffffff" />
+                android:layout_marginTop="16dp"
+                android:text="@string/save_and_connect" />
         </LinearLayout>
 
+        <!-- Clipboard -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="20dp"
             android:background="@drawable/panel_bg"
             android:orientation="vertical">
 
             <TextView
+                style="@style/ClipSync.CardTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Behavior"
-                android:textColor="#e7eef8"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:text="@string/clipboard" />
+
+            <Button
+                android:id="@+id/btnSendClipboard"
+                style="@style/ClipSync.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/send_clipboard_action" />
+
+            <LinearLayout
+                android:id="@+id/lastReceivedGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvLastReceivedFrom"
+                    style="@style/ClipSync.FieldLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="0dp" />
+
+                <TextView
+                    android:id="@+id/tvLastReceived"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_clip_preview"
+                    android:ellipsize="end"
+                    android:maxLines="4"
+                    android:textColor="@color/cs_text_primary"
+                    android:textIsSelectable="false"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btnCopyLast"
+                    style="@style/ClipSync.Button.Secondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/copy_to_clipboard" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Behaviour (Android only) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/panel_bg"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/ClipSync.CardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/behaviour" />
 
             <Switch
                 android:id="@+id/switchService"
+                style="@style/ClipSync.Switch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Run in background"
-                android:textColor="#e7eef8"
-                android:textSize="16sp" />
+                android:text="@string/run_in_background" />
+
+            <TextView
+                style="@style/ClipSync.Hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/run_in_background_hint" />
 
             <Switch
                 android:id="@+id/switchSendNotificationAction"
+                style="@style/ClipSync.Switch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Show Send Clipboard notification button"
-                android:textColor="#e7eef8"
-                android:textSize="15sp" />
+                android:text="@string/show_send_button" />
 
             <Switch
                 android:id="@+id/switchSensitiveClipboard"
+                style="@style/ClipSync.Switch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Mark desktop clips as sensitive"
-                android:textColor="#e7eef8"
-                android:textSize="15sp" />
+                android:text="@string/mark_sensitive" />
 
             <TextView
+                style="@style/ClipSync.Hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/mark_sensitive_hint" />
+
+            <Button
+                android:id="@+id/btnAccessibility"
+                style="@style/ClipSync.Button.Secondary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Helps keep clips received from desktop out of Android keyboard history. You can still paste the latest clip."
-                android:textColor="#95a3b8"
-                android:textSize="13sp" />
+                android:layout_marginTop="10dp"
+                android:text="@string/open_bridge_settings" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btnAccessibility"
+        <TextView
+            android:id="@+id/tvVersion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:backgroundTint="#00a6a6"
-            android:text="Open Clipboard Bridge Settings"
-            android:textColor="#ffffff" />
-
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:textColor="@color/cs_input_hint"
+            android:textSize="12sp" />
     </LinearLayout>
 </ScrollView>

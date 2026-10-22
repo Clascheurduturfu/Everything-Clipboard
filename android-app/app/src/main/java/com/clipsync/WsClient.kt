@@ -16,7 +16,10 @@ class WsClient(
 ) {
     companion object {
         private const val TAG = "WsClient"
-        private const val RECONNECT_DELAY_SECONDS = 3L
+        // Back off while the server stays unreachable so an offline phone is
+        // not waking the radio every few seconds.
+        private const val RECONNECT_MIN_SECONDS = 2L
+        private const val RECONNECT_MAX_SECONDS = 60L
     }
 
     private val client = OkHttpClient.Builder()
@@ -29,6 +32,9 @@ class WsClient(
     private val reconnectExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val isConnected = AtomicBoolean(false)
     private val reconnectScheduled = AtomicBoolean(false)
+
+    @Volatile
+    private var reconnectDelaySeconds = RECONNECT_MIN_SECONDS
 
     @Volatile
     private var shouldReconnect = true
@@ -44,6 +50,7 @@ class WsClient(
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 isConnected.set(true)
+                reconnectDelaySeconds = RECONNECT_MIN_SECONDS
                 Log.i(TAG, "Connected. HTTP ${response.code}: ${response.message}")
                 onConnected()
             }
@@ -112,11 +119,13 @@ class WsClient(
             return
         }
 
-        Log.i(TAG, "Reconnecting in ${RECONNECT_DELAY_SECONDS}s after $reason")
+        val delay = reconnectDelaySeconds
+        reconnectDelaySeconds = (delay * 2).coerceAtMost(RECONNECT_MAX_SECONDS)
+        Log.i(TAG, "Reconnecting in ${delay}s after $reason")
         reconnectExecutor.schedule({
             if (shouldReconnect) {
                 connect()
             }
-        }, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS)
+        }, delay, TimeUnit.SECONDS)
     }
 }

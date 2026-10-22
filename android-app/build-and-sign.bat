@@ -1,4 +1,6 @@
 @echo off
+REM AGP 8.2 cannot jlink with JDK 21+; use the JetBrains JDK 17 when present.
+if exist "%USERPROFILE%\.jdks\jbr-17.0.14\bin\java.exe" set "JAVA_HOME=%USERPROFILE%\.jdks\jbr-17.0.14"
 echo Building release APK...
 call gradlew.bat assembleRelease
 if %errorlevel% neq 0 (

@@ -37,6 +37,8 @@ python -m PyInstaller ^
   --icon assets\clipsync.ico ^
   --version-file assets\version_info.txt ^
   --add-data "assets\clipsync.ico;assets" ^
+  --add-data "assets\clipsync.png;assets" ^
+  --collect-data customtkinter ^
   app.py
 if errorlevel 1 exit /b %errorlevel%
 
