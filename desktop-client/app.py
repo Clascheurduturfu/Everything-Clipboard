@@ -25,7 +25,7 @@ import urllib.request
 
 import pystray
 import websockets
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 from clipboard import (
     clipboard_change_token,
@@ -45,6 +45,7 @@ from crypto_utils import (
     get_room_id,
 )
 from host_server import start_host_server
+import updater
 
 logging.basicConfig(
     level=logging.INFO,
@@ -95,7 +96,12 @@ DEFAULT_CONFIG = {
     # macOS: keep ClipSync out of the Dock unless one of its windows is open.
     "hide_dock_icon": True,
     "sync_images": True,
+    "check_updates": True,
+    # "main" for everyone; "preview" is the developer channel.
+    "update_channel": "main",
 }
+
+UPDATE_CHECK_INTERVAL_SECONDS = 12 * 3600
 
 
 def image_fingerprint(image: Image.Image) -> str:
@@ -335,11 +341,6 @@ def acquire_single_instance_lock() -> bool:
     return True
 
 
-def asset_path(name: str) -> str:
-    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base, "assets", name)
-
-
 def launch_arguments(extra_args: list[str] | None = None) -> list[str]:
     args = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, os.path.abspath(__file__)]
     if extra_args:
@@ -374,9 +375,12 @@ STATUS_DOT_COLORS = {
 
 
 def _preferences_values(device: str, server_url: str, secret: str, startup: bool,
-                        host: bool, ngrok: bool, hide_dock: bool, port, sync_images: bool = True) -> dict:
+                        host: bool, ngrok: bool, hide_dock: bool, port, sync_images: bool = True,
+                        check_updates: bool = True, preview_channel: bool = False) -> dict:
     values = {
         "sync_images": bool(sync_images),
+        "check_updates": bool(check_updates),
+        "update_channel": "preview" if preview_channel else "main",
         "device_name": device.strip() or "Desktop",
         "normal_server_url": server_url.strip(),
         "secret_key": secret.strip(),
@@ -477,6 +481,9 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     def switch(parent, text: str, var, command=None):
         widget = ctk.CTkSwitch(
             parent, text=text, variable=var, onvalue=True, offvalue=False, font=font(13),
+            # border_width=0 makes the track as tall as the knob; CTk's default
+            # leaves the knob overhanging a thinner track.
+            switch_width=40, switch_height=22, border_width=0,
             text_color=p["text"], progress_color=p["teal"], fg_color=p["panel_border"],
             button_color=p["text"], button_hover_color="#FFFFFF", command=command,
         )
@@ -627,6 +634,12 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     switch(general, "Sync images (up to 5 MB)", images_var)
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
+    updates_var = ctk.BooleanVar(value=bool(config.get("check_updates", True)))
+    preview_var = ctk.BooleanVar(value=config.get("update_channel") == "preview")
+    switch(general, "Check for updates automatically", updates_var)
+    switch(general, "Developer: preview updates (preview branch)", preview_var)
+    small(general, "Updates come from the GitHub repository and install only when you choose "
+                   "Install update in the tray menu.")
 
     refresh_hosting()
     root.minsize(520, 0)
@@ -638,7 +651,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
             _preferences_values(
                 device_entry.get(), server_entry.get(), secret_entry.get(), startup_var.get(),
                 host_var.get(), exposure_var.get() == "ngrok tunnel", hide_dock_var.get(), port_entry.get(),
-                images_var.get(),
+                images_var.get(), updates_var.get(), preview_var.get(),
             )
         )
         save_config(config)
@@ -714,7 +727,8 @@ def _show_basic_preferences_dialog() -> bool:
             _preferences_values(
                 device_var.get(), server_var.get(), secret_var.get(), startup_var.get(),
                 host_var.get(), ngrok_var.get(), hide_dock_var.get(), host_port(config),
-                bool(config.get("sync_images", True)),
+                bool(config.get("sync_images", True)), bool(config.get("check_updates", True)),
+                config.get("update_channel") == "preview",
             )
         )
         save_config(config)
@@ -727,90 +741,30 @@ def _show_basic_preferences_dialog() -> bool:
     return saved["value"]
 
 
-# Template alpha per status on macOS, where menu-bar icons are monochrome.
-_MENU_BAR_ALPHA = {"green": 255, "blue": 255, "orange": 170, "red": 170, "gray": 105}
-_TRAY_DOT_RGB = {
-    "gray": (125, 136, 150),
-    "green": (52, 211, 153),
-    "orange": (251, 191, 36),
-    "blue": (74, 144, 217),
-    "red": (248, 113, 113),
+_ICON_COLORS = {
+    "gray": (125, 136, 150, 255),
+    "green": (0, 194, 168, 255),
+    "orange": (255, 184, 77, 255),
+    "blue": (74, 144, 217, 255),
+    "red": (224, 92, 92, 255),
 }
 _icon_cache: dict[str, Image.Image] = {}
 
 
-def _menu_bar_glyph(color: str) -> Image.Image:
-    """Clipboard-with-arrow silhouette used as a macOS template image."""
-    size = 64
-    mask = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle([10, 12, 42, 58], radius=7, outline=255, width=5)
-    draw.rounded_rectangle([18, 5, 34, 18], radius=4, fill=255)
-    draw.rounded_rectangle([18, 27, 34, 32], radius=2, fill=255)
-
-    arrow = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(arrow).polygon(
-        [(26, 39), (44, 39), (44, 31), (60, 45), (44, 59), (44, 51), (26, 51)], fill=255
-    )
-    # Carve a gap around the arrow so it reads as separate from the board.
-    mask.paste(0, mask=arrow.filter(ImageFilter.MaxFilter(7)))
-    mask.paste(255, mask=arrow)
-
-    level = _MENU_BAR_ALPHA.get(color, 105)
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    img.putalpha(mask.point(lambda v: v * level // 255))
-    return img
-
-
-def _tray_icon_with_dot(color: str) -> Image.Image:
-    """App icon with a status dot in the corner (Windows/Linux tray)."""
-    size = 64
-    try:
-        img = Image.open(asset_path("clipsync.png")).convert("RGBA").resize((size, size), Image.LANCZOS)
-    except OSError:
-        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        ImageDraw.Draw(img).rounded_rectangle([6, 6, size - 6, size - 6], radius=14, fill=(0, 194, 168, 255))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse([38, 38, 63, 63], fill=(16, 24, 39, 255))
-    draw.ellipse([42, 42, 59, 59], fill=_TRAY_DOT_RGB.get(color, _TRAY_DOT_RGB["gray"]) + (255,))
-    return img
-
-
 def create_icon_image(color: str) -> Image.Image:
-    if color not in _icon_cache:
-        _icon_cache[color] = _menu_bar_glyph(color) if _IS_MACOS else _tray_icon_with_dot(color)
-    return _icon_cache[color]
-
-
-if _IS_MACOS:
-
-    class _TrayIcon(pystray.Icon):
-        """Renders the icon as a crisp template image so it follows the light
-        or dark menu bar like native status items."""
-
-        def _assert_image(self):
-            if self._icon_image is not None:
-                return
-            try:
-                import io
-
-                import AppKit
-                import Foundation
-
-                buf = io.BytesIO()
-                self._icon.save(buf, "png")
-                image = AppKit.NSImage.alloc().initWithData_(Foundation.NSData(buf.getvalue()))
-                points = max(self._status_bar.thickness() - 4, 16)
-                image.setSize_((points, points))
-                image.setTemplate_(True)
-                self._icon_image = image
-                self._status_item.button().setImage_(image)
-            except Exception:
-                logger.exception("Template icon failed; using pystray default rendering")
-                super()._assert_image()
-
-else:
-    _TrayIcon = pystray.Icon
+    if color in _icon_cache:
+        return _icon_cache[color]
+    size = 64
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    fill = _ICON_COLORS.get(color, _ICON_COLORS["gray"])
+    draw.rounded_rectangle([6, 6, size - 6, size - 6], radius=14, fill=fill)
+    draw.rounded_rectangle([21, 17, 43, 49], radius=3, fill=(255, 255, 255, 230))
+    draw.rounded_rectangle([25, 12, 39, 22], radius=3, fill=(255, 255, 255, 230))
+    draw.rectangle([26, 29, 38, 32], fill=fill)
+    draw.rectangle([26, 37, 38, 40], fill=fill)
+    _icon_cache[color] = img
+    return img
 
 
 class ClipSyncApp:
@@ -838,6 +792,8 @@ class ClipSyncApp:
         # (device, text or image label, PNG bytes for images else None)
         self.recent_clips: "deque[tuple[str, str, bytes | None]]" = deque(maxlen=RECENT_CLIPS_MAX)
         self.last_image_fingerprint = ""
+        self.available_update: dict | None = None
+        self._update_busy = threading.Lock()
         self._reconnect_lock = threading.Lock()
 
         # Echo suppression.  `_recent_sync_values` holds every payload that has
@@ -848,7 +804,7 @@ class ClipSyncApp:
         self._applying_remote = False
         self._last_change_token = clipboard_change_token()
 
-        self.icon = _TrayIcon("ClipSync")
+        self.icon = pystray.Icon("ClipSync")
         self.icon.icon = create_icon_image("gray")
         self.icon.title = "ClipSync - Disconnected"
         if platform.system() == "Windows":
@@ -921,6 +877,7 @@ class ClipSyncApp:
             [
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Preferences...", self._open_preferences_from_tray),
+                self._update_menu_item(),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(self._hosting_summary(), None, enabled=False),
                 pystray.MenuItem(
@@ -1611,6 +1568,15 @@ class ClipSyncApp:
                     continue
                 self._last_change_token = token
 
+                if clipboard_has_files():
+                    # A Finder/Explorer file copy. Its text flavour is just the
+                    # file names; syncing that (or offering it in Recent clips)
+                    # turns the copy into plain text, so leave files alone.
+                    self.last_clipboard = ""
+                    logger.info("File copy left alone (not synced)")
+                    time.sleep(0.25)
+                    continue
+
                 current = get_clipboard()
                 if not current:
                     # Text always wins: copying Excel cells also publishes a
@@ -1698,6 +1664,77 @@ class ClipSyncApp:
             except FileNotFoundError:
                 pass
 
+    # ------------------------------------------------------------------
+    # Updates
+    # ------------------------------------------------------------------
+
+    def _update_menu_item(self):
+        if self.available_update:
+            channel = " (preview)" if self.available_update["channel"] == "preview" else ""
+            return pystray.MenuItem(
+                f"Install update {self.available_update['version']}{channel}", self._install_update_from_tray
+            )
+        return pystray.MenuItem("Check for updates", self._check_updates_from_tray)
+
+    def _check_updates_from_tray(self, icon=None, item=None):
+        threading.Thread(target=self._check_for_update, kwargs={"manual": True}, daemon=True).start()
+
+    def _check_for_update(self, manual: bool = False):
+        if not self._update_busy.acquire(blocking=False):
+            return
+        try:
+            if updater.install_root() is None:
+                if manual:
+                    self._set_status("Updates only work in the installed app", None)
+                return
+            channel = self.config.get("update_channel", "main")
+            update = updater.check(APP_VERSION, channel)
+            self.available_update = update
+            if update:
+                logger.info("Update available on %s: %s", channel, update["version"])
+                self._set_status(f"Update {update['version']} available", None)
+            elif manual:
+                self._set_status(f"Up to date (v{APP_VERSION})", None)
+        except updater.UpdateError as exc:
+            logger.warning("%s", exc)
+            if manual:
+                self._set_status("Update check failed", None)
+        finally:
+            self._update_busy.release()
+
+    def _update_loop(self):
+        # A small JSON fetch at startup and twice a day; nothing is downloaded
+        # until the user picks "Install update".
+        deadline = time.monotonic() + 30
+        while self.is_running:
+            if time.monotonic() >= deadline:
+                if self.config.get("check_updates", True):
+                    self._check_for_update()
+                deadline = time.monotonic() + UPDATE_CHECK_INTERVAL_SECONDS
+            time.sleep(5)
+
+    def _install_update_from_tray(self, icon=None, item=None):
+        threading.Thread(target=self._install_update, daemon=True).start()
+
+    def _install_update(self):
+        update = self.available_update
+        root = updater.install_root()
+        if not update or root is None or not self._update_busy.acquire(blocking=False):
+            return
+        try:
+            self._set_status(f"Downloading {update['version']}...", "blue")
+            package = updater.download(update)
+            self._set_status("Installing update...", "blue")
+            updater.apply(package, root, os.getpid())
+        except updater.UpdateError as exc:
+            logger.error("Update failed: %s", exc)
+            self._set_status(str(exc), "red")
+            return
+        finally:
+            self._update_busy.release()
+        logger.info("Update %s staged; restarting", update["version"])
+        self._run_on_main_thread(self._quit)
+
     def _quit(self, icon=None, item=None):
         self.is_running = False
         self.stop_event.set()
@@ -1721,6 +1758,7 @@ class ClipSyncApp:
 
         if self.config.get("server_url") and self.config.get("secret_key"):
             self._connect()
+        threading.Thread(target=self._update_loop, daemon=True).start()
         logger.info("Tray icon setup finished")
 
     def run(self):

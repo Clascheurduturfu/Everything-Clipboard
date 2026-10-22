@@ -37,7 +37,6 @@ python -m PyInstaller ^
   --icon assets\clipsync.ico ^
   --version-file assets\version_info.txt ^
   --add-data "assets\clipsync.ico;assets" ^
-  --add-data "assets\clipsync.png;assets" ^
   --collect-data customtkinter ^
   app.py
 if errorlevel 1 exit /b %errorlevel%
@@ -58,6 +57,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Compress-Archive -Path 'build-output\windows\ClipSync' -DestinationPath 'build-output\windows\ClipSync.zip' -CompressionLevel Optimal -Force"
 if errorlevel 1 (
   echo BUILD FAILED: could not create ClipSync.zip
+  exit /b 1
+)
+
+REM --- tell the in-app updater about this package (commit latest.json with it)
+python update_manifest.py windows build-output\windows\ClipSync.zip
+if errorlevel 1 (
+  echo BUILD FAILED: could not update build-output\latest.json
   exit /b 1
 )
 

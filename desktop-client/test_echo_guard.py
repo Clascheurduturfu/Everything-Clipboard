@@ -175,6 +175,16 @@ class EchoGuardTest(unittest.TestCase):
             f"Duplicate re-broadcast within the TTL window: {self.sent}",
         )
 
+    def test_file_copy_is_never_sent_as_text(self):
+        """Copying a file in Finder must not broadcast (or record) its name."""
+        def copy_file():
+            self.fake.has_files = True
+            self.fake.set("ClipSync-2.0-beta1-macos.dmg")
+
+        self._run_poller_during(copy_file)
+        self.assertEqual(self.sent, [], f"File copy leaked as text: {self.sent}")
+        self.assertEqual(list(self.app.recent_clips), [], "File copy landed in Recent clips")
+
     def test_file_copy_with_identical_text_is_not_clobbered(self):
         """Never overwrite live file references with their own text flavour."""
         self.fake.has_files = True

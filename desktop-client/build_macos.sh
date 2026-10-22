@@ -17,7 +17,6 @@ python3 -m PyInstaller \
   --osx-bundle-identifier com.clipsync.app \
   --icon assets/clipsync.icns \
   --add-data "assets/clipsync.icns:assets" \
-  --add-data "assets/clipsync.png:assets" \
   --collect-data customtkinter \
   app.py
 
