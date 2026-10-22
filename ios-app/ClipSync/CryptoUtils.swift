@@ -66,12 +66,37 @@ struct CryptoUtils {
     ///
     /// Returns `nil` if encryption or JSON serialization fails.
     static func encryptPayload(deviceName: String, content: String, key: SymmetricKey) -> String? {
+        // v2 keeps {"device_name","content"} so v1 clients still read text.
+        return encryptJSON([
+            "v": 2,
+            "id": UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased(),
+            "device_name": deviceName,
+            "content": content
+        ], key: key)
+    }
+
+    /// Encrypts an image clip. There is no "content", so v1 clients skip it.
+    static func encryptImagePayload(deviceName: String, data: Data, mime: String,
+                                    width: Int, height: Int, key: SymmetricKey) -> String? {
+        return encryptJSON([
+            "v": 2,
+            "id": UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased(),
+            "device_name": deviceName,
+            "type": "image",
+            "mime": mime,
+            "data": data.base64EncodedString(),
+            "sha256": sha256Hex(data),
+            "w": width,
+            "h": height
+        ], key: key)
+    }
+
+    static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func encryptJSON(_ json: [String: Any], key: SymmetricKey) -> String? {
         do {
-            // Build the JSON plaintext
-            let json: [String: String] = [
-                "device_name": deviceName,
-                "content": content
-            ]
             let jsonData = try JSONSerialization.data(withJSONObject: json, options: [])
 
             // Encrypt with AES-256-GCM (random 12-byte nonce by default)
@@ -88,6 +113,33 @@ struct CryptoUtils {
     }
 
     // MARK: - Decrypt
+
+    /// A decrypted clip: text, or an image with its encoded bytes.
+    enum Clip {
+        case text(deviceName: String, content: String)
+        case image(deviceName: String, data: Data, mime: String, width: Int, height: Int)
+    }
+
+    /// Decrypts any v1/v2 payload. Returns nil on failure or a damaged image.
+    static func decryptClip(base64Payload: String, key: SymmetricKey) -> Clip? {
+        guard let payloadData = Data(base64Encoded: base64Payload),
+              let sealedBox = try? AES.GCM.SealedBox(combined: payloadData),
+              let plaintext = try? AES.GCM.open(sealedBox, using: key),
+              let json = (try? JSONSerialization.jsonObject(with: plaintext, options: [])) as? [String: Any]
+        else { return nil }
+
+        let deviceName = json["device_name"] as? String ?? "Unknown"
+        if json["type"] as? String == "image" {
+            guard let encoded = json["data"] as? String,
+                  let data = Data(base64Encoded: encoded) else { return nil }
+            if let expected = json["sha256"] as? String, expected != sha256Hex(data) { return nil }
+            return .image(deviceName: deviceName, data: data,
+                          mime: json["mime"] as? String ?? "image/png",
+                          width: json["w"] as? Int ?? 0, height: json["h"] as? Int ?? 0)
+        }
+        guard let content = json["content"] as? String else { return nil }
+        return .text(deviceName: deviceName, content: content)
+    }
 
     /// Decrypts a Base64 payload produced by any ClipSync client.
     ///

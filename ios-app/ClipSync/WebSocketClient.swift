@@ -13,7 +13,12 @@ final class WebSocketClient {
 
     // MARK: - Configuration
 
-    private static let reconnectDelaySeconds: TimeInterval = 3
+    // Back off while the server stays unreachable: 2 s doubling to 60 s.
+    private static let reconnectMinSeconds: TimeInterval = 2
+    private static let reconnectMaxSeconds: TimeInterval = 60
+    // Images arrive as single messages of up to ~9 MB; the default cap is 1 MB.
+    private static let maximumMessageBytes = 16 * 1024 * 1024
+    private var reconnectDelaySeconds: TimeInterval = WebSocketClient.reconnectMinSeconds
     private static let pingIntervalSeconds: TimeInterval = 20
     private static let logger = Logger(subsystem: "com.clipsync", category: "WebSocketClient")
 
@@ -85,6 +90,7 @@ final class WebSocketClient {
         session = newSession
 
         let task = newSession.webSocketTask(with: fullUrl)
+        task.maximumMessageSize = Self.maximumMessageBytes
         webSocketTask = task
 
         task.resume()
@@ -217,6 +223,11 @@ final class WebSocketClient {
                 Task { @MainActor [weak self] in
                     self?.handleDisconnect(reason: "Ping failed: \(error.localizedDescription)")
                 }
+            } else {
+                // A pong proves the link works (dialling alone does not).
+                Task { @MainActor [weak self] in
+                    self?.reconnectDelaySeconds = WebSocketClient.reconnectMinSeconds
+                }
             }
         }
     }
@@ -235,10 +246,12 @@ final class WebSocketClient {
             return
         }
 
-        Self.logger.info("Reconnecting in \(Self.reconnectDelaySeconds)s after: \(reason)")
+        let delay = reconnectDelaySeconds
+        reconnectDelaySeconds = min(delay * 2, Self.reconnectMaxSeconds)
+        Self.logger.info("Reconnecting in \(delay)s after: \(reason)")
 
         reconnectTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(Self.reconnectDelaySeconds * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
 
             guard !Task.isCancelled else { return }
 

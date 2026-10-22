@@ -1,5 +1,7 @@
 package com.clipsync
 
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 
@@ -20,6 +22,11 @@ object ClipState {
         private set
     @Volatile var lastText: String = ""
         private set
+    /** Small preview only; the full image lives in the cache file behind [lastImageUri]. */
+    @Volatile var lastImage: Bitmap? = null
+        private set
+    @Volatile var lastImageUri: Uri? = null
+        private set
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var listener: (() -> Unit)? = null
@@ -38,7 +45,18 @@ object ClipState {
     fun received(device: String, text: String) {
         lastDevice = device
         lastText = text
+        lastImage = null
+        lastImageUri = null
         detail = "Received from $device"
+        notifyChanged()
+    }
+
+    fun receivedImage(device: String, label: String, thumbnail: Bitmap?, uri: Uri) {
+        lastDevice = device
+        lastText = label
+        lastImage = thumbnail
+        lastImageUri = uri
+        detail = "Received image from $device"
         notifyChanged()
     }
 

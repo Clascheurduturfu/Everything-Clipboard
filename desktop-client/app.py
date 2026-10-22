@@ -3,6 +3,8 @@ ClipSync Desktop Client - cross-platform system tray app for encrypted clipboard
 """
 
 import asyncio
+import hashlib
+import io
 import json
 import logging
 import os
@@ -28,10 +30,20 @@ from PIL import Image, ImageDraw, ImageFilter
 from clipboard import (
     clipboard_change_token,
     clipboard_has_files,
+    clipboard_has_image,
     get_clipboard,
+    get_clipboard_image,
     set_clipboard,
+    set_clipboard_image,
 )
-from crypto_utils import decrypt_payload, derive_key, encrypt_payload, get_room_id
+from crypto_utils import (
+    decode_image,
+    decrypt_payload,
+    derive_key,
+    encrypt_image_payload,
+    encrypt_payload,
+    get_room_id,
+)
 from host_server import start_host_server
 
 logging.basicConfig(
@@ -41,7 +53,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0 beta 1"
+APP_VERSION = "2.0 beta 2"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -54,6 +66,12 @@ SYNC_ECHO_MAX_ENTRIES = 32
 RECONNECT_MIN_SECONDS = 2.0
 RECONNECT_MAX_SECONDS = 60.0
 RECENT_CLIPS_MAX = 5
+# Images are memory-heavy, so the recent list keeps only the newest few.
+RECENT_IMAGES_MAX = 2
+# Encoded image cap. After base64 + encryption a 5 MB image is ~9 MB on the
+# wire, inside the relay's 16 MiB WebSocket frame limit.
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+WS_MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -76,7 +94,26 @@ DEFAULT_CONFIG = {
     "start_on_login": False,
     # macOS: keep ClipSync out of the Dock unless one of its windows is open.
     "hide_dock_icon": True,
+    "sync_images": True,
 }
+
+
+def image_fingerprint(image: Image.Image) -> str:
+    """Identity of an image's pixels, independent of how it was encoded.
+
+    Windows hands back a re-encoded PNG and macOS may hand back TIFF, so a
+    hash of the file bytes would treat our own write as a fresh copy.
+    """
+    rgba = image if image.mode == "RGBA" else image.convert("RGBA")
+    digest = hashlib.sha256(repr(rgba.size).encode())
+    digest.update(rgba.tobytes())
+    return "img:" + digest.hexdigest()
+
+
+def encode_png(image: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    image.save(buf, "PNG", compress_level=4)
+    return buf.getvalue()
 
 
 def find_executable(name: str) -> str | None:
@@ -337,8 +374,9 @@ STATUS_DOT_COLORS = {
 
 
 def _preferences_values(device: str, server_url: str, secret: str, startup: bool,
-                        host: bool, ngrok: bool, hide_dock: bool, port) -> dict:
+                        host: bool, ngrok: bool, hide_dock: bool, port, sync_images: bool = True) -> dict:
     values = {
+        "sync_images": bool(sync_images),
         "device_name": device.strip() or "Desktop",
         "normal_server_url": server_url.strip(),
         "secret_key": secret.strip(),
@@ -584,7 +622,9 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     # --- General tab
     startup_var = ctk.BooleanVar(value=bool(config.get("start_on_login")))
     hide_dock_var = ctk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
+    images_var = ctk.BooleanVar(value=bool(config.get("sync_images", True)))
     switch(general, "Start ClipSync on login", startup_var)
+    switch(general, "Sync images (up to 5 MB)", images_var)
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
 
@@ -598,6 +638,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
             _preferences_values(
                 device_entry.get(), server_entry.get(), secret_entry.get(), startup_var.get(),
                 host_var.get(), exposure_var.get() == "ngrok tunnel", hide_dock_var.get(), port_entry.get(),
+                images_var.get(),
             )
         )
         save_config(config)
@@ -673,6 +714,7 @@ def _show_basic_preferences_dialog() -> bool:
             _preferences_values(
                 device_var.get(), server_var.get(), secret_var.get(), startup_var.get(),
                 host_var.get(), ngrok_var.get(), hide_dock_var.get(), host_port(config),
+                bool(config.get("sync_images", True)),
             )
         )
         save_config(config)
@@ -793,7 +835,9 @@ class ClipSyncApp:
         self.host_lan_address = ""
         self.ngrok_problem = ""
         self.status_title = "Disconnected"
-        self.recent_clips: "deque[tuple[str, str]]" = deque(maxlen=RECENT_CLIPS_MAX)
+        # (device, text or image label, PNG bytes for images else None)
+        self.recent_clips: "deque[tuple[str, str, bytes | None]]" = deque(maxlen=RECENT_CLIPS_MAX)
+        self.last_image_fingerprint = ""
         self._reconnect_lock = threading.Lock()
 
         # Echo suppression.  `_recent_sync_values` holds every payload that has
@@ -928,23 +972,30 @@ class ClipSyncApp:
         if not clips:
             return pystray.MenuItem("Recent clips: none", None, enabled=False)
         entries = []
-        for device, content in reversed(clips):
-            label = textwrap.shorten(" ".join(content.split()), width=40, placeholder="...")
-            entries.append(pystray.MenuItem(f"{label}  \u2014 {device}", self._make_recopy_action(content)))
+        for device, content, png in reversed(clips):
+            label = content if png else textwrap.shorten(" ".join(content.split()), width=40, placeholder="...")
+            entries.append(pystray.MenuItem(f"{label}  \u2014 {device}", self._make_recopy_action(content, png)))
         return pystray.MenuItem("Recent clips", pystray.Menu(*entries))
 
-    def _make_recopy_action(self, content: str):
+    def _make_recopy_action(self, content: str, png: bytes | None = None):
         def _recopy(icon, item):
             # Copying it back counts as a fresh local copy, so the poller syncs it.
-            threading.Thread(target=set_clipboard, args=(content,), daemon=True).start()
+            if png:
+                image = Image.open(io.BytesIO(png))
+                threading.Thread(target=set_clipboard_image, args=(png, image), daemon=True).start()
+            else:
+                threading.Thread(target=set_clipboard, args=(content,), daemon=True).start()
 
         return _recopy
 
-    def _remember_recent_clip(self, device: str, content: str):
+    def _remember_recent_clip(self, device: str, content: str, png: bytes | None = None):
         for entry in list(self.recent_clips):
-            if entry[1] == content:
+            if entry[1] == content and entry[2] == png:
                 self.recent_clips.remove(entry)
-        self.recent_clips.append((device, content))
+        self.recent_clips.append((device, content, png))
+        images = [entry for entry in self.recent_clips if entry[2]]
+        for entry in images[:-RECENT_IMAGES_MAX]:
+            self.recent_clips.remove(entry)
 
     def _update_tray(self, icon_color=None, title=None, rebuild_menu=True):
         """Batch-update tray icon properties on the main thread."""
@@ -1317,6 +1368,8 @@ class ClipSyncApp:
                     ping_interval=20,
                     ping_timeout=10,
                     close_timeout=5,
+                    # websockets refuses incoming messages over 1 MiB by default.
+                    max_size=WS_MAX_MESSAGE_BYTES,
                 ) as ws:
                     self.is_connected = True
                     self.status_message = ""
@@ -1428,12 +1481,86 @@ class ClipSyncApp:
             with self._clip_lock:
                 self._applying_remote = False
 
+    def _apply_remote_image(self, payload: dict, device: str):
+        data = decode_image(payload)
+        if not data:
+            logger.warning("Dropped a damaged image from %s", device)
+            return
+        try:
+            image = Image.open(io.BytesIO(data))
+            image.load()
+        except Exception as exc:
+            logger.warning("Could not decode image from %s: %s", device, exc)
+            return
+
+        fingerprint = image_fingerprint(image)
+        png = data if payload.get("mime") == "image/png" else encode_png(image)
+        with self._clip_lock:
+            self._applying_remote = True
+        self._remember_sync_value(fingerprint)
+        try:
+            set_clipboard_image(png, image)
+            time.sleep(0.05)
+            with self._clip_lock:
+                self.last_image_fingerprint = fingerprint
+                self.last_clipboard = ""
+                self._last_change_token = clipboard_change_token()
+        finally:
+            with self._clip_lock:
+                self._applying_remote = False
+
+        label = f"[Image {image.width}\u00d7{image.height}]"
+        logger.info("Received image from %s: %sx%s, %d bytes", device, image.width, image.height, len(data))
+        self.last_received_device = device
+        self.last_received_content = label
+        self._remember_recent_clip(device, label, png)
+
+    def _send_local_image(self):
+        image = get_clipboard_image()
+        if image is None:
+            return
+        fingerprint = image_fingerprint(image)
+        if fingerprint == self.last_image_fingerprint or self._is_recent_sync_value(fingerprint):
+            # Our own write, or something already synced: adopt it silently.
+            self.last_image_fingerprint = fingerprint
+            return
+        self.last_image_fingerprint = fingerprint
+        self.last_clipboard = ""
+
+        png = encode_png(image)
+        label = f"[Image {image.width}\u00d7{image.height}]"
+        if len(png) > MAX_IMAGE_BYTES:
+            logger.info("Image not synced: %.1f MB is over the %d MB limit", len(png) / 1e6, MAX_IMAGE_BYTES // 2**20)
+            self.status_message = f"Image too large to sync ({len(png) / 1e6:.1f} MB)"
+            self._rebuild_menu()
+            return
+
+        self.last_received_device = self.config.get("device_name", "Desktop")
+        self.last_received_content = label
+        self._remember_recent_clip("this computer", label, png)
+        self._rebuild_menu()
+
+        if self.is_connected and self.send_queue and self.ws_loop:
+            self._remember_sync_value(fingerprint)
+            payload = encrypt_image_payload(
+                self.config["device_name"], png, "image/png", image.width, image.height, self.key
+            )
+            asyncio.run_coroutine_threadsafe(self.send_queue.put(payload), self.ws_loop)
+            logger.info("Sent image %sx%s (%d bytes)", image.width, image.height, len(png))
+
     async def _receive_loop(self, ws):
         async for message in ws:
             try:
                 payload = decrypt_payload(message, self.key)
-                content = payload.get("content", "")
                 device = payload.get("device_name", "Unknown")
+
+                if payload.get("type") == "image":
+                    if self.config.get("sync_images", True):
+                        await asyncio.to_thread(self._apply_remote_image, payload, device)
+                        self._rebuild_menu()
+                    continue
+
+                content = payload.get("content", "")
 
                 if not content:
                     continue
@@ -1485,7 +1612,14 @@ class ClipSyncApp:
                 self._last_change_token = token
 
                 current = get_clipboard()
-                if not current or current == self.last_clipboard:
+                if not current:
+                    # Text always wins: copying Excel cells also publishes a
+                    # picture of them, and that must sync as text.
+                    if self.config.get("sync_images", True) and clipboard_has_image():
+                        self._send_local_image()
+                    time.sleep(0.25)
+                    continue
+                if current == self.last_clipboard:
                     time.sleep(0.25)
                     continue
 

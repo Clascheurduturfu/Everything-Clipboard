@@ -300,6 +300,14 @@ struct ContentView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(Theme.textLabel)
                     
+                    if let image = manager.lastReceivedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: 160)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+
                     Text(manager.lastReceivedText)
                         .font(.system(size: 14, weight: .regular, design: .monospaced))
                         .foregroundColor(Theme.textSecondary)
@@ -312,7 +320,12 @@ struct ContentView: View {
                         )
                     
                     Button {
-                        copyToClipboard(manager.lastReceivedText)
+                        if manager.lastReceivedImage != nil {
+                            manager.copyLastReceived()
+                            showCopiedFeedback()
+                        } else {
+                            copyToClipboard(manager.lastReceivedText)
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "doc.on.doc")
@@ -366,7 +379,7 @@ struct ContentView: View {
         HStack(spacing: 6) {
             Image(systemName: "info.circle")
                 .font(.system(size: 12))
-            Text("iOS cannot sync clipboard in the background.\nUse the Send button to share your clipboard.")
+            Text("iOS cannot sync clipboard in the background.\nUse the Send button to share your clipboard.\nClipSync 2.0 beta 2")
                 .font(.system(size: 12, weight: .regular))
                 .multilineTextAlignment(.center)
         }
@@ -431,7 +444,10 @@ struct ContentView: View {
     
     private func copyToClipboard(_ text: String) {
         UIPasteboard.general.string = text
-        
+        showCopiedFeedback()
+    }
+
+    private func showCopiedFeedback() {
         let impact = UINotificationFeedbackGenerator()
         impact.notificationOccurred(.success)
         

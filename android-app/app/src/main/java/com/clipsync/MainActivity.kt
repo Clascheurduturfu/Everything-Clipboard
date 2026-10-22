@@ -17,6 +17,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -36,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var lastReceivedGroup: View
     private lateinit var tvLastReceivedFrom: TextView
     private lateinit var tvLastReceived: TextView
+    private lateinit var ivLastImage: ImageView
     private lateinit var switchService: Switch
     private lateinit var switchSendNotificationAction: Switch
     private lateinit var switchSensitiveClipboard: Switch
@@ -61,6 +63,7 @@ class MainActivity : Activity() {
         lastReceivedGroup = findViewById(R.id.lastReceivedGroup)
         tvLastReceivedFrom = findViewById(R.id.tvLastReceivedFrom)
         tvLastReceived = findViewById(R.id.tvLastReceived)
+        ivLastImage = findViewById(R.id.ivLastImage)
         findViewById<TextView>(R.id.tvVersion).text = "ClipSync ${BuildConfig.VERSION_NAME} · Android"
 
         // Load saved prefs
@@ -72,6 +75,19 @@ class MainActivity : Activity() {
             prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
         switchSensitiveClipboard.isChecked =
             prefs.getBoolean(ClipSyncService.PREF_USE_SENSITIVE_CLIPBOARD, true)
+
+        val switchSyncImages = findViewById<Switch>(R.id.switchSyncImages)
+        val switchImagesWifiOnly = findViewById<Switch>(R.id.switchImagesWifiOnly)
+        switchSyncImages.isChecked = prefs.getBoolean(ClipSyncService.PREF_SYNC_IMAGES, true)
+        switchImagesWifiOnly.isChecked = prefs.getBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, true)
+        switchImagesWifiOnly.isEnabled = switchSyncImages.isChecked
+        switchSyncImages.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(ClipSyncService.PREF_SYNC_IMAGES, isChecked).apply()
+            switchImagesWifiOnly.isEnabled = isChecked
+        }
+        switchImagesWifiOnly.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, isChecked).apply()
+        }
 
         // This toggle means "keep ClipSync alive after the app closes".
         switchService.isChecked = prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
@@ -191,6 +207,9 @@ class MainActivity : Activity() {
             lastReceivedGroup.visibility = View.VISIBLE
             tvLastReceivedFrom.text = getString(R.string.last_received_from, ClipState.lastDevice)
             tvLastReceived.text = ClipState.lastText
+            val thumbnail = ClipState.lastImage
+            ivLastImage.visibility = if (thumbnail != null) View.VISIBLE else View.GONE
+            ivLastImage.setImageBitmap(thumbnail)
         }
     }
 
@@ -223,14 +242,23 @@ class MainActivity : Activity() {
         }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboard.primaryClip
-        val text = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).coerceToText(this)?.toString() else null
-        if (text.isNullOrBlank()) {
+        val image = ClipImages.imageOf(this, clip)
+        val text = if (image == null && clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0).coerceToText(this)?.toString()
+        } else {
+            null
+        }
+        if (image == null && text.isNullOrBlank()) {
             Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
             return
         }
         val intent = Intent(this, ClipSyncService::class.java).apply {
             action = ClipSyncService.ACTION_SEND_TEXT
-            putExtra(ClipSyncService.EXTRA_TEXT, text)
+            if (image != null) {
+                putExtra(ClipSyncService.EXTRA_IMAGE_URI, image.first.toString())
+            } else {
+                putExtra(ClipSyncService.EXTRA_TEXT, text)
+            }
             putExtra(ClipSyncService.EXTRA_SOURCE, "in_app_button")
             putExtra(ClipSyncService.EXTRA_FORCE, true)
         }
@@ -243,6 +271,12 @@ class MainActivity : Activity() {
     }
 
     private fun copyLastReceived() {
+        val imageUri = ClipState.lastImageUri
+        if (imageUri != null) {
+            ClipImages.setClipboard(this, imageUri, switchSensitiveClipboard.isChecked)
+            Toast.makeText(this, "Image copied to clipboard", Toast.LENGTH_SHORT).show()
+            return
+        }
         val text = ClipState.lastText
         if (text.isEmpty()) return
         val clip = ClipData.newPlainText("ClipSync", text).apply {

@@ -26,6 +26,8 @@ final class ClipSyncManager: ObservableObject {
     @Published var lastReceivedText: String = ""
     @Published var lastReceivedDevice: String = ""
     @Published var lastReceivedPreview: String = ""
+    /// Small preview of the last received image (nil for text clips).
+    @Published var lastReceivedImage: UIImage?
 
     // MARK: - UserDefaults-backed Settings
 
@@ -66,6 +68,12 @@ final class ClipSyncManager: ObservableObject {
     private var wsClient: WebSocketClient?
     private var derivedKey: SymmetricKey?
     private var lastSentText: String = ""
+    private var lastImageHash: String = ""
+    private var lastReceivedImageData: Data?
+    private var lastReceivedImageType: String = "public.png"
+
+    /// Encoded image cap; ~9 MB on the wire after base64 + encryption.
+    private static let maxImageBytes = 5 * 1024 * 1024
 
     private let defaults = UserDefaults(suiteName: "group.com.clipsync.ios") ?? .standard
 
@@ -151,7 +159,13 @@ final class ClipSyncManager: ObservableObject {
 
     /// Reads the current pasteboard, encrypts, and sends it to the room.
     func sendClipboard() {
-        guard let text = UIPasteboard.general.string, !text.isEmpty else {
+        let board = UIPasteboard.general
+        // Text wins when both are present (e.g. a copied table also carries a picture).
+        if !board.hasStrings && board.hasImages {
+            sendClipboardImage()
+            return
+        }
+        guard let text = board.string, !text.isEmpty else {
             logger.debug("sendClipboard: pasteboard is empty.")
             return
         }
@@ -190,8 +204,60 @@ final class ClipSyncManager: ObservableObject {
         }
     }
 
-    /// Copies the most recently received clipboard text to the local pasteboard.
+    private func sendClipboardImage() {
+        let board = UIPasteboard.general
+        var data = board.data(forPasteboardType: "public.png")
+        var mime = "image/png"
+        if data == nil, let jpeg = board.data(forPasteboardType: "public.jpeg") {
+            data = jpeg
+            mime = "image/jpeg"
+        }
+        if data == nil { data = board.image?.pngData() }
+        guard var bytes = data, let image = UIImage(data: bytes) else {
+            updateStatus("Clipboard image could not be read")
+            return
+        }
+        if bytes.count > Self.maxImageBytes, let jpeg = image.jpegData(compressionQuality: 0.85) {
+            bytes = jpeg
+            mime = "image/jpeg"
+        }
+        guard bytes.count <= Self.maxImageBytes else {
+            updateStatus("Image too large to sync (over 5 MB)")
+            return
+        }
+        let hash = CryptoUtils.sha256Hex(bytes)
+        guard hash != lastImageHash else {
+            logger.debug("sendClipboard: duplicate image — skipping.")
+            return
+        }
+        guard let key = derivedKey else {
+            updateStatus("Cannot send — not connected")
+            return
+        }
+        let width = Int(image.size.width * image.scale)
+        let height = Int(image.size.height * image.scale)
+        guard let payload = CryptoUtils.encryptImagePayload(deviceName: deviceName, data: bytes, mime: mime,
+                                                            width: width, height: height, key: key) else {
+            updateStatus("Encryption error")
+            return
+        }
+        if wsClient?.send(payload) ?? false {
+            lastImageHash = hash
+            updateStatus("Sent image \(width)×\(height)")
+            logger.info("Sent image \(width)x\(height) (\(bytes.count) bytes)")
+        } else {
+            updateStatus("Send failed — not connected")
+        }
+    }
+
+    /// Copies the most recently received clip (text or image) to the local pasteboard.
     func copyLastReceived() {
+        if let data = lastReceivedImageData {
+            lastImageHash = CryptoUtils.sha256Hex(data)
+            UIPasteboard.general.setData(data, forPasteboardType: lastReceivedImageType)
+            logger.info("Copied last received image to pasteboard.")
+            return
+        }
         guard !lastReceivedText.isEmpty else { return }
         // Remember this text so we don't echo it back to the room.
         lastSentText = lastReceivedText
@@ -238,13 +304,21 @@ final class ClipSyncManager: ObservableObject {
             return
         }
 
-        guard let result = CryptoUtils.decryptPayload(base64Payload: encrypted, key: key) else {
+        guard let clip = CryptoUtils.decryptClip(base64Payload: encrypted, key: key) else {
             logger.warning("Incoming payload ignored: decryption failed.")
             return
         }
 
-        let senderDevice = result.deviceName
-        let content = result.content
+        let senderDevice: String
+        let content: String
+        switch clip {
+        case let .image(device, data, mime, width, height):
+            handleIncomingImage(device: device, data: data, mime: mime, width: width, height: height)
+            return
+        case let .text(device, text):
+            senderDevice = device
+            content = text
+        }
         let preview = String(content.prefix(25))
 
         logger.info("Received from \(senderDevice): \(preview)...")
@@ -253,6 +327,8 @@ final class ClipSyncManager: ObservableObject {
             guard let self else { return }
 
             self.lastReceivedText = content
+            self.lastReceivedImage = nil
+            self.lastReceivedImageData = nil
             self.lastReceivedDevice = senderDevice
             self.lastReceivedPreview = preview
             self.updateStatus("From \(senderDevice): \(preview)...")
@@ -262,6 +338,30 @@ final class ClipSyncManager: ObservableObject {
                 self.lastSentText = content
                 UIPasteboard.general.string = content
                 self.logger.debug("Auto-copied incoming clipboard to pasteboard.")
+            }
+        }
+    }
+
+    private func handleIncomingImage(device: String, data: Data, mime: String, width: Int, height: Int) {
+        let type = mime == "image/jpeg" ? "public.jpeg" : (mime == "image/png" ? "public.png" : "public.image")
+        // Decode a small preview only; the full bytes stay as-is for the pasteboard.
+        let preview = UIImage(data: data)?.preparingThumbnail(of: CGSize(width: 320, height: 320))
+        let label = "Image \(width)×\(height)"
+        logger.info("Received image from \(device): \(width)x\(height), \(data.count) bytes")
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.lastReceivedText = label
+            self.lastReceivedDevice = device
+            self.lastReceivedPreview = label
+            self.lastReceivedImage = preview
+            self.lastReceivedImageData = data
+            self.lastReceivedImageType = type
+            self.updateStatus("Image from \(device)")
+
+            if self.autoCopyIncoming {
+                self.lastImageHash = CryptoUtils.sha256Hex(data)
+                UIPasteboard.general.setData(data, forPasteboardType: type)
             }
         }
     }

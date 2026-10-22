@@ -26,6 +26,18 @@ class SendClipboardActivity : Activity() {
     private fun sendCurrentClipboard() {
         val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboardManager.primaryClip
+        val image = ClipImages.imageOf(this, clip)
+        if (image != null) {
+            startSend(Intent(this, ClipSyncService::class.java).apply {
+                action = ClipSyncService.ACTION_SEND_TEXT
+                putExtra(ClipSyncService.EXTRA_IMAGE_URI, image.first.toString())
+                putExtra(ClipSyncService.EXTRA_SOURCE, "manual_send_activity")
+                putExtra(ClipSyncService.EXTRA_FORCE, true)
+            })
+            Toast.makeText(this, "Sending image", Toast.LENGTH_SHORT).show()
+            finishAndRemoveTask()
+            return
+        }
         val text = if (clip != null && clip.itemCount > 0) {
             clip.getItemAt(0).coerceToText(this)?.toString()
         } else {
@@ -45,16 +57,20 @@ class SendClipboardActivity : Activity() {
             putExtra(ClipSyncService.EXTRA_FORCE, true)
         }
 
-        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        startSend(intent)
 
         Toast.makeText(this, "Sending clipboard", Toast.LENGTH_SHORT).show()
         // Removing the task (not just finishing) returns straight to the app
         // the user was in, and leaves nothing behind in Recents.
         finishAndRemoveTask()
+    }
+
+    private fun startSend(intent: Intent) {
+        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
     }
 
     private fun needsPersistentNotification(): Boolean {

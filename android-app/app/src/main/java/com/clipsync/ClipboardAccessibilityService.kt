@@ -54,14 +54,30 @@ class ClipboardAccessibilityService : AccessibilityService(),
         // Don't forward if the user has disabled the service
         if (!isServiceEnabled()) return
 
-        val text = readClipboardText() ?: return
-        if (text.isBlank() || text == lastSentText) return
-
-        lastSentText = text
-        val intent = Intent(this, ClipSyncService::class.java).apply {
-            action = ClipSyncService.ACTION_SEND_TEXT
-            putExtra(ClipSyncService.EXTRA_TEXT, text)
-            putExtra(ClipSyncService.EXTRA_SOURCE, source)
+        // Image clips coerce to their content:// URI as text; send them as images.
+        val image = try {
+            ClipImages.imageOf(this, clipboardManager.primaryClip)
+        } catch (e: SecurityException) {
+            null
+        }
+        val intent = if (image != null) {
+            val key = image.first.toString()
+            if (key == lastSentText || ClipImages.isOwn(this, image.first)) return
+            lastSentText = key
+            Intent(this, ClipSyncService::class.java).apply {
+                action = ClipSyncService.ACTION_SEND_TEXT
+                putExtra(ClipSyncService.EXTRA_IMAGE_URI, key)
+                putExtra(ClipSyncService.EXTRA_SOURCE, source)
+            }
+        } else {
+            val text = readClipboardText() ?: return
+            if (text.isBlank() || text == lastSentText) return
+            lastSentText = text
+            Intent(this, ClipSyncService::class.java).apply {
+                action = ClipSyncService.ACTION_SEND_TEXT
+                putExtra(ClipSyncService.EXTRA_TEXT, text)
+                putExtra(ClipSyncService.EXTRA_SOURCE, source)
+            }
         }
 
         if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

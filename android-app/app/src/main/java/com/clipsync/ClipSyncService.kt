@@ -14,9 +14,11 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.net.Uri
 import android.os.PersistableBundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.Executors
 
 class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener {
 
@@ -30,6 +32,8 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val PREF_RUN_IN_BACKGROUND = "service_running"
         const val PREF_APP_VISIBLE = "app_visible"
         const val PREF_USE_SENSITIVE_CLIPBOARD = "use_sensitive_clipboard"
+        const val PREF_SYNC_IMAGES = "sync_images"
+        const val PREF_IMAGES_WIFI_ONLY = "images_wifi_only"
 
         const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
         const val ACTION_REFRESH_NOTIFICATION = "com.clipsync.action.REFRESH_NOTIFICATION"
@@ -39,6 +43,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val EXTRA_SOURCE = "com.clipsync.extra.SOURCE"
         // Explicit "Send Clipboard" taps resend even if that text already went out.
         const val EXTRA_FORCE = "com.clipsync.extra.FORCE"
+        const val EXTRA_IMAGE_URI = "com.clipsync.extra.IMAGE_URI"
     }
 
     private data class PendingOutgoing(val payload: String, val oneShot: Boolean)
@@ -54,6 +59,9 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     private var currentRoomId: String = ""
     private var listenerRegistered = false
     private var foregroundActive = false
+    @Volatile private var lastImageHash: String = ""
+    // Image reads and encryption are too heavy for the main thread.
+    private val imageExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate() {
         super.onCreate()
@@ -94,7 +102,9 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         val secretKey = prefs.getString("secret_key", "") ?: ""
         deviceName = prefs.getString("device_name", "Android Phone") ?: "Android Phone"
         val actionText = intent?.getStringExtra(EXTRA_TEXT)
-        val isOneShotSend = intent?.action == ACTION_SEND_TEXT && !actionText.isNullOrBlank() && !shouldKeepRunning(prefs)
+        val actionImage = intent?.getStringExtra(EXTRA_IMAGE_URI)
+        val isOneShotSend = intent?.action == ACTION_SEND_TEXT &&
+            (!actionText.isNullOrBlank() || !actionImage.isNullOrBlank()) && !shouldKeepRunning(prefs)
 
         syncForegroundState("ClipSync is starting...")
 
@@ -141,7 +151,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
 
         updateClipboardListener()
 
-        if (!actionText.isNullOrBlank()) {
+        if (!actionImage.isNullOrBlank()) {
+            sendClipboardImage(
+                uri = Uri.parse(actionImage),
+                source = intent.getStringExtra(EXTRA_SOURCE) ?: "external",
+                oneShot = isOneShotSend,
+                force = intent.getBooleanExtra(EXTRA_FORCE, false)
+            )
+        } else if (!actionText.isNullOrBlank()) {
             Log.i(TAG, "Manual send request from ${intent.getStringExtra(EXTRA_SOURCE) ?: "external"} (${actionText.length} chars)")
             sendClipboardText(
                 text = actionText,
@@ -171,7 +188,12 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             Log.w(TAG, "Incoming payload ignored: decrypt failed")
             return
         }
-        val (senderDevice, content) = decrypted
+        if (decrypted is Clip.Image) {
+            handleIncomingImage(decrypted)
+            return
+        }
+        val senderDevice = decrypted.device
+        val content = (decrypted as Clip.Text).content
 
         Log.i(TAG, "Received from $senderDevice: ${content.take(30)}...")
         lastClipboardText = content
@@ -201,9 +223,106 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
     }
 
+    private fun handleIncomingImage(image: Clip.Image) {
+        if (!getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(PREF_SYNC_IMAGES, true)) {
+            Log.i(TAG, "Image from ${image.device} ignored: image sync is off")
+            return
+        }
+        // Runs on the socket thread: file I/O is fine here, the UI is not.
+        val uri = ClipImages.store(this, image.bytes, image.mime)
+        val thumbnail = ClipImages.thumbnail(image.bytes)
+        lastImageHash = CryptoUtils.sha256Hex(image.bytes)
+        val label = "Image ${image.width}\u00d7${image.height}"
+        Log.i(TAG, "Received image from ${image.device}: $label, ${image.bytes.size} bytes")
+
+        mainHandler.post {
+            if (listenerRegistered) {
+                clipboardManager.removePrimaryClipChangedListener(this)
+                listenerRegistered = false
+            }
+            clipboardManager.setPrimaryClip(ClipImages.clipFor(this, uri, shouldMarkIncomingSensitive()))
+            updateClipboardListener()
+            ClipState.receivedImage(image.device, label, thumbnail, uri)
+            setStatus("Received image from ${image.device}")
+            syncForegroundState("Image from ${image.device}")
+        }
+    }
+
     override fun onPrimaryClipChanged() {
         Log.d(TAG, "Primary clipboard changed")
+        val image = ClipImages.imageOf(this, clipboardManager.primaryClip)
+        if (image != null) {
+            sendClipboardImage(image.first, "clipboard_listener", oneShot = false)
+            return
+        }
         sendClipboardText(readClipboardText() ?: return, "clipboard_listener", oneShot = false)
+    }
+
+    private fun sendClipboardImage(uri: Uri, source: String, oneShot: Boolean, force: Boolean = false) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (ClipImages.isOwn(this, uri) || !prefs.getBoolean(PREF_SYNC_IMAGES, true)) {
+            if (oneShot) maybeStopIfIdle()
+            return
+        }
+        if (prefs.getBoolean(PREF_IMAGES_WIFI_ONLY, true) && ClipImages.isMetered(this)) {
+            Log.i(TAG, "Image from $source not sent: on mobile data with Wi-Fi only on")
+            setStatus("Image not sent (Wi-Fi only)")
+            ClipState.update(detail = "Image not sent: Wi-Fi only is on")
+            if (oneShot) maybeStopIfIdle()
+            return
+        }
+        val key = keyBytes ?: run {
+            Log.w(TAG, "Cannot send image from $source: encryption key is not ready")
+            if (oneShot) maybeStopIfIdle()
+            return
+        }
+
+        imageExecutor.execute {
+            val bytes = ClipImages.read(this, uri)
+            var payload: String? = null
+            var status = ""
+            when {
+                bytes == null -> Log.w(TAG, "Could not read image from $source")
+                bytes.size > ClipImages.MAX_IMAGE_BYTES -> status = "Image too large to sync (over 5 MB)"
+                else -> {
+                    val hash = CryptoUtils.sha256Hex(bytes)
+                    if (hash == lastImageHash && !force) {
+                        Log.d(TAG, "Ignored duplicate image from $source")
+                    } else {
+                        lastImageHash = hash
+                        val (width, height) = ClipImages.dimensions(bytes)
+                        val mime = contentResolver.getType(uri) ?: "image/png"
+                        payload = CryptoUtils.encryptImagePayload(deviceName, bytes, mime, width, height, key)
+                        status = "Sent image ${width}\u00d7${height}"
+                    }
+                }
+            }
+            mainHandler.post {
+                val ready = payload
+                if (ready != null) {
+                    deliver(ready, oneShot, source, status)
+                } else if (status.isNotEmpty()) {
+                    setStatus(status)
+                    ClipState.update(detail = status)
+                }
+                if (oneShot && ready == null) maybeStopIfIdle()
+            }
+        }
+    }
+
+    private fun deliver(payload: String, oneShot: Boolean, source: String, sentStatus: String) {
+        if (wsClient?.send(payload) == true) {
+            Log.i(TAG, "$sentStatus from $source")
+            setStatus(sentStatus)
+            ClipState.update(detail = sentStatus)
+            syncForegroundState(sentStatus)
+            if (oneShot) maybeStopIfIdle()
+        } else {
+            pendingOutgoing.add(PendingOutgoing(payload, oneShot))
+            setStatus("Queued - reconnecting...")
+            ClipState.update(detail = "Queued - reconnecting...")
+            syncForegroundState("Queued - reconnecting...")
+        }
     }
 
     private fun readClipboardText(): String? {
@@ -408,6 +527,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             listenerRegistered = false
         }
         wsClient?.disconnect()
+        imageExecutor.shutdownNow()
         cancelNotification()
 
         ClipState.update(ClipState.Connection.IDLE, "")
