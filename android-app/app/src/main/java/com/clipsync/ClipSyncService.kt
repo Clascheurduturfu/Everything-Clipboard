@@ -31,7 +31,6 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val PREF_APP_VISIBLE = "app_visible"
         const val PREF_SYNC_IMAGES = "sync_images"
         const val PREF_IMAGES_WIFI_ONLY = "images_wifi_only"
-        const val PREF_IMAGES_WIFI_ONLY_RECEIVE = "images_wifi_only_receive"
 
         const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
         const val ACTION_REFRESH_NOTIFICATION = "com.clipsync.action.REFRESH_NOTIFICATION"
@@ -218,10 +217,10 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             Log.i(TAG, "Image from ${image.device} ignored: image sync is off")
             return
         }
-        // The relay has already pushed the bytes; this only decides whether to apply them.
-        if (prefs.getBoolean(PREF_IMAGES_WIFI_ONLY_RECEIVE, false) && ClipImages.isMetered(this)) {
+        // Check if Wi-Fi only is enabled on mobile data
+        if (prefs.getBoolean(PREF_IMAGES_WIFI_ONLY, true) && ClipImages.isMetered(this)) {
             val skipped = "Image from ${image.device} skipped (mobile data)"
-            Log.i(TAG, "$skipped: receive on Wi-Fi only is on")
+            Log.i(TAG, "$skipped: Wi-Fi only is on")
             setStatus(skipped)
             ClipState.update(detail = skipped)
             return

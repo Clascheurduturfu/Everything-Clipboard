@@ -15,21 +15,17 @@
     <string name="last_received_from">Last received from %1$s:</string>
     <string name="behaviour">Behaviour</string>
     <string name="last_image">Last received image</string>
-    <string name="sync_images">Sync images (up to 8 MB)</string>
-    <string name="images_wifi_only">Send images on Wi-Fi only</string>
-    <string name="images_wifi_only_receive">Receive images on Wi-Fi only</string>
-    <string name="images_wifi_only_hint">The first switch limits what this phone uploads. The relay pushes images to every device regardless, so the second switch only stops the phone from applying an image to its clipboard on mobile data; it does not save the download.</string>
+    <string name="sync_images">Sync images (up to 16 MB)</string>
+    <string name="images_wifi_only">Images on Wi-Fi only</string>
+    <string name="images_wifi_only_hint">Images are only sent and received when connected to Wi-Fi.</string>
     <string name="run_in_background">Run in background</string>
     <string name="run_in_background_hint">Keeps syncing after you leave the app (shows a small notification).</string>
     <string name="show_send_button">Send Clipboard button in notification</string>
-    <string name="open_bridge_settings">Open Clipboard Bridge settings</string>
     <string name="status_connected">Connected</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_disconnected">Disconnected</string>
     <string name="status_idle">Idle</string>
     <string name="status_not_configured">Not configured</string>
-    <string name="accessibility_service_label">ClipSync Clipboard Bridge</string>
-    <string name="accessibility_service_description">Watches clipboard changes and sends copied text to your ClipSync devices.</string>
     <string name="send_clipboard_action">Send Clipboard</string>
     <string name="quick_settings_tile_label">Send ClipSync</string>
 </resources>

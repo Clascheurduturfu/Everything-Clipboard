@@ -72,22 +72,15 @@ class MainActivity : Activity() {
 
         val switchSyncImages = findViewById<Switch>(R.id.switchSyncImages)
         val switchImagesWifiOnly = findViewById<Switch>(R.id.switchImagesWifiOnly)
-        val switchImagesWifiOnlyReceive = findViewById<Switch>(R.id.switchImagesWifiOnlyReceive)
         switchSyncImages.isChecked = prefs.getBoolean(ClipSyncService.PREF_SYNC_IMAGES, true)
         switchImagesWifiOnly.isChecked = prefs.getBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, true)
-        switchImagesWifiOnlyReceive.isChecked = prefs.getBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY_RECEIVE, false)
         switchImagesWifiOnly.isEnabled = switchSyncImages.isChecked
-        switchImagesWifiOnlyReceive.isEnabled = switchSyncImages.isChecked
         switchSyncImages.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(ClipSyncService.PREF_SYNC_IMAGES, isChecked).apply()
             switchImagesWifiOnly.isEnabled = isChecked
-            switchImagesWifiOnlyReceive.isEnabled = isChecked
         }
         switchImagesWifiOnly.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, isChecked).apply()
-        }
-        switchImagesWifiOnlyReceive.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY_RECEIVE, isChecked).apply()
         }
 
         // This toggle means "keep ClipSync alive after the app closes".
@@ -115,10 +108,6 @@ class MainActivity : Activity() {
 
         findViewById<Button>(R.id.btnSendClipboard).setOnClickListener { sendClipboardNow() }
         findViewById<Button>(R.id.btnCopyLast).setOnClickListener { copyLastReceived() }
-
-        findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
 
         switchSendNotificationAction.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit()

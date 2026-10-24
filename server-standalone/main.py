@@ -72,4 +72,4 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, ws_max_size=16 * 1024 * 1024)
+    uvicorn.run(app, host="0.0.0.0", port=8000, ws_max_size=32 * 1024 * 1024)

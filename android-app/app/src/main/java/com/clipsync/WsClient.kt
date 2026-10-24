@@ -20,7 +20,15 @@ class WsClient(
         // not waking the radio every few seconds.
         private const val RECONNECT_MIN_SECONDS = 2L
         private const val RECONNECT_MAX_SECONDS = 60L
+        private const val CHUNK_SIZE = 512 * 1024
     }
+
+    private class ChunkGroup(val total: Int, val created: Long) {
+        val chunks = arrayOfNulls<String>(total)
+        var received = 0
+    }
+
+    private val chunkBuffer = mutableMapOf<String, ChunkGroup>()
 
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -56,8 +64,14 @@ class WsClient(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                Log.d(TAG, "Received websocket message (${text.length} chars)")
-                onMessage(text)
+                if (text.startsWith("cs_chunk:v1:")) {
+                    val full = handleChunk(text) ?: return
+                    Log.d(TAG, "Reassembled chunked message (${full.length} chars)")
+                    onMessage(full)
+                } else {
+                    Log.d(TAG, "Received websocket message (${text.length} chars)")
+                    onMessage(text)
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -84,18 +98,61 @@ class WsClient(
     }
 
     fun send(message: String): Boolean {
-        if (!isConnected.get()) {
+        val ws = webSocket
+        if (!isConnected.get() || ws == null) {
             Log.w(TAG, "Send skipped: websocket is not connected (${message.length} chars)")
             return false
         }
 
-        val sent = webSocket?.send(message) ?: false
-        if (!sent) {
-            Log.w(TAG, "Send failed: OkHttp rejected message (${message.length} chars)")
-        } else {
-            Log.d(TAG, "Send accepted by OkHttp (${message.length} chars)")
+        if (message.length <= CHUNK_SIZE) {
+            val sent = ws.send(message)
+            if (!sent) Log.w(TAG, "Send failed: OkHttp rejected message (${message.length} chars)")
+            return sent
         }
-        return sent
+
+        val msgId = java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+        val total = (message.length + CHUNK_SIZE - 1) / CHUNK_SIZE
+        Log.i(TAG, "Sending chunked message $msgId: ${message.length} chars in $total chunks")
+        for (idx in 0 until total) {
+            val start = idx * CHUNK_SIZE
+            val end = minOf(start + CHUNK_SIZE, message.length)
+            val chunk = message.substring(start, end)
+            val frame = "cs_chunk:v1:$msgId:$idx:$total:$chunk"
+            val sent = ws.send(frame)
+            if (!sent) {
+                Log.w(TAG, "Send failed on chunk $idx/$total of message $msgId")
+                return false
+            }
+        }
+        return true
+    }
+
+    @Synchronized
+    private fun handleChunk(frame: String): String? {
+        val parts = frame.split(":", limit = 6)
+        if (parts.size != 6) return null
+        val msgId = parts[2]
+        val idx = parts[3].toIntOrNull() ?: return null
+        val total = parts[4].toIntOrNull() ?: return null
+        val chunk = parts[5]
+
+        val now = System.currentTimeMillis()
+        chunkBuffer.entries.removeAll { now - it.value.created > 60_000 }
+
+        val group = chunkBuffer.getOrPut(msgId) { ChunkGroup(total, now) }
+        if (idx in 0 until total && group.chunks[idx] == null) {
+            group.chunks[idx] = chunk
+            group.received++
+        }
+        if (group.received == total) {
+            chunkBuffer.remove(msgId)
+            val sb = StringBuilder(total * CHUNK_SIZE)
+            for (part in group.chunks) {
+                sb.append(part ?: "")
+            }
+            return sb.toString()
+        }
+        return null
     }
 
     fun disconnect() {

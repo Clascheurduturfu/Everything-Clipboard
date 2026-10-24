@@ -278,26 +278,12 @@
                 android:layout_height="wrap_content"
                 android:text="@string/images_wifi_only" />
 
-            <Switch
-                android:id="@+id/switchImagesWifiOnlyReceive"
-                style="@style/ClipSync.Switch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/images_wifi_only_receive" />
-
             <TextView
                 style="@style/ClipSync.Hint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/images_wifi_only_hint" />
 
-            <Button
-                android:id="@+id/btnAccessibility"
-                style="@style/ClipSync.Button.Secondary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/open_bridge_settings" />
         </LinearLayout>
 
         <TextView

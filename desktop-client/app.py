@@ -82,8 +82,8 @@ RECENT_IMAGES_MAX = 2
 # Encoded image cap. The payload is base64'd twice (image, then ciphertext), so
 # an 8 MiB image is ~14.2 MB on the wire, inside the relay's 16 MiB WebSocket
 # message limit. Larger images are re-encoded as JPEG / scaled down on send.
-MAX_IMAGE_BYTES = 8 * 1024 * 1024
-WS_MAX_MESSAGE_BYTES = 16 * 1024 * 1024
+MAX_IMAGE_BYTES = 16 * 1024 * 1024
+WS_MAX_MESSAGE_BYTES = 32 * 1024 * 1024
 
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -146,14 +146,14 @@ def fit_image_for_wire(image: Image.Image, png: bytes) -> tuple[bytes, str, tupl
     rgba = image.convert("RGBA")
     flat = Image.new("RGB", rgba.size, (255, 255, 255))
     flat.paste(rgba, mask=rgba.getchannel("A"))
-    for long_edge in (None, 2560, 1920, 1280):
+    for long_edge in (2560, 1920, 1280):
         candidate = flat
-        if long_edge and max(flat.size) > long_edge:
+        if max(flat.size) > long_edge:
             scale = long_edge / max(flat.size)
             candidate = flat.resize(
-                (max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS
+                (max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.BILINEAR
             )
-        for quality in (90, 80, 70):
+        for quality in (85, 75):
             buf = io.BytesIO()
             candidate.save(buf, "JPEG", quality=quality)
             if buf.tell() <= MAX_IMAGE_BYTES:
@@ -689,7 +689,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     hide_dock_var = ctk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
     images_var = ctk.BooleanVar(value=bool(config.get("sync_images", True)))
     switch(general, "Start ClipSync on login", startup_var)
-    switch(general, "Sync images (up to 8 MB)", images_var)
+    switch(general, "Sync images (up to 16 MB)", images_var)
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
     updates_var = ctk.BooleanVar(value=bool(config.get("check_updates", True)))
@@ -866,6 +866,7 @@ class ClipSyncApp:
         self.available_update: dict | None = None
         self._update_busy = threading.Lock()
         self._reconnect_lock = threading.Lock()
+        self._chunk_buffer: dict[str, dict] = {}
 
         # Echo suppression.  `_recent_sync_values` holds every payload that has
         # recently been sent or received; `_applying_remote` parks the poller
@@ -1592,6 +1593,27 @@ class ClipSyncApp:
     async def _receive_loop(self, ws):
         async for message in ws:
             try:
+                if message.startswith("cs_chunk:v1:"):
+                    parts = message.split(":", 5)
+                    if len(parts) == 6:
+                        _, _, msg_id, idx_str, total_str, chunk_str = parts
+                        idx = int(idx_str)
+                        total = int(total_str)
+                        now = time.time()
+                        self._chunk_buffer = {
+                            k: v for k, v in self._chunk_buffer.items() if now - v.get("time", 0) < 60
+                        }
+                        entry = self._chunk_buffer.setdefault(msg_id, {"total": total, "chunks": {}, "time": now})
+                        entry["chunks"][idx] = chunk_str
+                        entry["time"] = now
+                        if len(entry["chunks"]) == total:
+                            message = "".join(entry["chunks"][i] for i in range(total))
+                            del self._chunk_buffer[msg_id]
+                        else:
+                            continue
+                    else:
+                        continue
+
                 payload = decrypt_payload(message, self.key)
                 device = payload.get("device_name", "Unknown")
 
@@ -1618,10 +1640,19 @@ class ClipSyncApp:
                 logger.error("Decrypt/receive error: %s", exc)
 
     async def _send_loop(self, ws):
+        CHUNK_SIZE = 512 * 1024
         while not self.stop_event.is_set():
             try:
                 message = await asyncio.wait_for(self.send_queue.get(), timeout=1.0)
-                await ws.send(message)
+                if len(message) <= CHUNK_SIZE:
+                    await ws.send(message)
+                else:
+                    msg_id = uuid.uuid4().hex[:12]
+                    total = (len(message) + CHUNK_SIZE - 1) // CHUNK_SIZE
+                    logger.info("Sending chunked message %s: %d bytes in %d chunks", msg_id, len(message), total)
+                    for idx in range(total):
+                        chunk = message[idx * CHUNK_SIZE : (idx + 1) * CHUNK_SIZE]
+                        await ws.send(f"cs_chunk:v1:{msg_id}:{idx}:{total}:{chunk}")
             except asyncio.TimeoutError:
                 continue
             except Exception as exc:
