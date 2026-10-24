@@ -319,17 +319,29 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun deliver(payload: String, oneShot: Boolean, source: String, sentStatus: String) {
-        if (wsClient?.send(payload) == true) {
-            Log.i(TAG, "$sentStatus from $source")
-            setStatus(sentStatus)
-            ClipState.update(detail = sentStatus)
-            syncForegroundState(sentStatus)
-            if (oneShot) maybeStopIfIdle()
-        } else {
+        val client = wsClient
+        if (client == null || !client.isConnected()) {
             pendingOutgoing.add(PendingOutgoing(payload, oneShot))
             setStatus("Queued - reconnecting...")
             ClipState.update(detail = "Queued - reconnecting...")
             syncForegroundState("Queued - reconnecting...")
+            return
+        }
+        client.send(payload) { success ->
+            mainHandler.post {
+                if (success) {
+                    Log.i(TAG, "$sentStatus from $source")
+                    setStatus(sentStatus)
+                    ClipState.update(detail = sentStatus)
+                    syncForegroundState(sentStatus)
+                    if (oneShot) maybeStopIfIdle()
+                } else {
+                    pendingOutgoing.add(PendingOutgoing(payload, oneShot))
+                    setStatus("Queued - reconnecting...")
+                    ClipState.update(detail = "Queued - reconnecting...")
+                    syncForegroundState("Queued - reconnecting...")
+                }
+            }
         }
     }
 
@@ -359,44 +371,16 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
 
         val payload = CryptoUtils.encryptPayload(deviceName, text, key)
-        val sent = wsClient?.send(payload) ?: false
-        if (sent) {
-            Log.i(TAG, "Sent from $source (${text.length} chars): ${text.take(30)}...")
-            setStatus("Sent clipboard (${text.length} chars)")
-            ClipState.update(detail = "Sent clipboard (${text.length} chars)")
-            syncForegroundState("Sent: ${text.take(25)}...")
-            if (oneShot) maybeStopIfIdle()
-        } else {
-            pendingOutgoing.add(PendingOutgoing(payload, oneShot))
-            Log.i(TAG, "Queued from $source (${text.length} chars). queue=${pendingOutgoing.size}: ${text.take(30)}...")
-            setStatus("Queued clipboard - reconnecting...")
-            ClipState.update(detail = "Queued clipboard - reconnecting...")
-            syncForegroundState("Queued clipboard - reconnecting...")
-        }
+        deliver(payload, oneShot, source, "Sent clipboard (${text.length} chars)")
     }
 
     private fun flushPendingOutgoing() {
         if (pendingOutgoing.isEmpty()) return
-
-        val iterator = pendingOutgoing.iterator()
-        var sentCount = 0
-        var sentOneShot = false
-        while (iterator.hasNext()) {
-            val pending = iterator.next()
-            if (wsClient?.send(pending.payload) == true) {
-                sentOneShot = sentOneShot || pending.oneShot
-                iterator.remove()
-                sentCount++
-            } else {
-                Log.w(TAG, "Stopped flushing queue after $sentCount sent; remaining=${pendingOutgoing.size}")
-                break
-            }
-        }
-        if (sentCount > 0) {
-            Log.i(TAG, "Flushed $sentCount queued clipboard update(s)")
-        }
-        if (sentOneShot && pendingOutgoing.none { it.oneShot }) {
-            maybeStopIfIdle()
+        val items = ArrayList(pendingOutgoing)
+        pendingOutgoing.clear()
+        Log.i(TAG, "Flushing ${items.size} queued clipboard update(s)")
+        for (pending in items) {
+            deliver(pending.payload, pending.oneShot, "queue_flush", "Sent queued update")
         }
     }
 
