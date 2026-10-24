@@ -56,6 +56,7 @@ class HostServer:
             access_log=False,
             log_config=None,
             loop="asyncio",
+            ws_max_size=16 * 1024 * 1024,
         )
         self.server = uvicorn.Server(self.config)
         self.thread = threading.Thread(target=self.server.run, daemon=True)

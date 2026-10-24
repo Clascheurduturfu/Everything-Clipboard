@@ -94,6 +94,8 @@ def build_app(fake, module):
     app.last_image_fingerprint = ""
     app.status_message = ""
     app._rebuild_menu = lambda *a, **k: None
+    app._refresh_tray = lambda *a, **k: None
+    app._set_notice = lambda text, *a, **k: setattr(app, "status_message", text)
     return app
 
 

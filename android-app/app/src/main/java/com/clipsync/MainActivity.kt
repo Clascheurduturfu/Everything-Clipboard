@@ -4,7 +4,6 @@ import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ClipData
-import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -12,7 +11,6 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
@@ -40,7 +38,6 @@ class MainActivity : Activity() {
     private lateinit var ivLastImage: ImageView
     private lateinit var switchService: Switch
     private lateinit var switchSendNotificationAction: Switch
-    private lateinit var switchSensitiveClipboard: Switch
     private lateinit var editDeviceName: EditText
     private lateinit var editServerUrl: EditText
     private lateinit var editSecretKey: EditText
@@ -55,7 +52,6 @@ class MainActivity : Activity() {
         editSecretKey = findViewById(R.id.editSecretKey)
         switchService = findViewById(R.id.switchService)
         switchSendNotificationAction = findViewById(R.id.switchSendNotificationAction)
-        switchSensitiveClipboard = findViewById(R.id.switchSensitiveClipboard)
         tvStatusTitle = findViewById(R.id.tvStatusTitle)
         tvStatus = findViewById(R.id.tvStatus)
         statusDot = findViewById(R.id.statusDot)
@@ -73,20 +69,25 @@ class MainActivity : Activity() {
         editSecretKey.setText(prefs.getString("secret_key", ""))
         switchSendNotificationAction.isChecked =
             prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
-        switchSensitiveClipboard.isChecked =
-            prefs.getBoolean(ClipSyncService.PREF_USE_SENSITIVE_CLIPBOARD, true)
 
         val switchSyncImages = findViewById<Switch>(R.id.switchSyncImages)
         val switchImagesWifiOnly = findViewById<Switch>(R.id.switchImagesWifiOnly)
+        val switchImagesWifiOnlyReceive = findViewById<Switch>(R.id.switchImagesWifiOnlyReceive)
         switchSyncImages.isChecked = prefs.getBoolean(ClipSyncService.PREF_SYNC_IMAGES, true)
         switchImagesWifiOnly.isChecked = prefs.getBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, true)
+        switchImagesWifiOnlyReceive.isChecked = prefs.getBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY_RECEIVE, false)
         switchImagesWifiOnly.isEnabled = switchSyncImages.isChecked
+        switchImagesWifiOnlyReceive.isEnabled = switchSyncImages.isChecked
         switchSyncImages.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(ClipSyncService.PREF_SYNC_IMAGES, isChecked).apply()
             switchImagesWifiOnly.isEnabled = isChecked
+            switchImagesWifiOnlyReceive.isEnabled = isChecked
         }
         switchImagesWifiOnly.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY, isChecked).apply()
+        }
+        switchImagesWifiOnlyReceive.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(ClipSyncService.PREF_IMAGES_WIFI_ONLY_RECEIVE, isChecked).apply()
         }
 
         // This toggle means "keep ClipSync alive after the app closes".
@@ -127,12 +128,6 @@ class MainActivity : Activity() {
             if (hasUsableSettings()) {
                 startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_REFRESH_NOTIFICATION)
             }
-        }
-
-        switchSensitiveClipboard.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit()
-                .putBoolean(ClipSyncService.PREF_USE_SENSITIVE_CLIPBOARD, isChecked)
-                .apply()
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
@@ -273,20 +268,14 @@ class MainActivity : Activity() {
     private fun copyLastReceived() {
         val imageUri = ClipState.lastImageUri
         if (imageUri != null) {
-            ClipImages.setClipboard(this, imageUri, switchSensitiveClipboard.isChecked)
+            ClipImages.setClipboard(this, imageUri)
             Toast.makeText(this, "Image copied to clipboard", Toast.LENGTH_SHORT).show()
             return
         }
         val text = ClipState.lastText
         if (text.isEmpty()) return
-        val clip = ClipData.newPlainText("ClipSync", text).apply {
-            if (switchSensitiveClipboard.isChecked) {
-                description.extras = PersistableBundle().apply {
-                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                }
-            }
-        }
-        (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+        (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+            .setPrimaryClip(ClipData.newPlainText("ClipSync", text))
         Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 

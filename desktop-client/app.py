@@ -2,6 +2,10 @@
 ClipSync Desktop Client - cross-platform system tray app for encrypted clipboard sync.
 """
 
+# Annotations stay unevaluated so the Preferences process can skip the tray-only
+# imports below (PIL types appear in signatures) without a NameError.
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import io
@@ -23,28 +27,34 @@ import time
 import urllib.error
 import urllib.request
 
-import pystray
-import websockets
-from PIL import Image, ImageDraw
+# Preferences runs as its own short-lived process (`app.py --preferences`) and
+# only needs the settings helpers below, so it skips the tray/network imports.
+# host_server (FastAPI + uvicorn, ~1.5 s to import) is only loaded when the
+# relay is actually started, see ClipSyncApp._start_host.
+_PREFERENCES_PROCESS = "--preferences" in sys.argv
 
-from clipboard import (
-    clipboard_change_token,
-    clipboard_has_files,
-    clipboard_has_image,
-    get_clipboard,
-    get_clipboard_image,
-    set_clipboard,
-    set_clipboard_image,
-)
-from crypto_utils import (
-    decode_image,
-    decrypt_payload,
-    derive_key,
-    encrypt_image_payload,
-    encrypt_payload,
-    get_room_id,
-)
-from host_server import start_host_server
+if not _PREFERENCES_PROCESS:
+    import pystray
+    import websockets
+    from PIL import Image, ImageDraw
+
+    from clipboard import (
+        clipboard_change_token,
+        clipboard_has_files,
+        clipboard_has_image,
+        get_clipboard,
+        get_clipboard_image,
+        set_clipboard,
+        set_clipboard_image,
+    )
+    from crypto_utils import (
+        decode_image,
+        decrypt_payload,
+        derive_key,
+        encrypt_image_payload,
+        encrypt_payload,
+        get_room_id,
+    )
 import updater
 
 logging.basicConfig(
@@ -54,7 +64,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0 beta 2"
+APP_VERSION = "2.0 beta 3"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -69,9 +79,10 @@ RECONNECT_MAX_SECONDS = 60.0
 RECENT_CLIPS_MAX = 5
 # Images are memory-heavy, so the recent list keeps only the newest few.
 RECENT_IMAGES_MAX = 2
-# Encoded image cap. After base64 + encryption a 5 MB image is ~9 MB on the
-# wire, inside the relay's 16 MiB WebSocket frame limit.
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
+# Encoded image cap. The payload is base64'd twice (image, then ciphertext), so
+# an 8 MiB image is ~14.2 MB on the wire, inside the relay's 16 MiB WebSocket
+# message limit. Larger images are re-encoded as JPEG / scaled down on send.
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
 WS_MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 
 CONFIG_DIR = os.path.expanduser("~/.clipsync")
@@ -120,6 +131,46 @@ def encode_png(image: Image.Image) -> bytes:
     buf = io.BytesIO()
     image.save(buf, "PNG", compress_level=4)
     return buf.getvalue()
+
+
+def fit_image_for_wire(image: Image.Image, png: bytes) -> tuple[bytes, str, tuple[int, int], bool] | None:
+    """Make an image fit MAX_IMAGE_BYTES.
+
+    Returns (data, mime, (width, height), resized), or None when it cannot fit.
+    An image that already fits is returned untouched. Otherwise it is flattened
+    onto white and re-encoded as JPEG, then scaled down in steps until it fits.
+    """
+    if len(png) <= MAX_IMAGE_BYTES:
+        return png, "image/png", image.size, False
+
+    rgba = image.convert("RGBA")
+    flat = Image.new("RGB", rgba.size, (255, 255, 255))
+    flat.paste(rgba, mask=rgba.getchannel("A"))
+    for long_edge in (None, 2560, 1920, 1280):
+        candidate = flat
+        if long_edge and max(flat.size) > long_edge:
+            scale = long_edge / max(flat.size)
+            candidate = flat.resize(
+                (max(1, round(flat.width * scale)), max(1, round(flat.height * scale))), Image.LANCZOS
+            )
+        for quality in (90, 80, 70):
+            buf = io.BytesIO()
+            candidate.save(buf, "JPEG", quality=quality)
+            if buf.tell() <= MAX_IMAGE_BYTES:
+                return buf.getvalue(), "image/jpeg", candidate.size, True
+    return None
+
+
+def asset_path(filename: str) -> str:
+    base = getattr(sys, "_MEIPASS", None)
+    if base and os.path.isdir(base):
+        candidate = os.path.join(base, "assets", filename)
+        if os.path.exists(candidate):
+            return candidate
+    candidate = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", filename)
+    if os.path.exists(candidate):
+        return candidate
+    return ""
 
 
 def find_executable(name: str) -> str | None:
@@ -410,6 +461,13 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
 
     ctk.set_appearance_mode("dark")
     root = ctk.CTk(fg_color=p["bg"])
+    if platform.system() == "Windows":
+        ico = asset_path("clipsync.ico")
+        if ico and os.path.exists(ico):
+            try:
+                root.iconbitmap(ico)
+            except Exception:
+                pass
     set_macos_dock_visible(True, activate=True)
     root.title("ClipSync Preferences")
     root.resizable(False, False)
@@ -631,7 +689,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     hide_dock_var = ctk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
     images_var = ctk.BooleanVar(value=bool(config.get("sync_images", True)))
     switch(general, "Start ClipSync on login", startup_var)
-    switch(general, "Sync images (up to 5 MB)", images_var)
+    switch(general, "Sync images (up to 8 MB)", images_var)
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
     updates_var = ctk.BooleanVar(value=bool(config.get("check_updates", True)))
@@ -681,6 +739,13 @@ def _show_basic_preferences_dialog() -> bool:
 
     config = load_config()
     root = tk.Tk()
+    if platform.system() == "Windows":
+        ico = asset_path("clipsync.ico")
+        if ico and os.path.exists(ico):
+            try:
+                root.iconbitmap(ico)
+            except Exception:
+                pass
     # The preferences window is its own process, so it owns the Dock icon only
     # while it is open and the icon disappears again when it closes.
     set_macos_dock_visible(True, activate=True)
@@ -776,7 +841,14 @@ class ClipSyncApp:
         self.last_clipboard = ""
         self.last_received_device = ""
         self.last_received_content = ""
-        self.status_message = ""
+        # The tray colour/text are never stored as the "current" state: they are
+        # derived from these fields every time (see _current_status), so the
+        # icon cannot go stale or disagree with the real connection.
+        self.connect_problem: tuple[str, str] | None = None
+        self.host_problem: tuple[str, str] | None = None
+        self._notice_text = ""
+        self._notice_until = 0.0
+        self._tray_lock = threading.RLock()
         self.ws_loop: asyncio.AbstractEventLoop | None = None
         self.send_queue: asyncio.Queue | None = None
         self.stop_event = threading.Event()
@@ -787,7 +859,6 @@ class ClipSyncApp:
         self.preferences_open = False
         self.status_color = "gray"
         self.host_lan_address = ""
-        self.ngrok_problem = ""
         self.status_title = "Disconnected"
         # (device, text or image label, PNG bytes for images else None)
         self.recent_clips: "deque[tuple[str, str, bytes | None]]" = deque(maxlen=RECENT_CLIPS_MAX)
@@ -811,7 +882,7 @@ class ClipSyncApp:
             self._setup_windows_shutdown_handler()
         # pystray has created NSApp by now; settle the Dock icon before run().
         self._apply_dock_policy()
-        self._rebuild_menu()
+        self._refresh_tray()
 
     def _setup_windows_shutdown_handler(self):
         try:
@@ -863,33 +934,21 @@ class ClipSyncApp:
 
     def _build_menu(self):
         """Build and return the tray menu (pure computation, thread-safe)."""
-        status = "Connected" if self.is_connected else "Disconnected"
-        if self.status_message:
-            status = self.status_message
-
+        _color, status = self._current_status()
         items = [
             pystray.MenuItem(f"ClipSync v{APP_VERSION}", None, enabled=False),
             pystray.MenuItem(f"Status: {status}", None, enabled=False),
-            self._recent_clips_item(),
         ]
+        notice = self._current_notice()
+        if notice:
+            items.append(pystray.MenuItem(notice, None, enabled=False))
+        items.append(self._recent_clips_item())
 
         items.extend(
             [
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Preferences...", self._open_preferences_from_tray),
                 self._update_menu_item(),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem(self._hosting_summary(), None, enabled=False),
-                pystray.MenuItem(
-                    "Host relay on this computer",
-                    self._toggle_host_mode_from_tray,
-                    checked=lambda item: bool(self.config.get("host_mode")),
-                ),
-                pystray.MenuItem(
-                    "Publish with ngrok",
-                    self._toggle_ngrok_from_tray,
-                    checked=lambda item: bool(self.config.get("use_ngrok_with_host")),
-                ),
             ]
         )
         if _IS_MACOS:
@@ -912,17 +971,6 @@ class ClipSyncApp:
             ]
         )
         return pystray.Menu(*items)
-
-    def _hosting_summary(self) -> str:
-        if not self.config.get("host_mode"):
-            return "Hosting: off"
-        port = host_port(self.config)
-        if not self.config.get("use_ngrok_with_host"):
-            return f"Hosting: devices connect to ws://{self.host_lan_address or lan_address()}:{port}"
-        if self.ngrok_problem:
-            return f"Hosting (ngrok): {self.ngrok_problem}"
-        public = self.config.get("ngrok_public_url")
-        return f"Hosting (ngrok): {public}" if public else f"Hosting (ngrok): starting on port {port}..."
 
     def _recent_clips_item(self):
         clips = list(self.recent_clips)
@@ -954,35 +1002,63 @@ class ClipSyncApp:
         for entry in images[:-RECENT_IMAGES_MAX]:
             self.recent_clips.remove(entry)
 
-    def _update_tray(self, icon_color=None, title=None, rebuild_menu=True):
-        """Batch-update tray icon properties on the main thread."""
-        menu = self._build_menu() if rebuild_menu else None
-        icon_image = create_icon_image(icon_color) if icon_color else None
-        if icon_color:
-            self.status_color = icon_color
-        if title:
-            self.status_title = title.replace("ClipSync - ", "", 1)
+    def _current_status(self) -> tuple[str, str]:
+        """(icon colour, status text), derived from live state on every call.
+
+        Priority: a hosting problem, then the real connection (blue "Hosting"
+        when this computer runs the relay, green "Connected" otherwise), then
+        a connection problem, then "Connecting..." while the socket thread is
+        starting, else grey "Disconnected".
+        """
+        hosting = bool(self.config.get("host_mode"))
+        if hosting and self.host_problem:
+            return self.host_problem
+        if self.is_connected:
+            return ("blue", "Hosting") if hosting else ("green", "Connected")
+        if self.connect_problem:
+            return self.connect_problem
+        thread = self.ws_thread
+        if thread is not None and thread.is_alive() and not self.stop_event.is_set():
+            return "orange", "Connecting..."
+        return "gray", "Disconnected"
+
+    def _current_notice(self) -> str:
+        return self._notice_text if time.monotonic() < self._notice_until else ""
+
+    def _set_notice(self, text: str, seconds: float = 60.0):
+        """A short informational line under Status (update found, image resized...).
+        It never replaces the connection status."""
+        self.status_message = text
+        self._notice_text = text
+        self._notice_until = time.monotonic() + seconds
+        self._refresh_tray()
+        timer = threading.Timer(seconds + 0.5, self._refresh_tray)
+        timer.daemon = True
+        timer.start()
+
+    def _refresh_tray(self):
+        """Re-render icon, tooltip and menu from the current state.
+
+        The state is read inside the callback, under a lock, on the tray's main
+        thread. Two threads reporting changes at once therefore can never apply
+        an older snapshot after a newer one.
+        """
+        if not hasattr(self, "_tray_lock") or not hasattr(self, "icon") or self.icon is None:
+            return
 
         def _apply():
-            if icon_image is not None:
-                self.icon.icon = icon_image
-            if title is not None:
-                self.icon.title = title
-            if menu is not None:
-                self.icon.menu = menu
+            with self._tray_lock:
+                color, text = self._current_status()
+                if color != self.status_color or self.icon.icon is None:
+                    self.icon.icon = create_icon_image(color)
+                self.status_color, self.status_title = color, text
+                self.icon.title = f"ClipSync - {text}"
+                self.icon.menu = self._build_menu()
 
         self._run_on_main_thread(_apply)
 
     def _rebuild_menu(self):
-        self._update_tray(rebuild_menu=True)
-
-    def _set_status(self, message: str, icon_color: str | None = None):
-        self.status_message = message
-        self._update_tray(
-            icon_color=icon_color,
-            title=f"ClipSync - {message}",
-            rebuild_menu=True,
-        )
+        self._refresh_tray()
 
     def _open_preferences_from_tray(self, icon=None, item=None):
         self.open_preferences()
@@ -994,14 +1070,15 @@ class ClipSyncApp:
         def _run_preferences_process():
             self.preferences_open = True
             try:
+                status_color, status_text = self._current_status()
                 process = subprocess.Popen(
                     launch_arguments(
                         [
                             "--preferences",
                             "--status-color",
-                            self.status_color,
+                            status_color,
                             "--status-text",
-                            self.status_title,
+                            status_text,
                         ]
                     ),
                     stdout=subprocess.DEVNULL,
@@ -1069,12 +1146,6 @@ class ClipSyncApp:
         if settings_changed:
             self._reconnect_if_configured()
 
-    def _toggle_host_mode_from_tray(self, icon=None, item=None):
-        if self.config.get("host_mode"):
-            self._disable_host_mode()
-        else:
-            self._enable_host_mode()
-
     def _enable_host_mode(self, reconnect: bool = True):
         with self.config_lock:
             if self.config.get("server_url") and not is_local_relay_url(self.config["server_url"]):
@@ -1085,11 +1156,12 @@ class ClipSyncApp:
 
         if not self._start_host():
             return
+        self.host_problem = None
         if self.config.get("use_ngrok_with_host"):
             self._start_ngrok()
         else:
             self._stop_ngrok()
-            self._set_status(f"Hosting on port {host_port(self.config)}", "blue")
+        self._refresh_tray()
         if reconnect:
             self._reconnect_if_configured()
 
@@ -1101,25 +1173,10 @@ class ClipSyncApp:
             self.config["ngrok_public_url"] = ""
             self.config["server_url"] = self.config.get("normal_server_url", "")
             save_config(self.config)
-        self._set_status("Hosting stopped", "gray")
+        self.host_problem = None
+        self._refresh_tray()
         if reconnect:
             self._reconnect_if_configured()
-
-    def _toggle_ngrok_from_tray(self, icon=None, item=None):
-        with self.config_lock:
-            self.config["use_ngrok_with_host"] = not self.config.get("use_ngrok_with_host", False)
-            enabled = self.config["use_ngrok_with_host"]
-            save_config(self.config)
-
-        if self.config.get("host_mode"):
-            # Switching modes changes which interface the relay listens on.
-            self._start_host()
-            if enabled:
-                self._start_ngrok()
-            else:
-                self._stop_ngrok()
-                self._set_status(f"Hosting on port {host_port(self.config)}", "blue")
-        self._rebuild_menu()
 
     def _start_host(self) -> bool:
         port = host_port(self.config)
@@ -1130,16 +1187,20 @@ class ClipSyncApp:
             self._stop_host()
         if not port_available(bind, port):
             logger.error("Hosting: port %s is already in use", port)
-            self._set_status(f"Port {port} is already in use", "red")
+            self.host_problem = ("red", f"Port {port} is already in use")
+            self._refresh_tray()
             return False
         try:
+            from host_server import start_host_server  # slow import; only when hosting
+
             self.server_thread = start_host_server(host=bind, port=port)
             self.host_lan_address = lan_address()
             logger.info("Hosting relay on %s:%s", bind, port)
             return True
         except Exception as exc:
             logger.error("Could not start hosting: %s", exc)
-            self._set_status(f"Host error: {exc}", "red")
+            self.host_problem = ("red", f"Host error: {exc}")
+            self._refresh_tray()
             return False
 
     def _stop_host(self):
@@ -1156,16 +1217,17 @@ class ClipSyncApp:
             return
 
         status = ngrok_status()
+        problem = ""
         if not status["installed"]:
-            self.ngrok_problem = "ngrok is not installed"
+            problem = "ngrok is not installed"
         elif not status["authenticated"]:
-            self.ngrok_problem = "no ngrok authtoken (Preferences > Hosting)"
-        else:
-            self.ngrok_problem = ""
-        if self.ngrok_problem:
-            logger.warning("Cannot start ngrok: %s", self.ngrok_problem)
-            self._set_status(self.ngrok_problem, "orange")
+            problem = "no ngrok authtoken (Preferences > Hosting)"
+        if problem:
+            logger.warning("Cannot start ngrok: %s", problem)
+            self.host_problem = ("orange", problem)
+            self._refresh_tray()
             return
+        self.host_problem = None
 
         cmd = _ngrok_command(find_executable("ngrok"), "http", str(host_port(self.config)))
 
@@ -1177,7 +1239,8 @@ class ClipSyncApp:
                 creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0,
             )
         except Exception as exc:
-            self._set_status(f"ngrok failed: {exc}", "orange")
+            self.host_problem = ("orange", f"ngrok failed: {exc}")
+            self._refresh_tray()
             logger.warning("Could not start ngrok: %s", exc)
             return
 
@@ -1186,8 +1249,8 @@ class ClipSyncApp:
     def _wait_for_ngrok_url(self):
         for _ in range(30):
             if self.ngrok_process is None or self.ngrok_process.poll() is not None:
-                self.ngrok_problem = "ngrok exited (check its authtoken)"
-                self._set_status(self.ngrok_problem, "orange")
+                self.host_problem = ("orange", "ngrok exited (check its authtoken)")
+                self._refresh_tray()
                 return
             url = self._read_ngrok_url()
             if url:
@@ -1198,12 +1261,13 @@ class ClipSyncApp:
                 self.last_clipboard = url
                 set_clipboard(url)
                 self._last_change_token = clipboard_change_token()
-                self._set_status("ngrok tunnel ready", "blue")
+                self.host_problem = None
+                self._set_notice("ngrok tunnel ready")
                 logger.info("ngrok mobile URL: %s", url)
                 return
             time.sleep(0.5)
-        self.ngrok_problem = "tunnel not ready yet"
-        self._set_status("ngrok tunnel not ready", "orange")
+        self.host_problem = ("orange", "ngrok tunnel not ready")
+        self._refresh_tray()
 
     def _read_ngrok_url(self) -> str:
         try:
@@ -1236,7 +1300,9 @@ class ClipSyncApp:
         if self.is_connected:
             self._disconnect()
         else:
-            self._connect()
+            # Goes through the worker so a still-closing previous socket is
+            # waited for instead of the click silently doing nothing.
+            self._reconnect_if_configured()
 
     def _connect(self):
         with self.config_lock:
@@ -1244,7 +1310,8 @@ class ClipSyncApp:
             secret_key = self.config.get("secret_key", "")
 
         if not server_url or not secret_key:
-            self._set_status("Open Preferences", "orange")
+            self.connect_problem = ("orange", "Open Preferences")
+            self._refresh_tray()
             logger.error("Cannot connect: server_url or secret_key not set")
             return
 
@@ -1252,18 +1319,17 @@ class ClipSyncApp:
             return
 
         self.stop_event.clear()
+        self.connect_problem = None
         self.key = derive_key(secret_key)
         self.ws_thread = threading.Thread(target=self._ws_thread, daemon=True)
         self.ws_thread.start()
+        self._refresh_tray()
 
     def _disconnect(self):
         self.stop_event.set()
         self.is_connected = False
-        self._update_tray(
-            icon_color="gray",
-            title="ClipSync - Disconnected",
-            rebuild_menu=True,
-        )
+        self.connect_problem = None
+        self._refresh_tray()
 
     def _reconnect_if_configured(self):
         # Waiting for the old socket to close can take a few seconds; never do
@@ -1295,14 +1361,11 @@ class ClipSyncApp:
         except Exception as exc:
             logger.error("WS thread crashed: %s", exc)
         finally:
-            self.is_connected = False
-            self._update_tray(
-                icon_color="gray",
-                title="ClipSync - Disconnected",
-                rebuild_menu=True,
-            )
+            # A superseded thread must not touch the state of its successor.
             if self.ws_thread is threading.current_thread():
+                self.is_connected = False
                 self.ws_thread = None
+            self._refresh_tray()
 
     async def _ws_client_loop(self):
         with self.config_lock:
@@ -1328,14 +1391,12 @@ class ClipSyncApp:
                     # websockets refuses incoming messages over 1 MiB by default.
                     max_size=WS_MAX_MESSAGE_BYTES,
                 ) as ws:
+                    if self.stop_event.is_set():
+                        break
+                    connected_at = time.monotonic()
                     self.is_connected = True
-                    self.status_message = ""
-                    retry_delay = RECONNECT_MIN_SECONDS
-                    self._update_tray(
-                        icon_color="green",
-                        title="ClipSync - Connected",
-                        rebuild_menu=True,
-                    )
+                    self.connect_problem = None
+                    self._refresh_tray()
                     logger.info("Connected to server")
 
                     recv_task = asyncio.create_task(self._receive_loop(ws))
@@ -1350,12 +1411,30 @@ class ClipSyncApp:
                             await task
                         except asyncio.CancelledError:
                             pass
+                    for task in done:
+                        if not task.cancelled() and task.exception():
+                            logger.warning("Connection ended: %s", task.exception())
+
+                # The socket closed without an exception (server closed it, or
+                # the receive loop ended). It is NOT connected any more: say so
+                # now instead of showing "Connected" through the whole retry.
+                self.is_connected = False
+                if self.stop_event.is_set():
+                    break
+                if time.monotonic() - connected_at > 30:
+                    retry_delay = RECONNECT_MIN_SECONDS
+                logger.warning("Connection closed. Reconnecting in %.0fs...", retry_delay)
+                self.connect_problem = ("orange", f"Reconnecting in {retry_delay:.0f}s...")
+                self._refresh_tray()
+                await self._sleep_unless_stopped(retry_delay)
+                retry_delay = min(retry_delay * 2, RECONNECT_MAX_SECONDS)
             except Exception as exc:
+                self.is_connected = False
                 if self.stop_event.is_set():
                     break
                 logger.warning("Connection failed: %s. Retrying in %.0fs...", exc, retry_delay)
-                self.is_connected = False
-                self._set_status(f"Reconnecting in {retry_delay:.0f}s...", "orange")
+                self.connect_problem = ("orange", f"Reconnecting in {retry_delay:.0f}s...")
+                self._refresh_tray()
                 await self._sleep_unless_stopped(retry_delay)
                 retry_delay = min(retry_delay * 2, RECONNECT_MAX_SECONDS)
 
@@ -1486,24 +1565,29 @@ class ClipSyncApp:
 
         png = encode_png(image)
         label = f"[Image {image.width}\u00d7{image.height}]"
-        if len(png) > MAX_IMAGE_BYTES:
-            logger.info("Image not synced: %.1f MB is over the %d MB limit", len(png) / 1e6, MAX_IMAGE_BYTES // 2**20)
-            self.status_message = f"Image too large to sync ({len(png) / 1e6:.1f} MB)"
-            self._rebuild_menu()
+        fitted = fit_image_for_wire(image, png)
+        if fitted is None:
+            logger.info("Image not synced: %.1f MB cannot be shrunk under %d MB", len(png) / 1e6, MAX_IMAGE_BYTES // 2**20)
+            self._set_notice(f"Image too large to sync ({len(png) / 1e6:.1f} MB)")
             return
+        data, mime, (sent_w, sent_h), resized = fitted
+        if resized:
+            logger.info("Image resized to fit: %.1f MB PNG -> %.1f MB %s (%sx%s)",
+                        len(png) / 1e6, len(data) / 1e6, mime, sent_w, sent_h)
+            self._set_notice("Image resized to fit")
 
         self.last_received_device = self.config.get("device_name", "Desktop")
         self.last_received_content = label
         self._remember_recent_clip("this computer", label, png)
-        self._rebuild_menu()
+        self._refresh_tray()
 
         if self.is_connected and self.send_queue and self.ws_loop:
             self._remember_sync_value(fingerprint)
             payload = encrypt_image_payload(
-                self.config["device_name"], png, "image/png", image.width, image.height, self.key
+                self.config["device_name"], data, mime, sent_w, sent_h, self.key
             )
             asyncio.run_coroutine_threadsafe(self.send_queue.put(payload), self.ws_loop)
-            logger.info("Sent image %sx%s (%d bytes)", image.width, image.height, len(png))
+            logger.info("Sent image %sx%s (%d bytes)", sent_w, sent_h, len(data))
 
     async def _receive_loop(self, ws):
         async for message in ws:
@@ -1685,20 +1769,20 @@ class ClipSyncApp:
         try:
             if updater.install_root() is None:
                 if manual:
-                    self._set_status("Updates only work in the installed app", None)
+                    self._set_notice("Updates only work in the installed app")
                 return
             channel = self.config.get("update_channel", "main")
             update = updater.check(APP_VERSION, channel)
             self.available_update = update
             if update:
                 logger.info("Update available on %s: %s", channel, update["version"])
-                self._set_status(f"Update {update['version']} available", None)
+                self._set_notice(f"Update {update['version']} available", seconds=3600)
             elif manual:
-                self._set_status(f"Up to date (v{APP_VERSION})", None)
+                self._set_notice(f"Up to date (v{APP_VERSION})", seconds=15)
         except updater.UpdateError as exc:
             logger.warning("%s", exc)
             if manual:
-                self._set_status("Update check failed", None)
+                self._set_notice("Update check failed", seconds=15)
         finally:
             self._update_busy.release()
 
@@ -1722,13 +1806,13 @@ class ClipSyncApp:
         if not update or root is None or not self._update_busy.acquire(blocking=False):
             return
         try:
-            self._set_status(f"Downloading {update['version']}...", "blue")
+            self._set_notice(f"Downloading {update['version']}...", seconds=600)
             package = updater.download(update)
-            self._set_status("Installing update...", "blue")
+            self._set_notice("Installing update...", seconds=600)
             updater.apply(package, root, os.getpid())
         except updater.UpdateError as exc:
             logger.error("Update failed: %s", exc)
-            self._set_status(str(exc), "red")
+            self._set_notice(str(exc))
             return
         finally:
             self._update_busy.release()

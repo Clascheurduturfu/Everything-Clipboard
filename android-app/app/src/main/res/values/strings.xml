@@ -15,14 +15,13 @@
     <string name="last_received_from">Last received from %1$s:</string>
     <string name="behaviour">Behaviour</string>
     <string name="last_image">Last received image</string>
-    <string name="sync_images">Sync images (up to 5 MB)</string>
+    <string name="sync_images">Sync images (up to 8 MB)</string>
     <string name="images_wifi_only">Send images on Wi-Fi only</string>
-    <string name="images_wifi_only_hint">Images you receive still arrive on mobile data; this only limits what the phone uploads.</string>
+    <string name="images_wifi_only_receive">Receive images on Wi-Fi only</string>
+    <string name="images_wifi_only_hint">The first switch limits what this phone uploads. The relay pushes images to every device regardless, so the second switch only stops the phone from applying an image to its clipboard on mobile data; it does not save the download.</string>
     <string name="run_in_background">Run in background</string>
     <string name="run_in_background_hint">Keeps syncing after you leave the app (shows a small notification).</string>
     <string name="show_send_button">Send Clipboard button in notification</string>
-    <string name="mark_sensitive">Mark desktop clips as sensitive</string>
-    <string name="mark_sensitive_hint">Keeps received clips out of keyboard history. You can still paste the latest one.</string>
     <string name="open_bridge_settings">Open Clipboard Bridge settings</string>
     <string name="status_connected">Connected</string>
     <string name="status_connecting">Connecting…</string>

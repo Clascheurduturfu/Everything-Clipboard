@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.ClipData
-import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -15,7 +14,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.net.Uri
-import android.os.PersistableBundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.concurrent.Executors
@@ -31,9 +29,9 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val PREF_SERVICE_STATUS = "service_status"
         const val PREF_RUN_IN_BACKGROUND = "service_running"
         const val PREF_APP_VISIBLE = "app_visible"
-        const val PREF_USE_SENSITIVE_CLIPBOARD = "use_sensitive_clipboard"
         const val PREF_SYNC_IMAGES = "sync_images"
         const val PREF_IMAGES_WIFI_ONLY = "images_wifi_only"
+        const val PREF_IMAGES_WIFI_ONLY_RECEIVE = "images_wifi_only_receive"
 
         const val ACTION_SEND_TEXT = "com.clipsync.action.SEND_TEXT"
         const val ACTION_REFRESH_NOTIFICATION = "com.clipsync.action.REFRESH_NOTIFICATION"
@@ -204,16 +202,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 listenerRegistered = false
             }
 
-            val clip = ClipData.newPlainText("ClipSync", content).apply {
-                if (shouldMarkIncomingSensitive()) {
-                    description.setExtras(
-                        PersistableBundle().apply {
-                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                        }
-                    )
-                }
-            }
-            clipboardManager.setPrimaryClip(clip)
+            clipboardManager.setPrimaryClip(ClipData.newPlainText("ClipSync", content))
 
             updateClipboardListener()
             ClipState.received(senderDevice, content)
@@ -224,8 +213,17 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun handleIncomingImage(image: Clip.Image) {
-        if (!getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(PREF_SYNC_IMAGES, true)) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(PREF_SYNC_IMAGES, true)) {
             Log.i(TAG, "Image from ${image.device} ignored: image sync is off")
+            return
+        }
+        // The relay has already pushed the bytes; this only decides whether to apply them.
+        if (prefs.getBoolean(PREF_IMAGES_WIFI_ONLY_RECEIVE, false) && ClipImages.isMetered(this)) {
+            val skipped = "Image from ${image.device} skipped (mobile data)"
+            Log.i(TAG, "$skipped: receive on Wi-Fi only is on")
+            setStatus(skipped)
+            ClipState.update(detail = skipped)
             return
         }
         // Runs on the socket thread: file I/O is fine here, the UI is not.
@@ -240,7 +238,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 clipboardManager.removePrimaryClipChangedListener(this)
                 listenerRegistered = false
             }
-            clipboardManager.setPrimaryClip(ClipImages.clipFor(this, uri, shouldMarkIncomingSensitive()))
+            clipboardManager.setPrimaryClip(ClipImages.clipFor(this, uri))
             updateClipboardListener()
             ClipState.receivedImage(image.device, label, thumbnail, uri)
             setStatus("Received image from ${image.device}")
@@ -278,12 +276,24 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
 
         imageExecutor.execute {
-            val bytes = ClipImages.read(this, uri)
+            var bytes = ClipImages.read(this, uri)
+            var mime = contentResolver.getType(uri) ?: "image/png"
+            var resized = false
             var payload: String? = null
             var status = ""
+            if (bytes != null && bytes.size > ClipImages.MAX_IMAGE_BYTES) {
+                // Oversize: re-encode off the main thread instead of refusing.
+                val fit = ClipImages.shrink(this, uri, mime)
+                bytes = fit?.bytes
+                if (fit == null) {
+                    status = "Image too large to sync"
+                } else {
+                    mime = fit.mime
+                    resized = true
+                }
+            }
             when {
                 bytes == null -> Log.w(TAG, "Could not read image from $source")
-                bytes.size > ClipImages.MAX_IMAGE_BYTES -> status = "Image too large to sync (over 5 MB)"
                 else -> {
                     val hash = CryptoUtils.sha256Hex(bytes)
                     if (hash == lastImageHash && !force) {
@@ -291,9 +301,8 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                     } else {
                         lastImageHash = hash
                         val (width, height) = ClipImages.dimensions(bytes)
-                        val mime = contentResolver.getType(uri) ?: "image/png"
                         payload = CryptoUtils.encryptImagePayload(deviceName, bytes, mime, width, height, key)
-                        status = "Sent image ${width}\u00d7${height}"
+                        status = if (resized) "Image resized to fit (${width}\u00d7${height})" else "Sent image ${width}\u00d7${height}"
                     }
                 }
             }
@@ -502,11 +511,6 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(PREF_RUN_IN_BACKGROUND, false) ||
             prefs.getBoolean(PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
-    }
-
-    private fun shouldMarkIncomingSensitive(): Boolean {
-        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(PREF_USE_SENSITIVE_CLIPBOARD, true)
     }
 
     private fun maybeStopIfIdle() {
