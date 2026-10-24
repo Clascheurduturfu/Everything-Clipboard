@@ -10,6 +10,8 @@ Because the manifest is written next to the package it describes, an app
 version bumped without a rebuild can never cause an update loop.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os

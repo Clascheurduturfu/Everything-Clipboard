@@ -21,6 +21,8 @@ second:
 ``pbpaste``/``pbcopy`` remain as a fallback when PyObjC is unavailable.
 """
 
+from __future__ import annotations
+
 import io
 import platform
 import subprocess
