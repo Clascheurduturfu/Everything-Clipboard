@@ -9,7 +9,7 @@ Last updated: 2026-10-25. Current line: **2.0**, prepared on the `preview` branc
 | 2.0 beta 1 | Shipped (Drive Transfer) | Desktop: Dock hiding on macOS, single-instance lock, Hosting tab, new Preferences UI, reconnect backoff. Android: iOS-style UI, Quick Settings tile fix, APK 2.9 MB → 0.3 MB. **No iOS changes.** |
 | 2.0 beta 2 | Shipped (Drive Transfer, `preview`) | Image sync on all platforms (payload v2), file copies no longer synced as text, in-app updater (desktop), original tray icon back, switch styling fix. |
 | 2.0 beta 3 | Shipped (`preview`, live deployed) | **16 MB image sync** + 512 KiB WebSocket chunking protocol (`cs_chunk:v1`) across Android, Windows, and Mac; **fast single-pass image downscaling** (< 200ms) only when exceeding 16 MB (10 MB photos stream untouched); **full retirement of Android Accessibility Service** (`ClipboardAccessibilityService`) and bridge settings button; consolidated **single "Images on Wi-Fi only"** switch for send and receive; tray status & color fixes, preferences window instant launch, native icon; 32 MiB WebSocket limits; installed on MacBook (`/Applications/ClipSync.app`), Galaxy Tab S9+, and Galaxy S24 Ultra. |
-| 2.0 | Ready for merge (`preview`) | Final v2.0 package: macOS launch bug resolved (Python 3.9 type union fix), Android targetSdk raised to 35, signed Play Store App Bundle (`.aab`) and APK generation via Gradle signing, complete Play Store `FOREGROUND_SERVICE_DATA_SYNC` declaration guide (`android-app/PLAY_STORE_DATA_SYNC_DECLARATION.md`), all platform packages built and synchronized. |
+| 2.0 | Shipped (`main`) | Official v2.0 release: macOS launch bug resolved (Python 3.9 type union fix), Android targetSdk raised to 35, signed Play Store App Bundle (`.aab`) and APK generation via Gradle signing, complete Play Store `FOREGROUND_SERVICE_DATA_SYNC` declaration guide (`android-app/PLAY_STORE_DATA_SYNC_DECLARATION.md`), Vercel Blob mirror & ESIEE downloads updated, marketing site refreshed for image sync v2. |
 
 ## Android background clipboard & accessibility retirement
 
@@ -26,14 +26,18 @@ Last updated: 2026-10-25. Current line: **2.0**, prepared on the `preview` branc
 
 - Discontinued after verification that Samsung's continuity protocol relies strictly on local Bluetooth proximity and BLE beaconing, making it unusable over wide-area networks or overseas.
 
-## Backlog (candidates for beta 4+)
+## Backlog (v2.1+)
 
+- **Licensing & Device Activation:** Machine-bound or user-account license key validation system to manage multi-device activation, quotas, and premium license tiers across desktop and mobile.
+- **In-App Billing / Payment via Google Play:** Implement Google Play Billing Library (`com.android.billingclient`) to enable seamless subscriptions and one-time purchases natively inside the Android app alongside Stripe web payments.
+- **Background Clipboard Send (R&D):** Explore modern zero-friction methods for automatic background clipboard capture on modern Android without focus disruption:
+  - Shizuku / ADB privileged API integration for power users to bypass `ClipboardService` background restrictions.
+  - Optional lightweight IME / keyboard helper service or accessibility tap-through assist.
+  - Custom system broadcast hooks and lockscreen widgets.
 - **Android home-screen widget** for Send Clipboard, next to the Quick Settings tile.
-- **iOS Share Extension** for images: the `ShareExtension` target exists, but beta 2 only changed the main app.
-- **Android `targetSdk` 34 → 35/36** (needed before any Play Store release).
-- **Website:** publish beta builds (`website/scripts/upload-downloads.mjs`) and show the version.
+- **iOS Share Extension** for images: extend the existing `ShareExtension` target to support payload v2 image syncing.
 - **Optional `create-dmg`** on the MacBook for the styled DMG window. The hdiutil fallback works.
-- **Retire legacy APKs** in `android-app/` (`ClypSync v1/v2.apk`) and the stale `.idsig` files.
+- **Retire legacy APKs** in `android-app/` (`ClypSync v1/v2.apk`) and stale `.idsig` files.
 
 ## Protocol and server
 

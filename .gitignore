@@ -1,1 +1,5 @@
 .vercel
+brag/
+
+__pycache__/
+*.pyc

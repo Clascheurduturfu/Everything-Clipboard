@@ -693,11 +693,9 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
     updates_var = ctk.BooleanVar(value=bool(config.get("check_updates", True)))
-    preview_var = ctk.BooleanVar(value=config.get("update_channel") == "preview")
+    preview_var = ctk.BooleanVar(value=config.get("update_channel", "main") == "preview")
     switch(general, "Check for updates automatically", updates_var)
     switch(general, "Developer: preview updates (preview branch)", preview_var)
-    small(general, "Updates come from the GitHub repository and install only when you choose "
-                   "Install update in the tray menu.")
 
     refresh_hosting()
     root.minsize(520, 0)

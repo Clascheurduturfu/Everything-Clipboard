@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "1.0.8";
+const ROUTE_VERSION = "2.0";
 
 type DownloadTarget = {
   filename: string;

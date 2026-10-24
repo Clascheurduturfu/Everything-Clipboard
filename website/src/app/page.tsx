@@ -44,7 +44,7 @@ export default function Home() {
             </h1>
             
             <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Fully encrypted text sync with a custom key. Host yourself, locally, or let us host it.
+              Copy on your Mac, paste on your Windows PC. Copy on your Android, paste anywhere. Fully encrypted text and image sync (up to 16 MB) with a custom key. Host yourself, locally, or let us host it.
             </p>
             
             <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -81,7 +81,7 @@ export default function Home() {
                       <ClipboardCopy className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-900 dark:text-white font-medium">Text Copied</p>
+                      <p className="text-xs text-slate-900 dark:text-white font-medium">Text &amp; Images Copied</p>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">Available on all devices</p>
                     </div>
                   </div>
@@ -176,9 +176,9 @@ export default function Home() {
                 <MonitorUp className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">Images Coming Soon</h3>
+                <h3 className="text-xl font-medium tracking-tight text-slate-950 dark:text-white mb-3">16 MB Image Sync (v2.0)</h3>
                 <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Currently syncs all your text effortlessly. We&apos;re actively developing support for image synchronization in a future update!
+                  ClipSync v2.0 introduces end-to-end encrypted high-resolution image sync up to 16 MB with zero-configuration streaming and adaptive chunking across your devices.
                 </p>
               </div>
             </div>

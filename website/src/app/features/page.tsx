@@ -116,10 +116,10 @@ export default function Features() {
           {/* Roadmap */}
           <div className="glass-card rounded-[2.5rem] p-8 md:p-12 text-center border border-amber-200/50 dark:border-amber-800/50 bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-900/10 dark:to-transparent shadow-lg">
              <h2 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-950 dark:text-white mb-4 flex items-center justify-center gap-3">
-               <Zap className="w-8 h-8 text-amber-500" /> Coming Soon: Image Sync
+               <Zap className="w-8 h-8 text-amber-500" /> High-Resolution Image Sync (v2.0)
              </h2>
              <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto mb-8">
-                Currently, Everything Clipboard provides lightning-fast synchronization for all your text and code snippets. We are actively developing support for copying and pasting images across devices securely.
+                Everything Clipboard v2.0 now synchronizes photos, screenshots, and visual assets up to 16 MB in full resolution. Using an adaptive chunking protocol with end-to-end AES-256-GCM encryption, your images stream securely and instantly between Android, Windows, and Mac.
              </p>
              <PurchaseButton 
                buyLabel="Get Lifetime Access – $3" 
