@@ -5,20 +5,30 @@ plugins {
 
 android {
     namespace = "com.clipsync"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.clipsync"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 4
-        versionName = "2.0 beta 3"
+        targetSdk = 35
+        versionCode = 5
+        versionName = "2.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("../clipsync.jks")
+            storePassword = "qsdfghjklM1*"
+            keyAlias = "clipsync"
+            keyPassword = "qsdfghjklM1*"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

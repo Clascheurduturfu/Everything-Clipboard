@@ -1,6 +1,6 @@
 # ClipSync roadmap and notes
 
-Last updated: 2026-10-24. Current line: **2.0 beta N**, built from the `preview` branch. Nothing goes to `main` without explicit approval.
+Last updated: 2026-10-25. Current line: **2.0**, prepared on the `preview` branch for merge into `main` (pending final user authorization).
 
 ## Release status
 
@@ -9,8 +9,7 @@ Last updated: 2026-10-24. Current line: **2.0 beta N**, built from the `preview`
 | 2.0 beta 1 | Shipped (Drive Transfer) | Desktop: Dock hiding on macOS, single-instance lock, Hosting tab, new Preferences UI, reconnect backoff. Android: iOS-style UI, Quick Settings tile fix, APK 2.9 MB → 0.3 MB. **No iOS changes.** |
 | 2.0 beta 2 | Shipped (Drive Transfer, `preview`) | Image sync on all platforms (payload v2), file copies no longer synced as text, in-app updater (desktop), original tray icon back, switch styling fix. |
 | 2.0 beta 3 | Shipped (`preview`, live deployed) | **16 MB image sync** + 512 KiB WebSocket chunking protocol (`cs_chunk:v1`) across Android, Windows, and Mac; **fast single-pass image downscaling** (< 200ms) only when exceeding 16 MB (10 MB photos stream untouched); **full retirement of Android Accessibility Service** (`ClipboardAccessibilityService`) and bridge settings button; consolidated **single "Images on Wi-Fi only"** switch for send and receive; tray status & color fixes, preferences window instant launch, native icon; 32 MiB WebSocket limits; installed on MacBook (`/Applications/ClipSync.app`), Galaxy Tab S9+, and Galaxy S24 Ultra. |
-| 2.0 beta 4 | Planned | Android home-screen widget, iOS Share Extension for images. |
-| 2.0 rc 1 | After betas | Stabilisation, merge `preview` → `main` (needs approval), website downloads. |
+| 2.0 | Ready for merge (`preview`) | Final v2.0 package: macOS launch bug resolved (Python 3.9 type union fix), Android targetSdk raised to 35, signed Play Store App Bundle (`.aab`) and APK generation via Gradle signing, complete Play Store `FOREGROUND_SERVICE_DATA_SYNC` declaration guide (`android-app/PLAY_STORE_DATA_SYNC_DECLARATION.md`), all platform packages built and synchronized. |
 
 ## Android background clipboard & accessibility retirement
 

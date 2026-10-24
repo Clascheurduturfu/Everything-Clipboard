@@ -35,7 +35,7 @@ class ManifestTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
         self.package = b"pretend this is ClipSync.zip" * 1000
-        for branch, version in (("main", "2.0 beta 1"), ("preview", "2.0 beta 3")):
+        for branch, version in (("main", "2.0 beta 1"), ("preview", "2.0")):
             folder = os.path.join(self.root, branch, "desktop-client", "build-output")
             os.makedirs(os.path.join(folder, "windows"))
             os.makedirs(os.path.join(folder, "macos"))
@@ -67,7 +67,7 @@ class ManifestTest(unittest.TestCase):
 
     def test_preview_channel_offers_newer_build(self):
         update = updater.check("2.0 beta 2", "preview")
-        self.assertEqual(update["version"], "2.0 beta 3")
+        self.assertEqual(update["version"], "2.0")
         self.assertEqual(update["channel"], "preview")
 
     def test_main_never_offers_preview_builds(self):
