@@ -10,6 +10,7 @@ import http.server
 import json
 import os
 import shutil
+import ssl
 import sys
 import tempfile
 import threading
@@ -20,6 +21,33 @@ from unittest.mock import patch
 sys.path.insert(0, ".")
 
 import updater  # noqa: E402
+
+
+class TLSContextTest(unittest.TestCase):
+    def test_bundle_supplies_roots_without_a_system_certificate_store(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            "SSL_CERT_FILE": os.path.join(folder, "missing.pem"), "SSL_CERT_DIR": folder
+        }):
+            context = updater._https_context()
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertGreater(context.cert_store_stats()["x509_ca"], 0)
+
+    def test_download_uses_verified_context(self):
+        payload = b"package fixture"
+        with tempfile.TemporaryDirectory() as folder, patch.object(updater, "UPDATE_DIR", folder), \
+                patch.object(updater.urllib.request, "urlopen", return_value=io.BytesIO(payload)) as fetch:
+            updater.download({"url": "https://example.com/ClipSync.dmg", "path": "ClipSync.dmg",
+                              "size": len(payload), "sha256": hashlib.sha256(payload).hexdigest()})
+            context = fetch.call_args.kwargs["context"]
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+
+    def test_certificate_failure_does_not_retry_without_verification(self):
+        with patch.object(updater.urllib.request, "urlopen", side_effect=ssl.SSLCertVerificationError("bad certificate")) as fetch:
+            with self.assertRaises(updater.UpdateError):
+                updater.check("0.0", "preview")
+            self.assertEqual(fetch.call_count, 1)
 
 
 class VersionTest(unittest.TestCase):
@@ -112,6 +140,8 @@ class ReleaseDiscoveryTest(unittest.TestCase):
                         "assets": [asset("latest.json", self.manifest, 2), asset("ClipSync.zip", self.package, 3)]}
         self.releases = [self.preview]
         def fetch(request, **kwargs):
+            self.assertTrue(kwargs["context"].check_hostname)
+            self.assertEqual(kwargs["context"].verify_mode, ssl.CERT_REQUIRED)
             url = request.full_url
             return io.BytesIO(json.dumps(self.releases).encode() if url == updater.RELEASE_API else self.manifest)
         self.fetcher = patch.object(updater.urllib.request, "urlopen", side_effect=fetch)

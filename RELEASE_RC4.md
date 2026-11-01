@@ -1,6 +1,14 @@
 # ClipSync RC4 Preview
 
-Android: **2.0-rc.4 (version code 9)**. Desktop: **2.0.1-beta.1**. iOS: **2.0 beta 4 (build 4)**.
+Android: **2.0-rc.4 (version code 9)**. Desktop hotfix: **2.0.1-beta.2**. iOS: **2.0 beta 4 (build 4)**.
+
+## Desktop TLS hotfix
+
+The RC4 desktop hotfix is published as `v2.0.1-beta.2`, preserving the original RC4 tag and assets. Standalone Python on macOS can lack a usable system CA store, causing update checks to fail with `CERTIFICATE_VERIFY_FAILED`. Desktop packages now include certifi's Mozilla root certificate bundle and load it alongside system trust for both metadata and package downloads. Certificate and hostname verification remain required.
+
+The read-only `ClipSync --check-updates --channel preview` support command checks the live feed from the packaged executable without starting clipboard sync or changing settings. Legacy Mac installations require one manual replacement because their updater cannot fetch the corrected package.
+
+This desktop hotfix also repairs chunk IDs for large transfers and records text lengths instead of clipboard contents in diagnostic logs.
 
 This preview adds custom/default relay selection across the apps, integrated Android key reveal/generation/sharing, desktop key generation, a styled clipboard disclosure, and clearer notification and connection behavior. Generated keys contain 48 cryptographically random bytes encoded as 64 URL-safe characters. Existing custom relay addresses remain saved when default mode is selected.
 

@@ -1,4 +1,7 @@
 import re
+import asyncio
+import threading
+from types import SimpleNamespace
 import unittest
 import app
 
@@ -23,6 +26,26 @@ class ConnectionSettingsTests(unittest.TestCase):
         keys = {app.generate_secret_key() for _ in range(100)}
         self.assertEqual(len(keys), 100)
         self.assertTrue(all(re.fullmatch(r'[A-Za-z0-9_-]{64}', key) for key in keys))
+
+
+class LargeTransferTests(unittest.IsolatedAsyncioTestCase):
+    async def test_chunked_transfer_reconstructs_payload(self):
+        payload = "encrypted-fixture:" + "x" * (1024 * 1024)
+        state = SimpleNamespace(stop_event=threading.Event(), send_queue=asyncio.Queue())
+        await state.send_queue.put(payload)
+        chunks = []
+
+        async def send(message):
+            chunks.append(message.split(":", 5))
+            if len(chunks) == int(chunks[-1][4]):
+                state.stop_event.set()
+
+        await asyncio.wait_for(app.ClipSyncApp._send_loop(state, SimpleNamespace(send=send)), timeout=2)
+        self.assertEqual(len(chunks), 3)
+        self.assertTrue(re.fullmatch(r"[a-f0-9]{12}", chunks[0][2]))
+        self.assertEqual({chunk[2] for chunk in chunks}, {chunks[0][2]})
+        self.assertEqual([int(chunk[3]) for chunk in chunks], [0, 1, 2])
+        self.assertEqual("".join(chunk[5] for chunk in chunks), payload)
 
 
 if __name__ == '__main__':

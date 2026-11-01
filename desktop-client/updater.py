@@ -12,10 +12,13 @@ import os
 import platform
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.request
 import zipfile
+
+import certifi
 
 REPO = "Clascheurduturfu/Everything-Clipboard"
 MANIFEST_PATH = "desktop-client/build-output/latest.json"
@@ -32,6 +35,17 @@ _IS_MACOS = platform.system() == "Darwin"
 
 class UpdateError(Exception):
     pass
+
+
+def _https_context() -> ssl.SSLContext:
+    """Keep OS trust and add packaged Mozilla roots for standalone Python builds."""
+    context = ssl.create_default_context()
+    context.load_verify_locations(cafile=certifi.where())
+    return context
+
+
+def _open_url(request, timeout):
+    return urllib.request.urlopen(request, timeout=timeout, context=_https_context())
 
 
 def parse_version(text: str) -> tuple:
@@ -78,7 +92,7 @@ def check(current_version: str, channel: str = "main", timeout: float = 10) -> d
     if UPDATE_BASE == f"https://raw.githubusercontent.com/{REPO}":
         return _release_check(current_version, channel, key, timeout)
     try:
-        with urllib.request.urlopen(_url(channel, MANIFEST_PATH), timeout=timeout) as response:
+        with _open_url(_url(channel, MANIFEST_PATH), timeout) as response:
             manifest = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
         raise UpdateError(f"Could not check for updates: {exc}") from exc
@@ -91,7 +105,7 @@ def check(current_version: str, channel: str = "main", timeout: float = 10) -> d
 def _release_check(current_version: str, channel: str, key: str, timeout: float) -> dict | None:
     def read(url, limit):
         request = urllib.request.Request(url, headers={"User-Agent": "ClipSync-Updater", "Accept": "application/vnd.github+json" if url == RELEASE_API else "application/octet-stream"})
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with _open_url(request, timeout) as response:
             data = response.read(limit + 1)
         if len(data) > limit:
             raise UpdateError("Update metadata is too large")
@@ -150,7 +164,7 @@ def download(update: dict, timeout: float = 60) -> str:
     digest = hashlib.sha256()
     received = 0
     try:
-        with urllib.request.urlopen(update["url"], timeout=timeout) as response, open(target, "wb") as out:
+        with _open_url(update["url"], timeout) as response, open(target, "wb") as out:
             while True:
                 chunk = response.read(256 * 1024)
                 if not chunk:

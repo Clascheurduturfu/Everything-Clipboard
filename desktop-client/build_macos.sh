@@ -27,6 +27,7 @@ rm -rf build-output/macos ClipSync.spec
   --icon assets/clipsync.icns \
   --add-data "assets/clipsync.icns:assets" \
   --collect-data customtkinter \
+  --collect-data certifi \
   --collect-submodules customtkinter \
   app.py
 

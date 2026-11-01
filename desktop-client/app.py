@@ -28,11 +28,11 @@ import time
 import urllib.error
 import urllib.request
 
-# Preferences runs as its own short-lived process (`app.py --preferences`) and
-# only needs the settings helpers below, so it skips the tray/network imports.
+# Preferences and the read-only update diagnostic run as short-lived processes
+# and skip the tray/clipboard imports, which only the sync process needs.
 # host_server (FastAPI + uvicorn, ~1.5 s to import) is only loaded when the
 # relay is actually started, see ClipSyncApp._start_host.
-_PREFERENCES_PROCESS = "--preferences" in sys.argv
+_PREFERENCES_PROCESS = "--preferences" in sys.argv or "--check-updates" in sys.argv
 
 if not _PREFERENCES_PROCESS:
     import pystray
@@ -65,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0.1-beta.1"
+APP_VERSION = "2.0.1-beta.2"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -1712,7 +1712,7 @@ class ClipSyncApp:
                 if not content:
                     continue
 
-                logger.info("Received from %s: %s...", device, content[:40])
+                logger.info("Received text from %s: %d characters", device, len(content))
                 self.last_received_device = device
                 self.last_received_content = content
                 self._remember_recent_clip(device, content)
@@ -1731,7 +1731,7 @@ class ClipSyncApp:
                 if len(message) <= CHUNK_SIZE:
                     await ws.send(message)
                 else:
-                    msg_id = uuid.uuid4().hex[:12]
+                    msg_id = secrets.token_hex(6)
                     total = (len(message) + CHUNK_SIZE - 1) // CHUNK_SIZE
                     logger.info("Sending chunked message %s: %d bytes in %d chunks", msg_id, len(message), total)
                     for idx in range(total):
@@ -1809,7 +1809,7 @@ class ClipSyncApp:
                         self.key,
                     )
                     asyncio.run_coroutine_threadsafe(self.send_queue.put(payload), self.ws_loop)
-                    logger.info("Sent: %s...", current[:40])
+                    logger.info("Sent text: %d characters", len(current))
             except Exception:
                 pass
             time.sleep(0.25)
@@ -1979,6 +1979,21 @@ def _arg_value(flag: str, default: str = "") -> str:
 
 
 if __name__ == "__main__":
+    # Read-only support command also verifies HTTPS inside the frozen bundle.
+    if "--check-updates" in sys.argv:
+        channel = _arg_value("--channel", "preview")
+        if channel not in updater.CHANNELS:
+            raise SystemExit("Expected --channel main or preview")
+        try:
+            update = updater.check(APP_VERSION, channel)
+            print(json.dumps({"version": APP_VERSION, "channel": channel,
+                              "status": "update_available" if update else "up_to_date",
+                              "available_version": update["version"] if update else None}))
+        except updater.UpdateError as exc:
+            print(json.dumps({"version": APP_VERSION, "status": "error", "error": str(exc)}))
+            raise SystemExit(1)
+        raise SystemExit(0)
+
     if "--preferences" in sys.argv:
         configure_file_logging()
         try:

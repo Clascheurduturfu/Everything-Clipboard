@@ -6,4 +6,5 @@ fastapi
 uvicorn[standard]
 pyinstaller
 customtkinter
+certifi>=2026.2.25
 pyobjc-framework-Cocoa; sys_platform == 'darwin'
