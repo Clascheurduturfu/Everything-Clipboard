@@ -78,6 +78,7 @@ set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 if %ERRORLEVEL% equ 0 goto mainEnd
 
 :fail
+set EXIT_CODE=%ERRORLEVEL%
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
 rem the _cmd.exe /c_ return code!
 if %EXIT_CODE% equ 0 set EXIT_CODE=1

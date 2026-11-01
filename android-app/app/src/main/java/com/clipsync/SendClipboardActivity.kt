@@ -15,6 +15,11 @@ class SendClipboardActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (!PrivacyConsent.isGranted(this)) {
+            startActivity(Intent(this, MainActivity::class.java))
+            finishAndRemoveTask()
+            return
+        }
         if (hasAttemptedSend) return
 
         hasAttemptedSend = true

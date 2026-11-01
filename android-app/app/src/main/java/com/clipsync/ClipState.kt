@@ -36,6 +36,16 @@ object ClipState {
         listener = callback
     }
 
+    fun clear() {
+        connection = Connection.IDLE
+        detail = ""
+        lastDevice = ""
+        lastText = ""
+        lastImage = null
+        lastImageUri = null
+        notifyChanged()
+    }
+
     fun update(connection: Connection? = null, detail: String? = null) {
         if (connection != null) this.connection = connection
         if (detail != null) this.detail = detail

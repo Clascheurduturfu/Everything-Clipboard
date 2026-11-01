@@ -4,6 +4,7 @@ Run:  python test_updater.py
 """
 
 import functools
+import io
 import hashlib
 import http.server
 import json
@@ -13,6 +14,8 @@ import sys
 import tempfile
 import threading
 import unittest
+import zipfile
+from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
@@ -20,6 +23,12 @@ import updater  # noqa: E402
 
 
 class VersionTest(unittest.TestCase):
+    def test_semver_preview_versions(self):
+        self.assertEqual(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0.1 beta 1"))
+        self.assertEqual(updater.parse_version("2.0-rc.4"), updater.parse_version("2.0 rc 4"))
+        self.assertGreater(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0"))
+        self.assertLess(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0.1"))
+
     def test_ordering(self):
         order = ["1.0.2", "2.0 beta 1", "2.0 beta 2", "2.0 beta 10", "2.0 rc 1", "2.0", "2.0.1", "2.1 beta 1"]
         parsed = [updater.parse_version(v) for v in order]
@@ -88,6 +97,85 @@ class ManifestTest(unittest.TestCase):
         updater.UPDATE_BASE = "http://127.0.0.1:9"
         with self.assertRaises(updater.UpdateError):
             updater.check("2.0 beta 2", "main", timeout=2)
+
+
+class ReleaseDiscoveryTest(unittest.TestCase):
+    def setUp(self):
+        self.base = updater.UPDATE_BASE
+        updater.UPDATE_BASE = f"https://raw.githubusercontent.com/{updater.REPO}"
+        self.package = b"synthetic package"
+        self.manifest = json.dumps({"windows": {"version": "2.0.1-beta.1", "sha256": hashlib.sha256(self.package).hexdigest(), "size": len(self.package)}}).encode()
+        prefix = f"https://github.com/{updater.REPO}/releases/download/v2.0-rc.4/"
+        def asset(name, data, identifier):
+            return {"name": name, "id": identifier, "size": len(data), "digest": "sha256:" + hashlib.sha256(data).hexdigest(), "browser_download_url": prefix + name}
+        self.preview = {"id": 1, "tag_name": "v2.0-rc.4", "draft": False, "prerelease": True,
+                        "assets": [asset("latest.json", self.manifest, 2), asset("ClipSync.zip", self.package, 3)]}
+        self.releases = [self.preview]
+        def fetch(request, **kwargs):
+            url = request.full_url
+            return io.BytesIO(json.dumps(self.releases).encode() if url == updater.RELEASE_API else self.manifest)
+        self.fetcher = patch.object(updater.urllib.request, "urlopen", side_effect=fetch)
+        self.fetcher.start()
+        self.platform = patch.object(updater, "platform_key", return_value="windows")
+        self.platform.start()
+
+    def tearDown(self):
+        self.platform.stop()
+        self.fetcher.stop()
+        updater.UPDATE_BASE = self.base
+
+    def test_preview_selects_verified_release_asset(self):
+        result = updater.check("2.0", "preview")
+        self.assertEqual(result["version"], "2.0.1-beta.1")
+        self.assertEqual(result["asset_id"], 3)
+        self.assertTrue(result["url"].endswith("/ClipSync.zip"))
+
+    def test_stable_excludes_preview(self):
+        self.assertIsNone(updater.check("1.0", "main"))
+
+    def test_current_preview_does_not_downgrade(self):
+        self.assertIsNone(updater.check("2.0.1-beta.1", "preview"))
+
+    def test_draft_is_not_an_update(self):
+        self.preview["draft"] = True
+        self.assertIsNone(updater.check("2.0", "preview"))
+
+    def test_unknown_version_is_ignored(self):
+        self.preview["tag_name"] = "unsupported"
+        self.assertIsNone(updater.check("2.0", "preview"))
+
+    def test_bad_manifest_digest_is_rejected(self):
+        self.manifest += b" "
+        with self.assertRaisesRegex(updater.UpdateError, "checksum"):
+            updater.check("2.0", "preview")
+
+    def test_missing_asset_is_rejected(self):
+        self.preview["assets"].pop()
+        with self.assertRaisesRegex(updater.UpdateError, "unique"):
+            updater.check("2.0", "preview")
+
+    def test_wrong_asset_host_is_rejected(self):
+        self.preview["assets"][1]["browser_download_url"] = "https://example.com/package.zip"
+        with self.assertRaisesRegex(updater.UpdateError, "location"):
+            updater.check("2.0", "preview")
+
+    def test_missing_digest_is_rejected(self):
+        self.preview["assets"][1].pop("digest")
+        with self.assertRaisesRegex(updater.UpdateError, "digest"):
+            updater.check("2.0", "preview")
+
+
+class PackageSafetyTest(unittest.TestCase):
+    def test_archive_paths_are_checked_before_extraction(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = os.path.join(folder, "package.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("ClipSync/ClipSync.exe", b"fixture")
+            updater._validate_windows_package(package)
+            with zipfile.ZipFile(package, "a") as archive:
+                archive.writestr("ClipSync/../../outside", b"bad")
+            with self.assertRaisesRegex(updater.UpdateError, "Unsafe path"):
+                updater._validate_windows_package(package)
 
 
 if __name__ == "__main__":

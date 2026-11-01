@@ -16,7 +16,8 @@ struct SendClipboardIntent: AppIntent {
         }
         
         let defaults = UserDefaults(suiteName: "group.com.clipsync.ios") ?? .standard
-        let serverUrl = defaults.string(forKey: "clipsync_server_url") ?? ""
+        let custom = defaults.object(forKey: "clipsync_custom_server_url") as? Bool ?? true
+        let serverUrl = custom ? (defaults.string(forKey: "clipsync_server_url") ?? ClipSyncManager.defaultRelayURL) : ClipSyncManager.defaultRelayURL
         let secretKey = defaults.string(forKey: "clipsync_secret_key") ?? ""
         let deviceName = defaults.string(forKey: "clipsync_device_name") ?? "iOS Shortcuts"
         
@@ -73,7 +74,8 @@ struct ReceiveClipboardIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         let defaults = UserDefaults(suiteName: "group.com.clipsync.ios") ?? .standard
-        let serverUrl = defaults.string(forKey: "clipsync_server_url") ?? ""
+        let custom = defaults.object(forKey: "clipsync_custom_server_url") as? Bool ?? true
+        let serverUrl = custom ? (defaults.string(forKey: "clipsync_server_url") ?? ClipSyncManager.defaultRelayURL) : ClipSyncManager.defaultRelayURL
         let secretKey = defaults.string(forKey: "clipsync_secret_key") ?? ""
         
         guard !serverUrl.isEmpty, !secretKey.isEmpty else {

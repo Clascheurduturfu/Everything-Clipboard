@@ -3,6 +3,7 @@ package com.clipsync
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -19,6 +20,8 @@ import android.widget.ImageView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : Activity() {
 
@@ -41,11 +44,26 @@ class MainActivity : Activity() {
     private lateinit var editDeviceName: EditText
     private lateinit var editServerUrl: EditText
     private lateinit var editSecretKey: EditText
+    private lateinit var switchCustomServer: Switch
     private var pulse: ValueAnimator? = null
+    private var consentDialog: AlertDialog? = null
+    private var returningFromPrivacy = false
+    private var refreshingPrivacyControls = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // API 36 enforces edge-to-edge; keep controls clear of bars, cutouts and IME.
+        val content = findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0)
+        ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or
+                    WindowInsetsCompat.Type.ime()
+            )
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(content)
 
         editDeviceName = findViewById(R.id.editDeviceName)
         editServerUrl = findViewById(R.id.editServerUrl)
@@ -65,8 +83,53 @@ class MainActivity : Activity() {
         // Load saved prefs
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
         editDeviceName.setText(prefs.getString("device_name", "Android Phone"))
-        editServerUrl.setText(prefs.getString("server_url", ""))
+        val savedUrl = prefs.getString("server_url", RelayAddress.DEFAULT) ?: RelayAddress.DEFAULT
+        val normalizedUrl = runCatching { RelayAddress.normalize(savedUrl) }.getOrDefault(savedUrl)
+        if (normalizedUrl != savedUrl) {
+            prefs.edit().putString("server_url", normalizedUrl).apply()
+            Toast.makeText(this, "Relay address corrected to serv.everything-clipboard.com", Toast.LENGTH_LONG).show()
+        }
+        editServerUrl.setText(normalizedUrl)
         editSecretKey.setText(prefs.getString("secret_key", ""))
+        switchCustomServer = findViewById(R.id.switchCustomServer)
+        switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+        updateServerVisibility()
+        switchCustomServer.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(RelayAddress.PREF_CUSTOM_SERVER, checked).apply()
+            updateServerVisibility()
+            if (PrivacyConsent.isGranted(this) && !prefs.getString("secret_key", "").isNullOrBlank()) {
+                startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
+            }
+        }
+        val reveal = findViewById<android.widget.ImageButton>(R.id.btnRevealKey)
+        reveal.setOnClickListener {
+            val showing = editSecretKey.transformationMethod is android.text.method.PasswordTransformationMethod
+            editSecretKey.transformationMethod = if (showing) null else android.text.method.PasswordTransformationMethod.getInstance()
+            editSecretKey.setSelection(editSecretKey.text.length)
+            reveal.setImageResource(if (showing) R.drawable.ic_visibility_off else R.drawable.ic_visibility)
+            reveal.contentDescription = getString(if (showing) R.string.hide_key else R.string.show_key)
+        }
+        findViewById<Button>(R.id.btnGenerateKey).setOnClickListener {
+            val generate = {
+                val bytes = ByteArray(48).also { java.security.SecureRandom().nextBytes(it) }
+                editSecretKey.setText(android.util.Base64.encodeToString(bytes,
+                    android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING))
+                Toast.makeText(this, "New key ready. Share it with your devices, then Save & Connect.", Toast.LENGTH_LONG).show()
+            }
+            if (editSecretKey.text.isEmpty()) generate() else {
+                AlertDialog.Builder(this).setTitle("Generate a new key?")
+                    .setMessage("This replaces the key in this form. Your other devices will need the new key after you save.")
+                    .setPositiveButton("Generate") { _, _ -> generate() }.setNegativeButton("Cancel", null).show()
+            }
+        }
+        findViewById<Button>(R.id.btnShareKey).setOnClickListener {
+            val key = editSecretKey.text.toString().trim()
+            if (key.isEmpty()) Toast.makeText(this, "Enter or generate a key first", Toast.LENGTH_SHORT).show()
+            else startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, key)
+            }, "Share secret key with a trusted device"))
+        }
         switchSendNotificationAction.isChecked =
             prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
 
@@ -87,7 +150,12 @@ class MainActivity : Activity() {
         switchService.isChecked = prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
 
         findViewById<Button>(R.id.btnSave).setOnClickListener {
-            val url = editServerUrl.text.toString().trim()
+            val url = try {
+                RelayAddress.normalize(if (switchCustomServer.isChecked) editServerUrl.text.toString() else RelayAddress.DEFAULT)
+            } catch (_: Exception) {
+                editServerUrl.error = "Use a valid ws:// or wss:// server address."
+                return@setOnClickListener
+            }
             val key = editSecretKey.text.toString().trim()
             val name = editDeviceName.text.toString().trim()
 
@@ -98,9 +166,11 @@ class MainActivity : Activity() {
 
             prefs.edit()
                 .putString("device_name", name)
-                .putString("server_url", url)
+                .putString("server_url", if (switchCustomServer.isChecked) url else editServerUrl.text.toString().trim())
                 .putString("secret_key", key)
                 .apply()
+
+            if (switchCustomServer.isChecked) editServerUrl.setText(url)
 
             Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
             startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
@@ -108,8 +178,13 @@ class MainActivity : Activity() {
 
         findViewById<Button>(R.id.btnSendClipboard).setOnClickListener { sendClipboardNow() }
         findViewById<Button>(R.id.btnCopyLast).setOnClickListener { copyLastReceived() }
+        findViewById<Button>(R.id.btnPrivacy).setOnClickListener {
+            returningFromPrivacy = true
+            startActivity(Intent(this, PrivacyActivity::class.java))
+        }
 
         switchSendNotificationAction.setOnCheckedChangeListener { _, isChecked ->
+            if (refreshingPrivacyControls) return@setOnCheckedChangeListener
             prefs.edit()
                 .putBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, isChecked)
                 .apply()
@@ -120,6 +195,7 @@ class MainActivity : Activity() {
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
+            if (refreshingPrivacyControls) return@setOnCheckedChangeListener
             prefs.edit().putBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, isChecked).apply()
             if (isChecked) {
                 if (!hasUsableSettings()) {
@@ -141,7 +217,21 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         ClipState.setListener { render() }
-        if (hasUsableSettings()) {
+        if (returningFromPrivacy) {
+            returningFromPrivacy = false
+            val prefs = getSharedPreferences("clipsync_prefs", MODE_PRIVATE)
+            editDeviceName.setText(prefs.getString("device_name", "Android Phone"))
+            editServerUrl.setText(prefs.getString("server_url", ""))
+            editSecretKey.setText(prefs.getString("secret_key", ""))
+            switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+            updateServerVisibility()
+        }
+        val saved = getSharedPreferences("clipsync_prefs", MODE_PRIVATE)
+        refreshingPrivacyControls = true
+        switchService.isChecked = PrivacyConsent.isGranted(this) && saved.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
+        switchSendNotificationAction.isChecked = PrivacyConsent.isGranted(this) && saved.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
+        refreshingPrivacyControls = false
+        if (hasUsableSettings() && PrivacyConsent.isGranted(this)) {
             startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
         }
         render()
@@ -155,6 +245,7 @@ class MainActivity : Activity() {
 
     override fun onStop() {
         super.onStop()
+        if (!PrivacyConsent.isGranted(this)) return
         val closeIntent = Intent(this, ClipSyncService::class.java).apply {
             action = ClipSyncService.ACTION_APP_CLOSED
         }
@@ -220,6 +311,10 @@ class MainActivity : Activity() {
     }
 
     private fun sendClipboardNow() {
+        if (!PrivacyConsent.isGranted(this)) {
+            withClipboardConsent { sendClipboardNow() }
+            return
+        }
         if (!hasUsableSettings()) {
             Toast.makeText(this, "Set Server URL and Secret Key first!", Toast.LENGTH_SHORT).show()
             return
@@ -269,6 +364,10 @@ class MainActivity : Activity() {
     }
 
     private fun startClipSyncServiceWithPermissionPrompt(action: String? = null) {
+        if (!PrivacyConsent.isGranted(this)) {
+            withClipboardConsent { startClipSyncServiceWithPermissionPrompt(action) }
+            return
+        }
         if (needsPersistentNotification() && requestNotificationPermissionIfNeeded()) {
             startServiceAfterNotificationPrompt = true
             pendingServiceAction = action
@@ -288,6 +387,7 @@ class MainActivity : Activity() {
     }
 
     private fun startClipSyncService(action: String? = null) {
+        if (!PrivacyConsent.isGranted(this)) return
         val intent = Intent(this, ClipSyncService::class.java).apply {
             if (action != null) this.action = action
         }
@@ -302,9 +402,62 @@ class MainActivity : Activity() {
         stopService(Intent(this, ClipSyncService::class.java))
     }
 
+    private fun withClipboardConsent(onAllowed: () -> Unit) {
+        if (PrivacyConsent.isGranted(this)) {
+            onAllowed()
+            return
+        }
+        if (consentDialog?.isShowing == true) return
+        val content = layoutInflater.inflate(R.layout.dialog_clipboard_consent, null)
+        val dialog = AlertDialog.Builder(this).setView(content)
+            .setOnCancelListener { declineClipboardConsent() }.create()
+        consentDialog = dialog
+        content.findViewById<Button>(R.id.btnAllowSync).setOnClickListener {
+            PrivacyConsent.grant(this)
+            dialog.dismiss()
+            onAllowed()
+        }
+        content.findViewById<Button>(R.id.btnDeclineSync).setOnClickListener {
+            dialog.dismiss()
+            declineClipboardConsent()
+        }
+        content.findViewById<Button>(R.id.btnConsentPrivacy).setOnClickListener {
+            dialog.dismiss()
+            returningFromPrivacy = true
+            startActivity(Intent(this, PrivacyActivity::class.java))
+        }
+        dialog.show()
+        dialog.window?.setBackgroundDrawableResource(R.drawable.bg_consent)
+        val width = minOf(resources.displayMetrics.widthPixels - (32 * resources.displayMetrics.density).toInt(),
+            (420 * resources.displayMetrics.density).toInt())
+        dialog.window?.setLayout(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+        // Keep actions visible with large fonts, small screens and landscape.
+        val body = content.findViewById<android.widget.ScrollView>(R.id.consentBody)
+        content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        val fixedHeight = content.measuredHeight - body.measuredHeight
+        val available = (resources.displayMetrics.heightPixels * 0.8f).toInt() - fixedHeight
+        body.layoutParams = body.layoutParams.apply { height = minOf(body.measuredHeight, available.coerceAtLeast(64)) }
+    }
+
+    private fun declineClipboardConsent() {
+        PrivacyConsent.revoke(this)
+        stopClipSyncService()
+        refreshingPrivacyControls = true
+        switchService.isChecked = false
+        switchSendNotificationAction.isChecked = false
+        refreshingPrivacyControls = false
+    }
+
     private fun hasUsableSettings(): Boolean {
-        return editServerUrl.text.toString().trim().isNotEmpty() &&
+        return (!switchCustomServer.isChecked || editServerUrl.text.toString().trim().isNotEmpty()) &&
             editSecretKey.text.toString().trim().isNotEmpty()
+    }
+
+    private fun updateServerVisibility() {
+        val visibility = if (switchCustomServer.isChecked) View.VISIBLE else View.GONE
+        editServerUrl.visibility = visibility
+        findViewById<View>(R.id.labelServerUrl).visibility = visibility
     }
 
     private fun needsPersistentNotification(): Boolean {

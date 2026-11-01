@@ -38,8 +38,16 @@ final class ClipSyncManager: ObservableObject {
     }
 
     /// Base URL of the ClipSync relay server (e.g. "wss://example.com").
+    nonisolated static let defaultRelayURL = "wss://serv.everything-clipboard.com"
+    var useCustomServerURL: Bool {
+        get { defaults.bool(forKey: "clipsync_custom_server_url", defaultValue: true) }
+        set { defaults.set(newValue, forKey: "clipsync_custom_server_url") }
+    }
+    var customServerAddress: String {
+        defaults.string(forKey: Keys.serverUrl) ?? Self.defaultRelayURL
+    }
     var serverUrl: String {
-        get { defaults.string(forKey: Keys.serverUrl) ?? "" }
+        get { useCustomServerURL ? customServerAddress : Self.defaultRelayURL }
         set { defaults.set(newValue, forKey: Keys.serverUrl) }
     }
 

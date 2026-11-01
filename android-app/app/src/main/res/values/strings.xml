@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ClipSync</string>
+    <string name="privacy_and_data">Privacy and data</string>
+    <string name="online_privacy_policy">Open online privacy policy</string>
+    <string name="back_to_clipsync">Back to ClipSync</string>
+    <string name="withdraw_consent">Withdraw consent and stop sync</string>
+    <string name="erase_local_data">Erase local data</string>
+    <string name="erase_local_data_warning">Stop sync and remove the saved server, secret, preferences and image cache? This does not erase the Android system clipboard, copies on other devices or server logs.</string>
+    <string name="clipboard_disclosure_title">Allow clipboard sync?</string>
+    <string name="clipboard_disclosure">While open and connected, ClipSync reads clipboard text and images, encrypts them on your device and sends them to devices with your shared secret. Incoming items replace your clipboard.\n\nOptional background receiving continues with a notification. Anyone with your secret can receive transfers. The relay sees your IP address, room identifier and connection metadata.\n\nYou can stop sync and withdraw consent in Privacy and data.</string>
+    <string name="allow_clipboard_sync">Allow clipboard sync</string>
+    <string name="not_now">Not now</string>
+    <string name="stop_sync">Stop sync</string>
     <string name="subtitle">Clipboard sync</string>
     <string name="connection">Connection</string>
     <string name="device_name">Device name</string>
     <string name="device_name_hint">My phone</string>
     <string name="server_url">Server URL</string>
-    <string name="server_url_hint">wss://your-server</string>
+    <string name="server_url_hint">wss://serv.everything-clipboard.com</string>
     <string name="secret_key">Secret key</string>
     <string name="secret_key_hint">Shared secret</string>
     <string name="save_and_connect">Save &amp; Connect</string>
@@ -19,8 +30,16 @@
     <string name="images_wifi_only">Images on Wi-Fi only</string>
     <string name="images_wifi_only_hint">Images are only sent and received when connected to Wi-Fi.</string>
     <string name="run_in_background">Run in background</string>
-    <string name="run_in_background_hint">Keeps syncing after you leave the app (shows a small notification).</string>
-    <string name="show_send_button">Send Clipboard button in notification</string>
+    <string name="run_in_background_hint">Keeps receiving after you leave the app with a notification. Android 15+ limits background data sync to six hours; reopen the app to resume. To send from another app, tap Send Clipboard in the notification or Quick Settings.</string>
+    <string name="show_send_button">Send from notification</string>
+    <string name="show_send_button_hint">Expand the ClipSync notification to see Send Clipboard. Keeps a background connection while enabled.</string>
+    <string name="custom_server_url">Custom server URL</string>
+    <string name="custom_server_hint">Turn off to use the default ClipSync relay. Your custom address is kept for later.</string>
+    <string name="show_key">Show secret key</string>
+    <string name="hide_key">Hide secret key</string>
+    <string name="generate_key">Generate key</string>
+    <string name="share_key">Share key</string>
+    <string name="key_hint">Use the same key on all your devices. Save &amp; Connect applies your changes.</string>
     <string name="status_connected">Connected</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_disconnected">Disconnected</string>

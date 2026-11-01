@@ -5,22 +5,23 @@ plugins {
 
 android {
     namespace = "com.clipsync"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.clipsync"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 5
-        versionName = "2.0"
+        targetSdk = 36
+        versionCode = 9
+        versionName = "2.0-rc.4"
+        testInstrumentationRunner = "com.clipsync.PrivacyFlowInstrumentation"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("../clipsync.jks")
-            storePassword = "qsdfghjklM1*"
-            keyAlias = "clipsync"
-            keyPassword = "qsdfghjklM1*"
+            storeFile = System.getenv("CLIPSYNC_STORE_FILE")?.let { file(it) }
+            storePassword = System.getenv("CLIPSYNC_STORE_PASSWORD")
+            keyAlias = System.getenv("CLIPSYNC_KEY_ALIAS")
+            keyPassword = System.getenv("CLIPSYNC_KEY_PASSWORD")
         }
     }
 
@@ -44,6 +45,15 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+}
+
+// Never silently produce an unsigned release when private credentials are absent.
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project == project && it.name.contains("Release") } &&
+        listOf("CLIPSYNC_STORE_FILE", "CLIPSYNC_STORE_PASSWORD", "CLIPSYNC_KEY_ALIAS", "CLIPSYNC_KEY_PASSWORD")
+            .any { System.getenv(it).isNullOrBlank() }) {
+        throw GradleException("Release signing is missing. Run build-release.ps1; see RELEASE_SIGNING.md.")
     }
 }
 

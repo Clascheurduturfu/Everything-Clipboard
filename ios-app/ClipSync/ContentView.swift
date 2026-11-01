@@ -53,6 +53,7 @@ struct ContentView: View {
     @State private var deviceName: String = ""
     @State private var serverURL: String = ""
     @State private var secretKey: String = ""
+    @State private var customServerURL = true
     @State private var isSaving = false
     @State private var showCopiedToast = false
     
@@ -68,6 +69,7 @@ struct ContentView: View {
                     statusCard
                     connectionCard
                     clipboardActionsCard
+                    behaviourCard
                     footerDisclaimer
                 }
                 .padding(.horizontal, Theme.pagePadding)
@@ -194,14 +196,14 @@ struct ContentView: View {
                     icon: "iphone"
                 )
                 
-                StyledField(
+                if customServerURL { StyledField(
                     label: "Server URL",
-                    placeholder: "ws://your-server:8000",
+                    placeholder: ClipSyncManager.defaultRelayURL,
                     text: $serverURL,
                     icon: "link",
                     keyboardType: .URL,
                     autocapitalization: .never
-                )
+                ) }
                 
                 StyledSecureField(
                     label: "Secret Key",
@@ -374,12 +376,25 @@ struct ContentView: View {
     }
     
     // MARK: - Footer
+
+    private var behaviourCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Behaviour").font(.system(size: 17, weight: .bold)).foregroundColor(Theme.textPrimary)
+            Toggle("Custom server URL", isOn: $customServerURL)
+                .tint(Theme.accentTeal).foregroundColor(Theme.textPrimary)
+            Text(customServerURL ? "Use your own relay address. Save & Connect applies changes." : "Using the default ClipSync relay. Your custom address is kept for later.")
+                .font(.system(size: 12)).foregroundColor(Theme.textSecondary)
+        }
+        .padding(Theme.cardPadding)
+        .background(RoundedRectangle(cornerRadius: Theme.cardCorner).fill(Theme.panelBg))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner).stroke(Theme.panelBorder, lineWidth: 1))
+    }
     
     private var footerDisclaimer: some View {
         HStack(spacing: 6) {
             Image(systemName: "info.circle")
                 .font(.system(size: 12))
-            Text("iOS cannot sync clipboard in the background.\nUse the Send button to share your clipboard.\nClipSync 2.0 beta 2")
+            Text("iOS cannot sync clipboard in the background.\nUse the Send button to share your clipboard.\nClipSync 2.0 beta 4")
                 .font(.system(size: 12, weight: .regular))
                 .multilineTextAlignment(.center)
         }
@@ -415,7 +430,8 @@ struct ContentView: View {
     
     private func loadFormFromManager() {
         deviceName = manager.deviceName
-        serverURL  = manager.serverURL
+        serverURL  = manager.customServerAddress
+        customServerURL = manager.useCustomServerURL
         secretKey  = manager.secretKey
     }
     
@@ -426,6 +442,7 @@ struct ContentView: View {
         isSaving = true
         
         manager.deviceName = deviceName
+        manager.useCustomServerURL = customServerURL
         manager.serverURL  = serverURL
         manager.secretKey  = secretKey
         manager.saveAndConnect()

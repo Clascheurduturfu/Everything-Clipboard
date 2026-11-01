@@ -7,6 +7,7 @@ import android.service.quicksettings.TileService
 
 class ClipSyncTileService : TileService() {
 
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
 
@@ -25,6 +26,8 @@ class ClipSyncTileService : TileService() {
             )
             startActivityAndCollapse(pendingIntent)
         } else {
+            // PendingIntent overload was added in API 34. The Intent overload is
+            // required on API 26-33; this branch never runs on Android 14+.
             @Suppress("DEPRECATION")
             startActivityAndCollapse(intent)
         }

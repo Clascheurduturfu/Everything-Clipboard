@@ -3,6 +3,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+PYTHON_BIN="${PYTHON_BIN:-}"
+if [ -z "$PYTHON_BIN" ]; then
+  if [ -x "/usr/local/bin/python3" ]; then
+    PYTHON_BIN="/usr/local/bin/python3"
+  else
+    PYTHON_BIN="python3"
+  fi
+fi
+
 if [ ! -d "build-output/macos/ClipSync.app" ]; then
   echo "Error: ClipSync.app not found. Please run build_macos.sh first."
   exit 1
@@ -34,6 +43,6 @@ else
 fi
 
 # Tell the in-app updater about this package (commit latest.json with it).
-python3 update_manifest.py macos "$DMG_PATH"
+"$PYTHON_BIN" update_manifest.py macos "$DMG_PATH"
 
 echo "DMG created at $DMG_PATH"

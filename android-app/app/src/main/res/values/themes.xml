@@ -11,6 +11,15 @@
         <item name="android:textColorPrimary">@color/cs_text_primary</item>
         <item name="android:textColorSecondary">@color/cs_text_secondary</item>
         <item name="android:textColorHint">@color/cs_input_hint</item>
+        <item name="android:alertDialogTheme">@style/Theme.ClipSync.Dialog</item>
+    </style>
+
+    <style name="Theme.ClipSync.Dialog" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:colorBackground">@color/cs_panel</item>
+        <item name="android:windowBackground">@drawable/bg_consent</item>
+        <item name="android:textColorPrimary">@color/cs_text_primary</item>
+        <item name="android:textColorSecondary">@color/cs_text_label</item>
+        <item name="android:colorAccent">@color/cs_accent_blue</item>
     </style>
 
     <style name="Theme.ClipSync.Transparent" parent="android:Theme.Material.NoActionBar">

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="24dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/clipboard_disclosure_title" android:textColor="@color/cs_text_primary"
+        android:textSize="22sp" android:textStyle="bold" android:layout_marginBottom="16dp" />
+    <ScrollView android:id="@+id/consentBody" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:fadeScrollbars="false">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/clipboard_disclosure" android:textColor="@color/cs_text_label"
+            android:textSize="14sp" android:lineSpacingExtra="3dp" android:paddingBottom="8dp" />
+    </ScrollView>
+    <Button android:id="@+id/btnAllowSync" style="@style/ClipSync.Button"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" android:text="@string/allow_clipboard_sync" />
+    <Button android:id="@+id/btnDeclineSync" style="@style/ClipSync.Button.Secondary"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:text="@string/not_now" />
+    <Button android:id="@+id/btnConsentPrivacy" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:background="?android:attr/selectableItemBackground"
+        android:text="@string/privacy_and_data" android:textAllCaps="false"
+        android:textColor="@color/cs_text_secondary" android:textSize="13sp" android:minHeight="48dp" />
+</LinearLayout>

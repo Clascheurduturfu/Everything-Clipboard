@@ -36,6 +36,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         const val ACTION_REFRESH_NOTIFICATION = "com.clipsync.action.REFRESH_NOTIFICATION"
         const val ACTION_APP_OPENED = "com.clipsync.action.APP_OPENED"
         const val ACTION_APP_CLOSED = "com.clipsync.action.APP_CLOSED"
+        const val ACTION_STOP = "com.clipsync.action.STOP"
         const val EXTRA_TEXT = "com.clipsync.extra.TEXT"
         const val EXTRA_SOURCE = "com.clipsync.extra.SOURCE"
         // Explicit "Send Clipboard" taps resend even if that text already went out.
@@ -56,6 +57,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     private var currentRoomId: String = ""
     private var listenerRegistered = false
     private var foregroundActive = false
+    @Volatile private var stopping = false
     @Volatile private var lastImageHash: String = ""
     // Image reads and encryption are too heavy for the main thread.
     private val imageExecutor = Executors.newSingleThreadExecutor()
@@ -70,6 +72,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "onStartCommand action=${intent?.action ?: "none"} startId=$startId")
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        if (intent?.action == ACTION_STOP || !PrivacyConsent.isGranted(this)) {
+            PrivacyConsent.revoke(this)
+            stopping = true
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         when (intent?.action) {
             ACTION_APP_OPENED -> {
@@ -87,7 +97,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         // Handle notification refresh without touching WebSocket
         if (intent?.action == ACTION_REFRESH_NOTIFICATION) {
             Log.i(TAG, "Refreshing notification (action button toggled)")
-            val currentText = if (wsClient != null && currentServerUrl.isNotEmpty())
+            val currentText = if (wsClient?.isConnected() == true)
                 "Connected - syncing clipboard" else "ClipSync is running"
             setStatus(currentText)
             syncForegroundState(currentText)
@@ -95,7 +105,9 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             return START_NOT_STICKY
         }
 
-        val serverUrl = prefs.getString("server_url", "") ?: ""
+        val savedServerUrl = RelayAddress.effective(prefs)
+        val serverUrl = runCatching { RelayAddress.normalize(savedServerUrl) }.getOrDefault(savedServerUrl)
+        if (serverUrl != savedServerUrl) prefs.edit().putString("server_url", serverUrl).apply()
         val secretKey = prefs.getString("secret_key", "") ?: ""
         deviceName = prefs.getString("device_name", "Android Phone") ?: "Android Phone"
         val actionText = intent?.getStringExtra(EXTRA_TEXT)
@@ -118,11 +130,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
 
         val settingsChanged = serverUrl != currentServerUrl || roomId != currentRoomId || wsClient == null
         if (settingsChanged) {
-            Log.i(TAG, "Connecting with settingsChanged=$settingsChanged server=$serverUrl room=${roomId.take(8)}...")
+            Log.i(TAG, "Connecting to configured relay")
             wsClient?.disconnect()
             currentServerUrl = serverUrl
             currentRoomId = roomId
 
+            setStatus("Connecting to server...")
+            ClipState.update(ClipState.Connection.CONNECTING, "Connecting to relay")
+            syncForegroundState("Connecting to server...")
             wsClient = WsClient(
                 url = serverUrl,
                 roomId = roomId,
@@ -137,13 +152,13 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 onDisconnected = { reason ->
                     Log.w(TAG, "WebSocket disconnected: $reason")
                     setStatus("Disconnected - reconnecting...")
-                    ClipState.update(ClipState.Connection.DISCONNECTED, "Reconnecting...")
-                    syncForegroundState("Disconnected - reconnecting...")
+                    ClipState.update(ClipState.Connection.DISCONNECTED, reason)
+                    syncForegroundState(reason)
                 },
             )
             wsClient?.connect()
         } else {
-            Log.d(TAG, "Reusing existing WebSocket for server=$serverUrl room=${roomId.take(8)}...")
+            Log.d(TAG, "Reusing existing relay connection")
         }
 
         updateClipboardListener()
@@ -165,17 +180,12 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             )
         }
 
-        if (settingsChanged) {
-            setStatus("Connecting to server...")
-            ClipState.update(ClipState.Connection.CONNECTING, serverUrl)
-            syncForegroundState("Connecting to server...")
-        }
-
-        Log.i(TAG, "Service started with server=$serverUrl")
+        Log.i(TAG, "Service started")
         return START_NOT_STICKY
     }
 
     private fun handleIncomingPayload(encryptedPayload: String) {
+        if (stopping || !PrivacyConsent.isGranted(this)) return
         Log.d(TAG, "Handling incoming encrypted payload (${encryptedPayload.length} chars)")
         val key = keyBytes ?: run {
             Log.w(TAG, "Incoming payload ignored: encryption key is not ready")
@@ -192,10 +202,11 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         val senderDevice = decrypted.device
         val content = (decrypted as Clip.Text).content
 
-        Log.i(TAG, "Received from $senderDevice: ${content.take(30)}...")
+        Log.i(TAG, "Received text (${content.length} chars)")
         lastClipboardText = content
 
         mainHandler.post {
+            if (stopping || !PrivacyConsent.isGranted(this)) return@post
             if (listenerRegistered) {
                 clipboardManager.removePrimaryClipChangedListener(this)
                 listenerRegistered = false
@@ -207,7 +218,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             ClipState.received(senderDevice, content)
             // Status is persisted, so it never carries clipboard content.
             setStatus("Received from $senderDevice")
-            syncForegroundState("From $senderDevice: ${content.take(25)}...")
+            syncForegroundState("Received clipboard text")
         }
     }
 
@@ -233,6 +244,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         Log.i(TAG, "Received image from ${image.device}: $label, ${image.bytes.size} bytes")
 
         mainHandler.post {
+            if (stopping || !PrivacyConsent.isGranted(this)) return@post
             if (listenerRegistered) {
                 clipboardManager.removePrimaryClipChangedListener(this)
                 listenerRegistered = false
@@ -246,6 +258,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     override fun onPrimaryClipChanged() {
+        if (!PrivacyConsent.isGranted(this)) return
         Log.d(TAG, "Primary clipboard changed")
         val image = ClipImages.imageOf(this, clipboardManager.primaryClip)
         if (image != null) {
@@ -413,10 +426,12 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             .setSmallIcon(R.drawable.ic_stat_clipsync)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
 
         val showSendAction = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
         if (showSendAction) {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText("$text\nExpand this notification to send your clipboard."))
             val sendIntent = Intent(this, SendClipboardActivity::class.java)
             val sendPendingIntent = PendingIntent.getActivity(
                 this,
@@ -430,6 +445,11 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 sendPendingIntent
             )
         }
+
+        val stopIntent = Intent(this, ClipSyncService::class.java).apply { action = ACTION_STOP }
+        builder.addAction(0, getString(R.string.stop_sync), PendingIntent.getService(
+            this, 2, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        ))
 
         return builder.build()
     }
@@ -452,6 +472,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     }
 
     private fun syncForegroundState(text: String) {
+        if (stopping) return
         if (shouldShowNotification()) {
             startForeground(NOTIFICATION_ID, buildNotification(text))
             foregroundActive = true
@@ -507,7 +528,22 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }, 700)
     }
 
+    // Android 15+ gives dataSync services six hours in the background.
+    // Stop immediately; reconnecting here would bypass the platform limit.
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopping = true
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(PREF_RUN_IN_BACKGROUND, false)
+            .putBoolean(PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
+            .apply()
+        wsClient?.disconnect()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        foregroundActive = false
+        stopSelf()
+    }
+
     override fun onDestroy() {
+        stopping = true
         Log.i(TAG, "Service destroyed")
         if (listenerRegistered) {
             clipboardManager.removePrimaryClipChangedListener(this)

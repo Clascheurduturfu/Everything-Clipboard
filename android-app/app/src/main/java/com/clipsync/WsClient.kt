@@ -52,12 +52,21 @@ class WsClient(
         shouldReconnect = true
         reconnectScheduled.set(false)
         val fullUrl = if (url.endsWith("/")) "${url}ws/$roomId" else "$url/ws/$roomId"
-        Log.i(TAG, "Connecting to $fullUrl")
+        Log.i(TAG, "Connecting to relay")
 
-        val request = Request.Builder().url(fullUrl).build()
+        val request = try {
+            Request.Builder().url(fullUrl).build()
+        } catch (_: IllegalArgumentException) {
+            onDisconnected("Invalid server address. Use ws:// or wss:// in Connection settings.")
+            return
+        }
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (!shouldReconnect) {
+                    webSocket.close(1000, "Session stopped")
+                    return
+                }
                 isConnected.set(true)
                 reconnectDelaySeconds = RECONNECT_MIN_SECONDS
                 Log.i(TAG, "Connected. HTTP ${response.code}: ${response.message}")
@@ -65,6 +74,7 @@ class WsClient(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (!shouldReconnect) return
                 if (text.startsWith("cs_chunk:v1:")) {
                     val full = handleChunk(text) ?: return
                     Log.d(TAG, "Reassembled chunked message (${full.length} chars)")
@@ -76,24 +86,35 @@ class WsClient(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                val responseInfo = response?.let { " HTTP ${it.code}: ${it.message}" } ?: ""
-                val reason = "Failure:$responseInfo ${t.javaClass.simpleName}: ${t.message}"
+                // Show useful errors without exposing room IDs or request URLs.
+                val reason = when {
+                    t is java.net.UnknownHostException -> "Server address not found. Check the URL and your internet connection."
+                    t is javax.net.ssl.SSLException -> "Secure connection failed. Check the server certificate and device date."
+                    response != null -> "Server refused the connection (HTTP ${response.code}). Check the server URL."
+                    t is java.net.SocketTimeoutException -> "Server took too long to respond. Retrying automatically."
+                    else -> "Cannot reach the server. Check your connection; retrying automatically."
+                }
                 isConnected.set(false)
-                Log.w(TAG, reason, t)
-                onDisconnected(reason)
-                scheduleReconnect(reason)
+                Log.w(TAG, "${t.javaClass.simpleName}: $reason")
+                if (shouldReconnect) {
+                    onDisconnected(reason)
+                    scheduleReconnect(reason)
+                }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 Log.i(TAG, "Connection closing. code=$code reason=$reason")
+                webSocket.close(code, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 val closeReason = "Closed: code=$code reason=$reason"
                 isConnected.set(false)
                 Log.i(TAG, closeReason)
-                onDisconnected(closeReason)
-                scheduleReconnect(closeReason)
+                if (shouldReconnect) {
+                    onDisconnected(closeReason)
+                    scheduleReconnect(closeReason)
+                }
             }
         })
     }

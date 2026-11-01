@@ -1,96 +1,35 @@
-# Guide de Déclaration Google Play Console : FOREGROUND_SERVICE_DATA_SYNC
+# Google Play foreground-service declaration — ClipSync 2.0-rc.2 (7)
 
-Pour publier **ClipSync v2.0** sur le Google Play Store en ciblant Android 14+ (targetSdk 34/35), Google exige une déclaration détaillée de l'utilisation de la permission `FOREGROUND_SERVICE_DATA_SYNC`.
+Public app privacy policy: https://everything-clipboard.online/clipsync-privacy.html
 
-Voici le guide complet avec les réponses textuelles exactes à copier-coller dans la Play Console, ainsi que le scénario pour la vidéo de démonstration requise.
+## Type and use case
 
----
+`FOREGROUND_SERVICE_DATA_SYNC` / `dataSync` — Network transfer: Upload or download. Describe the operation as user-enabled encrypted clipboard transfers/receiving between the user's own devices. Do not claim unrestricted automatic background clipboard capture or unlimited background execution. Google still decides whether this particular ongoing receiving session qualifies; the manifest, declaration and video are evidence, not approval.
 
-## 1. Localisation dans la Google Play Console
+## Core user-facing functionality (copy into Console)
 
-1. Rendez-vous sur votre [Google Play Console](https://play.google.com/console).
-2. Sélectionnez l'application **ClipSync**.
-3. Dans le menu latéral gauche, sous **Politique et programmes**, cliquez sur **Contenu de l'application**.
-4. Repérez la section **Autorisations d'accès aux services de premier plan** (Foreground service permissions) et cliquez sur **Démarrer** ou **Gérer**.
-5. Cochez le type de service : **dataSync** (Synchronisation des données).
+ClipSync transfers client-side encrypted clipboard text and images between the user's Android device and their selected personal devices through a user-configured relay. The user saves the connection settings, reads an in-app explanation and explicitly taps Allow clipboard sync. Run in background is an optional, separately selected receiving session with a foreground notification. The notification includes Stop sync; Privacy and data also offers consent withdrawal and local-data erasure.
 
----
+## User impact if deferred or interrupted (copy into Console)
 
-## 2. Réponses à copier-coller dans le formulaire
+The optional session is used when the user wants clipboard items from another device to arrive promptly. Deferring it would delay the requested transfer and could prevent receipt while the user is moving between devices. Interrupting the session disconnects the live relay connection; the relay does not retain clipboard history or deliver queued items offline. A clear foreground notification shows the active connection and lets the user stop it. The app honors Android's dataSync time budget and stops when onTimeout is called, without automatically restarting to evade the limit. On Android 15 and later the user must reopen the app after the six-hour background budget is exhausted.
 
-### Question 1 : Fonctionnalité principale destinée à l'utilisateur (Core user-facing purpose)
-> **FR :**  
-> Synchronisation instantanée et chiffrée de bout en bout du presse-papier (texte et images) entre les appareils personnels de l'utilisateur (Android, PC Windows, Mac).
->
-> **EN (recommandé si la console est en anglais) :**  
-> Real-time, end-to-end encrypted clipboard synchronization (text and images) between the user's paired personal devices (Android, Windows PC, Mac).
+## How the user starts and stops it (copy into Console)
 
----
+The user enters the relay URL and their shared secret, taps Save & Connect and accepts the prominent clipboard disclosure. Sync is active while the app is open. The user can enable Run in background for continued receiving with a notification. They can end the session from Stop sync in that notification, or withdraw consent under Privacy and data. Withdrawal stops syncing and prevents reconnection until fresh consent. Turning off both Run in background and Send Clipboard button in notification ends the optional background session when the user leaves the app. Android restricts background reads: the Quick Settings tile and optional Send Clipboard notification action explicitly send once via a transient activity. The tile does not toggle the service.
 
-### Question 2 : Pourquoi un service de premier plan est-il obligatoire ? Pourquoi WorkManager / JobScheduler ne conviennent pas ?
-> **FR :**  
-> ClipSync maintient une connexion WebSocket persistante et chiffrée avec le relais de synchronisation pour échanger instantanément le contenu du presse-papier dès qu'un élément est copié ou reçu. Les API différées telles que WorkManager ou JobScheduler imposent une latence de plusieurs minutes et des regroupements par lots, ce qui rend la synchronisation instantanée du presse-papier inutilisable pour l'utilisateur. Le service de premier plan garantit que la connexion reste active lorsque l'application passe en arrière-plan, avec une notification permanente informant l'utilisateur en toute transparence que la synchronisation est en cours.
->
-> **EN :**  
-> ClipSync maintains a persistent encrypted WebSocket connection to the relay server to synchronize clipboard items instantaneously when copied or received across devices. Deferred background tasks (WorkManager / JobScheduler) introduce batching and latency of several minutes, which breaks real-time clipboard workflows. The foreground service ensures the socket remains active in the background, with an ongoing notification ensuring transparency and letting the user know sync is actively running.
+## Demonstration
 
----
+Public demonstration saved in Console: https://everything-clipboard.online/clipsync-play-demo-rc2.mp4 . It records real interactions in an isolated Android emulator and a paired local test peer using synthetic text. It is not an animation of an imagined app, and it is not a claim that Google has reviewed the app. The build shown is a debug test build of the same 2.0-rc.2 source; the distributable release AAB is separately signed with the external upload key.
 
-### Question 3 : Comment l'utilisateur initie-t-il et contrôle-t-il ce service ?
-> **FR :**  
-> Le service est entièrement contrôlé par l'utilisateur. Il est démarré ou arrêté soit via l'interrupteur principal dans l'application, soit directement depuis la tuile des Paramètres Rapides (Quick Settings Tile). L'utilisateur peut désactiver le service à tout moment. Une notification persistante indique en permanence l'état de la connexion (Connecté / Reconnexion).
->
-> **EN :**  
-> The service is entirely user-controlled. It is started and stopped either via the main toggle switch inside the application or via the Quick Settings Tile. The user can stop synchronization at any time. A persistent foreground notification continuously displays the connection state (Connected / Reconnecting).
+The recording should show: Save & Connect → explicit disclosure and choice → encrypted transfer receipt → Run in background → background receipt and visible notification/Stop action → in-app privacy policy → consent withdrawal → local erasure. The local test relay address and synthetic shared secret are fixture-only. No personal clipboard data, production secret or signing key is in the recording.
 
----
+## Reviewer access instructions
 
-## 3. Vidéo de démonstration obligatoire (Lien YouTube non répertorié)
+No Android account/login is required. Console app-access instructions include the operated public relay `wss://serv.everything-clipboard.com` and a dedicated synthetic-room credential, stored outside Git. A reboot-safe isolated peer is running on the relay host, sends synthetic text every 15 seconds and acknowledges sent text/images. It stores/logs no received content. Reviewers can test without a second personal device. Do not use personal clipboard data or a personal secret. Android-to-peer sending from another app uses Send Clipboard in Quick Settings or the notification; in-app text/images synchronize while ClipSync is focused. Privacy/disclosure/deletion screens are available offline. Keep deployment credentials and reviewer-room configuration outside the checkout.
 
-Google exige un lien vers une vidéo courte (30 à 60 secondes) montrant la fonctionnalité en conditions réelles.
+## Evidence and remaining Console work
 
-### Checklist de la vidéo (à filmer sur votre téléphone/tablette) :
-1. **Démarrage du service (0:00 - 0:10) :**
-   - Ouvrir ClipSync.
-   - Activer l'interrupteur **Sync Service**.
-   - Dérouler le volet des notifications pour montrer la notification persistante :  
-     `ClipSync Active - Connecté au relais`.
-2. **Synchronisation en direct (0:10 - 0:25) :**
-   - Mettre ClipSync en arrière-plan (retour à l'écran d'accueil).
-   - Copier un texte ou une image sur votre PC ou Mac.
-   - Montrer la réception immédiate sur le téléphone (notification de réception ou presse-papier mis à jour).
-   - Réciproquement, copier un texte sur le téléphone et montrer qu'il arrive sur l'ordinateur.
-3. **Arrêt du service (0:25 - 0:35) :**
-   - Ouvrir la tuile des Réglages Rapides ou rouvrir l'app pour désactiver le service.
-   - Montrer que la notification persistante disparaît.
+The code declares typed permission/service, handles onTimeout, uses START_NOT_STICKY, has an explicit Stop action and consent gates at the activity, one-shot send and service entry paths. The first app record/upload and Play signing enrollment are complete. The network-transfer Other option and the real demo URL were saved in the foreground-service form. No release validation error remained after this declaration; the tester-list warning remained. The account's 12-tester/14-day closed-test requirement still applies. Check the Play Console publication overview for current review status.
 
-### Publication de la vidéo :
-- Mettre la vidéo sur YouTube avec la visibilité : **Non répertoriée (Unlisted)**.
-- Coller l'URL `https://youtu.be/...` dans le champ prévu à cet effet dans la Google Play Console.
-
----
-
-## 4. Vérification technique des déclarations dans le code
-
-Le projet contient déjà l'ensemble des déclarations obligatoires :
-
-- `AndroidManifest.xml` :
-  ```xml
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-
-  <service
-      android:name=".ClipSyncService"
-      android:foregroundServiceType="dataSync"
-      android:exported="false" />
-  ```
-- `build.gradle.kts` :
-  ```kotlin
-  compileSdk = 35
-  targetSdk = 35
-  versionCode = 5
-  versionName = "2.0"
-  ```
-- Fichiers de production prêts :
-  - Bundle Play Store : `android-app/ClypSync.aab`
-  - APK direct : `android-app/ClypSync.apk`
+Official requirements: https://support.google.com/googleplay/android-developer/answer/13392821 and https://support.google.com/googleplay/android-developer/answer/18258653

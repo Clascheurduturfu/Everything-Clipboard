@@ -1,0 +1,30 @@
+ClipSync Privacy Policy
+
+Updated 29 October 2026 | Policy 2026-10-29
+
+Who is responsible
+ClipSync (package com.clipsync), also called Everything Clipboard, is provided by Barnabe Jouanard. Contact support@everything-clipboard.online for privacy questions or deletion requests. This policy covers the ClipSync Android app and the ClipSync-operated relay, not the separate Everything concept demo or third-party relays.
+
+Clipboard synchronization
+After you choose Allow clipboard sync, ClipSync reads clipboard text and images while the app is open and connected and sends them to devices using the same shared secret. Incoming items replace your local clipboard and appear in the app. Optional background receiving continues with a foreground notification; Android limits background clipboard reads, so use Send Clipboard in the notification or Quick Settings to send from another app. Android 15 and later limit background data-sync sessions to six hours before you need to reopen the app.
+
+Encryption and recipients
+Clipboard text, image bytes, image metadata and the device name included in a transfer are encrypted on your device with AES-256-GCM before being sent. The shared secret is used locally to derive the encryption key; the secret itself is not sent to the relay. A SHA-256 hash of the secret identifies the shared room and is visible to the relay. Anyone who has the same secret and relay address can receive and decrypt your transfers. Use a long, unique random secret and only share it with trusted devices. Encryption cannot protect data on a compromised device or from someone you give the secret to.
+
+Connections and providers
+The relay and network infrastructure process IP addresses, room identifiers, connection times, errors and traffic sizes to route transfers and operate and secure the service. These connection details are not covered by clipboard encryption. The operated relay runs on Oracle Cloud and may pass through Cloudflare network infrastructure. Those providers process technical data under their own privacy practices. If you configure a different relay, its operator controls its infrastructure and logs. Prefer wss:// for TLS-protected connections. User-configured ws:// is also supported: clipboard payloads remain encrypted, but network observers can see unencrypted connection metadata.
+
+What stays on your device
+The relay URL, shared secret, device name, consent choice and preferences are kept in the app's private storage until you erase them, clear app storage or uninstall. The last received text and thumbnail are held in app memory. The latest received image is stored in a private cache file and may remain until replaced, removed with Erase local data, cleared by Android, or uninstalled. Android's system clipboard and copies already delivered to other apps/devices have their own retention and are not erased by clearing ClipSync. App backup and device-transfer rules exclude ClipSync's settings and files.
+
+Retention on the operated relay
+Clipboard payloads are forwarded through active connections in memory; the operated relay does not write a clipboard history or offer offline delivery. Active room membership is removed as devices disconnect. Operational connection and error logs can include IP addresses and room identifiers, not decrypted clipboard contents. ClipSync's relay logs are rotated daily and rotated files expire after 30 days (up to 31 days including the current log). Hosting and network providers may keep separate security or infrastructure records under their own policies.
+
+Your choices and deletion
+Open Privacy and data in the app to read this policy, withdraw consent or erase local data. Withdrawing consent immediately stops synchronization and prevents automatic reconnection until you allow it again. Erase local data also removes the saved connection settings and app image cache. For connection records controlled by the ClipSync-operated relay, email support@everything-clipboard.online with the approximate connection time and relevant server; do not send your shared secret or clipboard contents. We may request enough information to locate and verify a request. We delete identifiable records we control unless retention is required for security or a legal obligation. Contact your chosen relay operator about its records and remove copies separately from recipient devices.
+
+Permissions, accounts and other uses
+Internet access is used for synchronization; network state is used to apply the metered-network image setting; notification and foreground-service permissions support optional visible background receiving. ClipSync does not request location, contacts, microphone, camera or broad photo-library permissions. The Android app does not create an account, process payments, include advertising or analytics SDKs, sell personal data, or use clipboard content for AI training or advertising. Opening the online privacy policy uses your browser and its normal network requests. The separate website/store, email support and third-party services can have their own data handling.
+
+Children and policy changes
+ClipSync is a general-purpose utility and is not designed for children. Do not send us a child's personal information in support messages. This policy may be updated as the app or infrastructure changes; the date and policy version above identify the current notice. Material changes to clipboard access or sharing will require an updated in-app explanation and consent before those changes are used.

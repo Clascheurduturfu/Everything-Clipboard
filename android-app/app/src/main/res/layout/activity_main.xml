@@ -87,7 +87,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:maxLines="2"
                     android:textColor="@color/cs_text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -127,7 +126,7 @@
                 style="@style/ClipSync.FieldLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/server_url" />
+                android:text="@string/server_url" android:id="@+id/labelServerUrl" />
 
             <EditText
                 android:id="@+id/editServerUrl"
@@ -144,14 +143,30 @@
                 android:layout_height="wrap_content"
                 android:text="@string/secret_key" />
 
-            <EditText
-                android:id="@+id/editSecretKey"
-                style="@style/ClipSync.Input"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/secret_key_hint"
-                android:importantForAutofill="no"
-                android:inputType="textPassword" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:background="@drawable/bg_input" android:gravity="center_vertical" android:orientation="horizontal">
+                <EditText android:id="@+id/editSecretKey" style="@style/ClipSync.Input"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                    android:background="@android:color/transparent" android:hint="@string/secret_key_hint"
+                    android:importantForAutofill="no" android:inputType="textPassword" />
+                <ImageButton android:id="@+id/btnRevealKey" android:layout_width="48dp" android:layout_height="48dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless" android:padding="12dp"
+                    android:src="@drawable/ic_visibility" android:tint="@color/cs_text_label" android:contentDescription="@string/show_key" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:orientation="horizontal">
+                <Button android:id="@+id/btnGenerateKey" style="@style/ClipSync.Button.Secondary"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                    android:drawableStart="@drawable/ic_generate" android:drawableTint="@color/cs_text_label"
+                    android:paddingHorizontal="14dp" android:text="@string/generate_key" android:textSize="13sp" />
+                <Button android:id="@+id/btnShareKey" style="@style/ClipSync.Button.Secondary"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp" android:drawableStart="@drawable/ic_share"
+                    android:drawableTint="@color/cs_text_label" android:paddingHorizontal="14dp"
+                    android:text="@string/share_key" android:textSize="13sp" />
+            </LinearLayout>
+            <TextView style="@style/ClipSync.Hint" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:text="@string/key_hint" />
 
             <Button
                 android:id="@+id/btnSave"
@@ -263,6 +278,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/show_send_button" />
+            <TextView android:id="@+id/notificationActionHint" style="@style/ClipSync.Hint"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/show_send_button_hint" />
+            <Switch android:id="@+id/switchCustomServer" style="@style/ClipSync.Switch"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/custom_server_url" />
+            <TextView style="@style/ClipSync.Hint" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/custom_server_hint" />
 
             <Switch
                 android:id="@+id/switchSyncImages"
@@ -285,6 +307,14 @@
                 android:text="@string/images_wifi_only_hint" />
 
         </LinearLayout>
+
+        <Button
+            android:id="@+id/btnPrivacy"
+            style="@style/ClipSync.Button.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/privacy_and_data" />
 
         <TextView
             android:id="@+id/tvVersion"

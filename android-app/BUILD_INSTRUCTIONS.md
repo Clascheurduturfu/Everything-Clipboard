@@ -4,7 +4,7 @@
 
 1. **Open Android Studio**
 2. **Click**: File → Open
-3. **Navigate to**: `C:\Users\jouan\Documents\GitHub\Projects\mac os clipboard\android-app`
+3. **Navigate to**: `<checkout>\android-app`
 4. **Select** the `android-app` folder and click OK
 5. **Wait** for Android Studio to sync (first time may take 2-5 minutes)
 6. **Click**: Build → Build Bundle(s) / APK(s) → Build APK(s)

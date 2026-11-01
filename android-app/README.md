@@ -1,56 +1,25 @@
-# ClipSync Android App
+# ClipSync Android
 
-Android client for clipboard synchronization across devices.
+Android client for encrypted text and image clipboard synchronization.
 
-## Prerequisites
+## Build
 
-- Android Studio (Arctic Fox or newer recommended)
-- Android SDK (API 26+)
-- JDK 17 or higher
+Use JDK 17 or 21 and Android SDK 36. The wrapper uses Gradle 8.11.1 and AGP 8.10.1.
 
-## Building the APK
+- Debug: `gradlew.bat assembleDebug`.
+- Signed release AAB/APK and lint: `build-and-sign.bat` (Windows).
+- See RELEASE_SIGNING.md for the private external keystore, DPAPI password and output paths.
 
-### Method 1: Using Android Studio (Recommended)
+Candidate: **2.0-rc.4 (9)**. Read PLAY_RELEASE_REVIEW.md before submitting to Google Play.
 
-1. Open Android Studio
-2. Click **File > Open** and select this `android-app` folder
-3. Wait for Gradle sync to complete
-4. Click **Build > Build Bundle(s) / APK(s) > Build APK(s)**
-5. Once complete, click "locate" in the notification, or find the APK at:
-   ```
-   app/build/outputs/apk/debug/app-debug.apk
-   ```
+## Connect and use
 
-### Method 2: Using Command Line
+Enter a relay URL (`wss://` recommended), a strong shared secret and a device name. Save & Connect uses the same secret on your other devices. Text and images are encrypted client-side before transmission. Self-hosted `ws://` relays remain supported and expose connection metadata to the local network; prefer TLS.
 
-```bash
-# Windows
-gradlew.bat assembleDebug
+Custom server URL is enabled on first install. Turn it off under Behaviour to hide the address field and use `wss://serv.everything-clipboard.com`; your custom address is preserved. The secret-key field has reveal/hide, secure 64-character generation and system sharing controls. Generated changes apply when saved; share only with trusted devices.
 
-# The APK will be at: app\build\outputs\apk\debug\app-debug.apk
-```
+The app can read clipboard contents while focused. Android 10+ restricts background clipboard access: use Send Clipboard in Quick Settings or the optional notification action to send from another app. Run in background keeps an optional visible receiving session active, subject to Android limits. Android 15+ limits dataSync foreground services to six background hours per 24 hours, reset by returning the app to the foreground. There is no accessibility service or generic clipboard runtime permission.
 
-## Installing on Your Phone
+Permissions: Internet for relay traffic, network state for metering checks, foreground service/dataSync for the optional visible background session, and notification permission on Android 13+. Clipboard images use content URIs and a private cache; broad storage/photo permissions are not requested. The Wi-Fi-only setting currently uses Android's metered-network classification.
 
-1. Transfer the APK to your phone via USB, email, or cloud storage
-2. On your phone, enable **Settings > Security > Install from Unknown Sources**
-3. Open the APK file and tap **Install**
-
-## Configuration
-
-After installation, open the app and:
-1. Enter your server URL (e.g., `ws://192.168.1.100:8080`)
-2. Tap **Connect**
-3. Grant clipboard access permissions when prompted
-
-## Permissions Required
-
-- **Clipboard Access**: To read and write clipboard content
-- **Foreground Service**: To keep the sync service running
-- **Internet**: To connect to the sync server
-
-## Troubleshooting
-
-- **Gradle sync fails**: Check that `local.properties` has the correct SDK path
-- **Build fails**: Ensure you have JDK 17+ installed and JAVA_HOME is set
-- **Connection issues**: Verify server URL and network connectivity
+The Android policy/disclosure and privacy controls are implemented; Data safety answers and the FGS declaration/demo are prepared. First Play Console setup, submission and remaining runtime coverage are described in PLAY_RELEASE_REVIEW.md. The generated signing key is new: existing sideloaded installations signed with the old key need uninstall/reinstall.

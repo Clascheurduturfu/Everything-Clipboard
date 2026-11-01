@@ -3,3 +3,50 @@ brag/
 
 __pycache__/
 *.pyc
+
+# Private signing and Play API credentials (never commit).
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+*.pem
+*.pk8
+*.p8
+*.dpapi.xml
+keystore.properties
+signing.properties
+service-account*.json
+play-service-account*.json
+*service-account*.json
+play-review-peer.json
+server-standalone/review.json
+server-standalone/clipsync-play-review.service
+.gplay/
+
+# Android release artifacts are generated locally.
+android-app/*.apk
+android-app/*.aab
+android-app/*.idsig
+android-app/app/build/
+
+# Generated application packages belong on GitHub Releases.
+desktop-client/build-output/
+ios-app/build/
+*.spec
+*.log
+.DS_Store
+.idea/
+website/.inspiration/
+AUDIT-*.md
+
+# Local publication/deployment records; public release notes are curated separately.
+android-app/privacy/PLAY_CONSOLE_STATUS.md
+android-app/privacy/DEPLOYMENT.md
+android-app/privacy/DEMO.md
+android-app/privacy/RC4_RELEASE_NOTES.md
+android-app/privacy/clipsync-logrotate.conf
+
+# Downloaded Android inspection/signing utilities are local tools.
+android-app/apktool.jar
+android-app/uber-apk-signer-1.3.0.jar

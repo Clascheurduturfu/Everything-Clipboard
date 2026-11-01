@@ -1,0 +1,23 @@
+# Template: create a dedicated clipsync service account and install the peer,
+# dependencies and private review.json under /opt/clipsync-review before use.
+[Unit]
+Description=ClipSync isolated synthetic review peer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=clipsync
+Group=clipsync
+WorkingDirectory=/opt/clipsync-review
+ExecStart=/usr/bin/python3 /opt/clipsync-review/play_review_peer.py /opt/clipsync-review/review.json
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=256M
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

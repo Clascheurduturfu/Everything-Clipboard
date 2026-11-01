@@ -15,6 +15,7 @@ import os
 from collections import OrderedDict, deque
 import platform
 import re
+import secrets
 import plistlib
 import shutil
 import socket
@@ -64,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0"
+APP_VERSION = "2.0.1-beta.1"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -90,6 +91,7 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 LOG_FILE = os.path.join(CONFIG_DIR, "clipsync.log")
 LOCK_FILE = os.path.join(CONFIG_DIR, "clipsync.lock")
 DEFAULT_HOST_PORT = 8000
+DEFAULT_RELAY_URL = "wss://serv.everything-clipboard.com"
 RUN_KEY_NAME = "ClipSync"
 MAC_LAUNCH_AGENT = os.path.expanduser("~/Library/LaunchAgents/com.clipsync.app.plist")
 
@@ -97,6 +99,7 @@ DEFAULT_CONFIG = {
     "device_name": platform.node() or "Desktop",
     "server_url": "",
     "normal_server_url": "",
+    "custom_server_url": True,
     "secret_key": "",
     "host_mode": False,
     # False = reachable on the local network only; True = published via ngrok.
@@ -291,12 +294,23 @@ def ngrok_add_authtoken(token: str) -> tuple[bool, str]:
     return True, "Authtoken saved"
 
 
+def remote_relay_url(config: dict) -> str:
+    return (config.get("normal_server_url") or config.get("server_url", "")) if config.get("custom_server_url", True) else DEFAULT_RELAY_URL
+
+
+def generate_secret_key() -> str:
+    return secrets.token_urlsafe(48)
+
+
 def load_config() -> dict:
     os.makedirs(CONFIG_DIR, exist_ok=True)
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return {**DEFAULT_CONFIG, **json.load(f)}
+                config = {**DEFAULT_CONFIG, **json.load(f)}
+                if not config.get("host_mode"):
+                    config["server_url"] = remote_relay_url(config)
+                return config
         except Exception as exc:
             logger.warning("Could not load config: %s", exc)
     return dict(DEFAULT_CONFIG)
@@ -427,13 +441,15 @@ STATUS_DOT_COLORS = {
 
 def _preferences_values(device: str, server_url: str, secret: str, startup: bool,
                         host: bool, ngrok: bool, hide_dock: bool, port, sync_images: bool = True,
-                        check_updates: bool = True, preview_channel: bool = False) -> dict:
+                        check_updates: bool = True, preview_channel: bool = False,
+                        custom_server: bool = True) -> dict:
     values = {
         "sync_images": bool(sync_images),
         "check_updates": bool(check_updates),
         "update_channel": "preview" if preview_channel else "main",
         "device_name": device.strip() or "Desktop",
         "normal_server_url": server_url.strip(),
+        "custom_server_url": bool(custom_server),
         "secret_key": secret.strip(),
         "start_on_login": bool(startup),
         "host_mode": bool(host),
@@ -442,7 +458,7 @@ def _preferences_values(device: str, server_url: str, secret: str, startup: bool
         "ngrok_public_url": "",
     }
     values["host_port"] = host_port({"host_port": port})
-    values["server_url"] = local_relay_url(values) if host else server_url.strip()
+    values["server_url"] = local_relay_url(values) if host else remote_relay_url(values)
     return values
 
 
@@ -468,7 +484,20 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
                 root.iconbitmap(ico)
             except Exception:
                 pass
-    set_macos_dock_visible(True, activate=True)
+    if _IS_MACOS:
+        def _bring_to_front():
+            set_macos_dock_visible(True, activate=True)
+            try:
+                root.lift()
+                root.attributes("-topmost", True)
+                root.after(100, lambda: root.attributes("-topmost", False))
+                root.focus_force()
+            except Exception:
+                pass
+
+        root.after(50, _bring_to_front)
+    else:
+        set_macos_dock_visible(True, activate=True)
     root.title("ClipSync Preferences")
     root.resizable(False, False)
 
@@ -550,9 +579,11 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
 
     # --- Connection tab
     _, device_entry = field(connection, "Device name", config.get("device_name", "Desktop"), "My laptop")
+    server_box = ctk.CTkFrame(connection, fg_color="transparent")
+    server_box.pack(fill="x")
     _, server_entry = field(
-        connection, "Server URL", config.get("normal_server_url") or config.get("server_url", ""),
-        "wss://your-server",
+        server_box, "Server URL", config.get("normal_server_url") or config.get("server_url") or DEFAULT_RELAY_URL,
+        DEFAULT_RELAY_URL,
     )
     # Collapses to nothing while empty, so the form has no gap.
     hint_holder = ctk.CTkFrame(connection, fg_color="transparent", height=1)
@@ -573,14 +604,33 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
         hover_color=p["status_border"], text_color=p["text"], command=toggle_secret,
     )
     reveal.pack(side="left", padx=(8, 0))
+    secret_entry.configure(width=220)
+
+    def generate_key():
+        if secret_entry.get():
+            from tkinter import messagebox
+            if not messagebox.askyesno("Generate a new key?", "Replace the key in this form? Share the new key with your other devices before saving.", parent=root):
+                return
+        secret_entry.delete(0, "end")
+        secret_entry.insert(0, generate_secret_key())
+        key_hint.configure(text="New key ready. Use the same key on your other devices, then Save & Connect.")
+
+    ctk.CTkButton(
+        secret_row, text="Generate", width=86, height=34, corner_radius=8, fg_color=p["panel_border"],
+        hover_color=p["status_border"], text_color=p["text"], command=generate_key,
+    ).pack(side="left", padx=(8, 0))
+    key_hint = small(connection, "Use the same secret key on all your devices.")
 
     # --- Hosting tab
     host_var = ctk.BooleanVar(value=bool(config.get("host_mode")))
+    custom_server_var = ctk.BooleanVar(value=bool(config.get("custom_server_url", True)))
     exposure_var = ctk.StringVar(
         value="ngrok tunnel" if config.get("use_ngrok_with_host") else "Local network"
     )
     small(hosting, "Run the relay on this computer instead of a server. Your other devices connect to it.")
     switch(hosting, "Host the relay on this computer", host_var, command=lambda: refresh_hosting())
+    custom_server_switch = switch(hosting, "Custom server URL", custom_server_var, command=lambda: refresh_hosting())
+    small(hosting, "Turn off to use the default ClipSync relay. Your custom address is kept.")
     details = ctk.CTkFrame(hosting, fg_color="transparent")
     reach_row = ctk.CTkFrame(details, fg_color="transparent")
     reach_row.pack(fill="x", padx=8, pady=(4, 2))
@@ -651,6 +701,11 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
 
     def refresh_hosting():
         hosting_on = bool(host_var.get())
+        custom_server_switch.configure(state="disabled" if hosting_on else "normal")
+        if custom_server_var.get() and not hosting_on:
+            server_box.pack(fill="x", before=hint_holder)
+        else:
+            server_box.pack_forget()
         if hosting_on:
             details.pack(fill="x")
             server_entry.configure(state="disabled", text_color=p["text_secondary"])
@@ -659,7 +714,11 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
         else:
             details.pack_forget()
             server_entry.configure(state="normal", text_color=p["text"])
-            server_hint.pack_forget()
+            if custom_server_var.get():
+                server_hint.pack_forget()
+            else:
+                server_hint.configure(text=f"Default relay: {DEFAULT_RELAY_URL}")
+                server_hint.pack(fill="x", padx=8, pady=(2, 2))
         port = host_port({"host_port": port_entry.get()})
         if exposure_var.get() == "Local network":
             ngrok_box.pack_forget()
@@ -707,7 +766,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
             _preferences_values(
                 device_entry.get(), server_entry.get(), secret_entry.get(), startup_var.get(),
                 host_var.get(), exposure_var.get() == "ngrok tunnel", hide_dock_var.get(), port_entry.get(),
-                images_var.get(), updates_var.get(), preview_var.get(),
+                images_var.get(), updates_var.get(), preview_var.get(), custom_server_var.get(),
             )
         )
         save_config(config)
@@ -746,7 +805,20 @@ def _show_basic_preferences_dialog() -> bool:
                 pass
     # The preferences window is its own process, so it owns the Dock icon only
     # while it is open and the icon disappears again when it closes.
-    set_macos_dock_visible(True, activate=True)
+    if _IS_MACOS:
+        def _bring_to_front():
+            set_macos_dock_visible(True, activate=True)
+            try:
+                root.lift()
+                root.attributes("-topmost", True)
+                root.after(100, lambda: root.attributes("-topmost", False))
+                root.focus_force()
+            except Exception:
+                pass
+
+        root.after(50, _bring_to_front)
+    else:
+        set_macos_dock_visible(True, activate=True)
     root.title("ClipSync Preferences")
     root.resizable(False, False)
     root.configure(padx=18, pady=16)
@@ -754,6 +826,7 @@ def _show_basic_preferences_dialog() -> bool:
     device_var = tk.StringVar(value=config.get("device_name", "Desktop"))
     server_var = tk.StringVar(value=config.get("normal_server_url") or config.get("server_url", ""))
     secret_var = tk.StringVar(value=config.get("secret_key", ""))
+    custom_var = tk.BooleanVar(value=bool(config.get("custom_server_url", True)))
     startup_var = tk.BooleanVar(value=bool(config.get("start_on_login")))
     host_var = tk.BooleanVar(value=bool(config.get("host_mode")))
     ngrok_var = tk.BooleanVar(value=bool(config.get("use_ngrok_with_host")))
@@ -766,8 +839,21 @@ def _show_basic_preferences_dialog() -> bool:
 
     root.columnconfigure(1, minsize=320)
     row("Device name", tk.Entry(root, textvariable=device_var, width=42), 0)
-    row("Server URL", tk.Entry(root, textvariable=server_var, width=42), 1)
-    row("Secret key", tk.Entry(root, textvariable=secret_var, width=42, show="*"), 2)
+    server_label = tk.Label(root, text="Server URL", anchor="w")
+    server_field = tk.Entry(root, textvariable=server_var, width=42)
+    server_label.grid(row=1, column=0, sticky="w", pady=5)
+    server_field.grid(row=1, column=1, sticky="ew", pady=5)
+    secret_frame = tk.Frame(root)
+    tk.Entry(secret_frame, textvariable=secret_var, width=30, show="*").pack(side="left", fill="x", expand=True)
+    tk.Button(secret_frame, text="Generate", command=lambda: secret_var.set(generate_secret_key())).pack(side="left", padx=(8, 0))
+    row("Secret key", secret_frame, 2)
+    def refresh_custom():
+        for widget in (server_label, server_field):
+            widget.grid() if custom_var.get() else widget.grid_remove()
+    tk.Checkbutton(root, text="Custom server URL", variable=custom_var, command=refresh_custom).grid(
+        row=8, column=0, columnspan=2, sticky="w", pady=2
+    )
+    refresh_custom()
     tk.Checkbutton(root, text="Start ClipSync on login", variable=startup_var).grid(
         row=3, column=0, columnspan=2, sticky="w", pady=(10, 2)
     )
@@ -791,7 +877,7 @@ def _show_basic_preferences_dialog() -> bool:
                 device_var.get(), server_var.get(), secret_var.get(), startup_var.get(),
                 host_var.get(), ngrok_var.get(), hide_dock_var.get(), host_port(config),
                 bool(config.get("sync_images", True)), bool(config.get("check_updates", True)),
-                config.get("update_channel") == "preview",
+                config.get("update_channel") == "preview", custom_var.get(),
             )
         )
         save_config(config)
@@ -1126,7 +1212,7 @@ class ClipSyncApp:
                     self.config["normal_server_url"] = normal_url
                 self.config["server_url"] = local_relay_url(self.config)
             else:
-                self.config["server_url"] = self.config.get("normal_server_url", "")
+                self.config["server_url"] = remote_relay_url(self.config)
                 self.config["ngrok_public_url"] = ""
 
             save_config(self.config)
@@ -1147,7 +1233,7 @@ class ClipSyncApp:
 
     def _enable_host_mode(self, reconnect: bool = True):
         with self.config_lock:
-            if self.config.get("server_url") and not is_local_relay_url(self.config["server_url"]):
+            if self.config.get("custom_server_url", True) and self.config.get("server_url") and not is_local_relay_url(self.config["server_url"]):
                 self.config["normal_server_url"] = self.config["server_url"]
             self.config["host_mode"] = True
             self.config["server_url"] = local_relay_url(self.config)
@@ -1170,7 +1256,7 @@ class ClipSyncApp:
         with self.config_lock:
             self.config["host_mode"] = False
             self.config["ngrok_public_url"] = ""
-            self.config["server_url"] = self.config.get("normal_server_url", "")
+            self.config["server_url"] = remote_relay_url(self.config)
             save_config(self.config)
         self.host_problem = None
         self._refresh_tray()
