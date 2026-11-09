@@ -11,8 +11,8 @@ android {
         applicationId = "com.clipsync"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "2.0-rc.5"
+        versionCode = 11
+        versionName = "2.0-rc.6"
         testInstrumentationRunner = "com.clipsync.PrivacyFlowInstrumentation"
     }
 

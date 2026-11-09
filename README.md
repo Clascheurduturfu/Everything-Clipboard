@@ -1,6 +1,6 @@
 # 📋 Everything Clipboard (ClipSync v2.0)
 
-**RC4 Preview with desktop TLS hotfix:** [release downloads](https://github.com/Clascheurduturfu/Everything-Clipboard/releases/tag/v2.0.1-beta.2) · [changes, platform versions and signing limits](RELEASE_RC4.md). Generated packages are distributed as release assets; signing credentials stay outside the checkout.
+**RC6 Preview:** [release downloads](https://github.com/Clascheurduturfu/Everything-Clipboard/releases/tag/v2.0-rc.6) · [release notes](RELEASE_RC6.md). Generated packages are distributed as release assets; signing credentials stay outside the checkout.
 
 [![Release](https://img.shields.io/github/v/release/Clascheurduturfu/Everything-Clipboard?style=for-the-badge&color=7C3AED)](https://github.com/Clascheurduturfu/Everything-Clipboard/releases)
 [![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20Windows%20%7C%20macOS%20%7C%20iOS-blue?style=for-the-badge&color=2563EB)](https://everything-clipboard.online)

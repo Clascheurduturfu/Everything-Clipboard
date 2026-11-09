@@ -138,6 +138,7 @@ def _release_check(current_version: str, channel: str, key: str, timeout: float)
                       and bool(release.get("prerelease")) == (channel == "preview")
                       and parse_version(release.get("tag_name", "").removeprefix("v")) != (0,)]
         candidates.sort(key=lambda release: parse_version(release["tag_name"].removeprefix("v")), reverse=True)
+        newest_missing_platform = None
         for release in candidates:
             assets = release.get("assets", [])
             # Older stable releases did not carry the update manifest.
@@ -148,7 +149,12 @@ def _release_check(current_version: str, channel: str, key: str, timeout: float)
             if hashlib.sha256(raw).hexdigest() != manifest_digest:
                 raise UpdateError("Update manifest checksum mismatch")
             entry = json.loads(raw).get(key)
-            if not entry or parse_version(entry.get("version", "")) <= parse_version(current_version):
+            if not entry:
+                release_version = release["tag_name"].removeprefix("v")
+                if parse_version(release_version) > parse_version(current_version):
+                    newest_missing_platform = release_version
+                continue
+            if parse_version(entry.get("version", "")) <= parse_version(current_version):
                 continue
             name = {"windows": "ClipSync.zip", "macos": "ClipSync.dmg"}[key]
             asset, url, digest = release_asset(assets, name)
@@ -156,6 +162,10 @@ def _release_check(current_version: str, channel: str, key: str, timeout: float)
                 raise UpdateError("Release package does not match its manifest")
             return {"version": entry["version"], "path": name, "url": url, "sha256": digest,
                     "size": asset["size"], "asset_id": asset["id"], "release_id": release["id"], "channel": channel}
+        if newest_missing_platform:
+            platform_name = {"windows": "Windows", "macos": "macOS"}[key]
+            channel_name = "Preview" if channel == "preview" else "Stable"
+            raise UpdateError(f"{platform_name} package is not available for {channel_name} {newest_missing_platform} yet.")
         return None
     except UpdateError:
         raise
@@ -210,7 +220,7 @@ def _apply_windows(package: str, app_root: str, pid: int) -> None:
     shutil.rmtree(stage, ignore_errors=True)
     with zipfile.ZipFile(package) as archive:
         archive.extractall(stage)
-    new_root = os.path.join(stage, "ClipSync")
+    new_root = stage
     if not os.path.isfile(os.path.join(new_root, "ClipSync.exe")):
         raise UpdateError("Update package does not contain ClipSync.exe")
 
@@ -253,14 +263,14 @@ def _validate_windows_package(package: str) -> None:
             expanded = 0
             for info in archive.infolist():
                 parts = info.filename.replace("\\", "/").split("/")
-                if not parts or parts[0] != "ClipSync" or any(part in ("..", ".") or ":" in part for part in parts):
+                if not parts or any(part in ("..", ".") or ":" in part for part in parts):
                     raise UpdateError("Unsafe path in update ZIP")
                 if ((info.external_attr >> 16) & 0o170000) == 0o120000:
                     raise UpdateError("Unexpected link in Windows update ZIP")
                 expanded += info.file_size
                 if expanded > 1024 * 1024 * 1024:
                     raise UpdateError("Expanded update ZIP is too large")
-            if "ClipSync/ClipSync.exe" not in archive.namelist():
+            if "ClipSync.exe" not in archive.namelist():
                 raise UpdateError("Update package does not contain ClipSync.exe")
     except zipfile.BadZipFile as exc:
         raise UpdateError("Invalid update ZIP") from exc

@@ -18,7 +18,7 @@ targets:
       CODE_SIGN_STYLE: Automatic
       PRODUCT_BUNDLE_IDENTIFIER: com.clipsync.ios
       MARKETING_VERSION: 2.0
-      CURRENT_PROJECT_VERSION: 4
+      CURRENT_PROJECT_VERSION: 6
     dependencies:
       - target: ShareExtension
   
@@ -38,5 +38,5 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.clipsync.ios.ShareExtension
       SKIP_INSTALL: YES
       MARKETING_VERSION: 2.0
-      CURRENT_PROJECT_VERSION: 4
+      CURRENT_PROJECT_VERSION: 6
       INFOPLIST_KEY_CFBundleDisplayName: "Send to ClipSync"

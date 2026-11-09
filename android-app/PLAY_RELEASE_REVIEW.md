@@ -1,6 +1,6 @@
 # Android RC4 release checks
 
-Candidate: **2.0-rc.5 (10)**, package `com.clipsync`, minimum API 26, target/compile API 36.
+Candidate: **2.0-rc.6 (11)**, package `com.clipsync`, minimum API 26, target/compile API 36.
 
 ## Implemented safeguards
 

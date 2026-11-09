@@ -65,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0-rc.5"
+APP_VERSION = "2.0-rc.6"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -752,37 +752,104 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     switch(general, "Check for updates automatically", updates_var)
     switch(general, "Developer: preview updates (preview branch)", preview_var)
 
+    update_row = ctk.CTkFrame(general, fg_color="transparent")
+    update_row.pack(fill="x", padx=8, pady=(6, 2))
+    update_status = ctk.CTkLabel(update_row, text="", font=font(12), text_color=p["text_secondary"], anchor="w")
+    update_status.pack(side="left", fill="x", expand=True)
+    update_spinner = ctk.CTkProgressBar(update_row, width=72, height=5)
+    update_spinner.pack(side="right", padx=(8, 0))
+    update_spinner.stop()
+    update_spinner.pack_forget()
+    update_button = ctk.CTkButton(
+        general, text="Check for updates", width=160, height=32, corner_radius=8,
+        fg_color=p["panel_border"], hover_color=p["status_border"], text_color=p["text"],
+    )
+    update_button.pack(anchor="w", padx=8, pady=(0, 6))
+
+    def check_updates_in_preferences():
+        channel = "preview" if preview_var.get() else "main"
+        channel_name = "Preview" if channel == "preview" else "Stable"
+        update_button.configure(state="disabled", text="Checking...")
+        update_status.configure(text=f"Checking the {channel_name} channel…")
+        update_spinner.pack(side="right", padx=(8, 0))
+        update_spinner.start()
+
+        def work():
+            try:
+                result = updater.check(APP_VERSION, channel)
+                message = f"Version {result['version']} is available." if result else f"ClipSync {APP_VERSION} is up to date."
+                color = p["green"] if result else p["text_secondary"]
+            except updater.UpdateError as exc:
+                message, color = str(exc), p["orange"]
+            def finish():
+                update_spinner.stop()
+                update_spinner.pack_forget()
+                update_status.configure(text=message, text_color=color)
+                update_button.configure(state="normal", text="Check again")
+            try:
+                root.after(0, finish)
+            except Exception:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    update_button.configure(command=check_updates_in_preferences)
+
     refresh_hosting()
     root.minsize(520, 0)
     if host_var.get():
         tabs.set("Hosting")
 
-    def save_and_close(_event=None):
-        config.update(
-            _preferences_values(
+    def current_values():
+        return _preferences_values(
                 device_entry.get(), server_entry.get(), secret_entry.get(), startup_var.get(),
                 host_var.get(), exposure_var.get() == "ngrok tunnel", hide_dock_var.get(), port_entry.get(),
                 images_var.get(), updates_var.get(), preview_var.get(), custom_server_var.get(),
             )
-        )
+
+    saved_values = current_values()
+
+    def save_preferences(close_after=False):
+        nonlocal saved_values
+        config.update(current_values())
         save_config(config)
         saved["value"] = True
+        saved_values = current_values()
+        update_status.configure(text="Saved. Close Preferences to apply connection changes.", text_color=p["green"])
+        if close_after:
+            root.destroy()
+
+    def close_preferences():
+        values = current_values()
+        if values != saved_values:
+            from tkinter import messagebox
+            choice = messagebox.askyesnocancel(
+                "Unsaved changes", "Save your changes before closing?\n\nYes: Save and close\nNo: Discard changes\nCancel: Keep editing",
+                parent=root,
+            )
+            if choice is None:
+                return
+            if choice:
+                save_preferences(close_after=True)
+                return
         root.destroy()
 
     buttons = ctk.CTkFrame(body, fg_color="transparent")
     buttons.pack(fill="x", pady=(2, 0))
     ctk.CTkButton(
-        buttons, text="Save & Connect", height=38, corner_radius=10, font=font(14, "bold"),
-        fg_color=p["blue"], hover_color=p["blue_hover"], command=save_and_close,
+        buttons, text="Save", height=38, corner_radius=10, font=font(14, "bold"),
+        fg_color=p["blue"], hover_color=p["blue_hover"], command=save_preferences,
     ).pack(side="right")
     ctk.CTkButton(
-        buttons, text="Cancel", width=90, height=38, corner_radius=10, font=font(14),
+        buttons, text="Close", width=90, height=38, corner_radius=10, font=font(14),
         fg_color="transparent", border_width=1, border_color=p["panel_border"],
-        hover_color=p["panel"], text_color=p["text_secondary"], command=root.destroy,
+        hover_color=p["panel"], text_color=p["text_secondary"], command=close_preferences,
     ).pack(side="right", padx=(0, 10))
 
-    root.bind("<Return>", save_and_close)
-    root.bind("<Escape>", lambda _event: root.destroy())
+    root.protocol("WM_DELETE_WINDOW", close_preferences)
+    root.bind("<Escape>", lambda _event: close_preferences())
+    if "--check-updates" in sys.argv:
+        root.after(250, check_updates_in_preferences)
     root.mainloop()
     return saved["value"]
 
@@ -1144,7 +1211,7 @@ class ClipSyncApp:
     def _open_preferences_from_tray(self, icon=None, item=None):
         self.open_preferences()
 
-    def open_preferences(self):
+    def open_preferences(self, check_updates=False):
         if self.preferences_open:
             return
 
@@ -1152,16 +1219,17 @@ class ClipSyncApp:
             self.preferences_open = True
             try:
                 status_color, status_text = self._current_status()
-                process = subprocess.Popen(
-                    launch_arguments(
-                        [
+                arguments = [
                             "--preferences",
                             "--status-color",
                             status_color,
                             "--status-text",
                             status_text,
                         ]
-                    ),
+                if check_updates:
+                    arguments.append("--check-updates")
+                process = subprocess.Popen(
+                    launch_arguments(arguments),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
@@ -1872,7 +1940,7 @@ class ClipSyncApp:
         return pystray.MenuItem("Check for updates", self._check_updates_from_tray)
 
     def _check_updates_from_tray(self, icon=None, item=None):
-        threading.Thread(target=self._check_for_update, kwargs={"manual": True}, daemon=True).start()
+        self.open_preferences(check_updates=True)
 
     def _check_for_update(self, manual: bool = False):
         if not self._update_busy.acquire(blocking=False):
