@@ -54,7 +54,13 @@ def parse_version(text: str) -> tuple:
     if not match:
         return (0,)
     major, minor, patch = (int(part or 0) for part in match.groups()[:3])
-    stage = {"beta": 0, "rc": 1}.get((match.group(4) or "").lower(), 2)
+    phase = (match.group(4) or "").lower()
+    # The mistakenly labeled 2.0.1-beta.2 hotfix belongs just before the 2.0
+    # RC line. Keep beta.1's normal ordering and normalize only beta.2+ here.
+    if phase == "beta" and patch == 1 and int(match.group(5) or 0) >= 2:
+        patch = 0
+        phase = "rc"
+    stage = {"beta": 0, "rc": 1}.get(phase, 2)
     return (major, minor, patch, stage, int(match.group(5) or 0))
 
 

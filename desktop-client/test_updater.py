@@ -56,6 +56,7 @@ class VersionTest(unittest.TestCase):
         self.assertEqual(updater.parse_version("2.0-rc.4"), updater.parse_version("2.0 rc 4"))
         self.assertGreater(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0"))
         self.assertLess(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0.1"))
+        self.assertGreater(updater.parse_version("2.0-rc.5"), updater.parse_version("2.0.1-beta.2"))
 
     def test_ordering(self):
         order = ["1.0.2", "2.0 beta 1", "2.0 beta 2", "2.0 beta 10", "2.0 rc 1", "2.0", "2.0.1", "2.1 beta 1"]
