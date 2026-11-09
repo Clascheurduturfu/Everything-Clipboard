@@ -92,7 +92,7 @@ class MainActivity : Activity() {
         editServerUrl.setText(normalizedUrl)
         editSecretKey.setText(prefs.getString("secret_key", ""))
         switchCustomServer = findViewById(R.id.switchCustomServer)
-        switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+        switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, false)
         updateServerVisibility()
         switchCustomServer.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(RelayAddress.PREF_CUSTOM_SERVER, checked).apply()
@@ -223,7 +223,7 @@ class MainActivity : Activity() {
             editDeviceName.setText(prefs.getString("device_name", "Android Phone"))
             editServerUrl.setText(prefs.getString("server_url", ""))
             editSecretKey.setText(prefs.getString("secret_key", ""))
-            switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+            switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, false)
             updateServerVisibility()
         }
         val saved = getSharedPreferences("clipsync_prefs", MODE_PRIVATE)

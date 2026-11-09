@@ -3,6 +3,7 @@ brag/
 
 __pycache__/
 *.pyc
+.venv/
 
 # Private signing and Play API credentials (never commit).
 *.jks

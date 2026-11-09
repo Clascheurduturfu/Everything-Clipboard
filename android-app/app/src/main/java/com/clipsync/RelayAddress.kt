@@ -7,7 +7,7 @@ object RelayAddress {
     const val PREF_CUSTOM_SERVER = "custom_server_url"
 
     fun effective(prefs: android.content.SharedPreferences): String =
-        if (prefs.getBoolean(PREF_CUSTOM_SERVER, true)) prefs.getString("server_url", DEFAULT) ?: DEFAULT else DEFAULT
+        if (prefs.getBoolean(PREF_CUSTOM_SERVER, false)) prefs.getString("server_url", DEFAULT) ?: DEFAULT else DEFAULT
 
     fun normalize(value: String): String {
         val uri = URI(value.trim())
