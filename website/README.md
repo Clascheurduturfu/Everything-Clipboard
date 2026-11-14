@@ -1,6 +1,6 @@
-# ClipSync Store
+# Everything Clipboard website
 
-The ClipSync store uses Google-backed Firebase accounts, Stripe live Checkout, Firestore entitlements, and private Vercel Blob downloads.
+The Everything Clipboard site (the apps themselves are named ClipSync) uses Google-backed Firebase accounts, Stripe live Checkout, Firestore entitlements, and private Vercel Blob downloads.
 
 ## Local development
 
@@ -8,6 +8,10 @@ The ClipSync store uses Google-backed Firebase accounts, Stripe live Checkout, F
 copy .env.example .env.local
 npm run dev
 ```
+
+Without the Firebase, Stripe and Blob variables the pages render but you cannot sign in, buy or download. `npm run build` and `npm run lint` must pass; the unit tests in `src/lib` are plain TypeScript files, see the header comment of each for how to run it (`download-source.test.ts` talks to the live download mirrors).
+
+The footer shows `SITE_VERSION` from `src/lib/version.ts`; bump it with every deploy so you can tell which build you are looking at.
 
 The Firebase Admin credentials, Stripe keys, and Blob token remain server-only. Do not commit `.env.local`.
 
@@ -37,4 +41,8 @@ npx firebase-tools login
 npx firebase-tools deploy --project clipsync-store-20260823 --only firestore:rules
 ```
 
-The paid account page displays `wss://serv.everything-clipboard.com` as the public relay URL.
+The apps connect to `wss://serv.everything-clipboard.com` by default. The paid account page shows that address only as optional reference, for people who changed the server or want to switch back from a self-hosted one.
+
+## Docker
+
+The `Dockerfile` builds the standalone output on Node 22 (Next.js 16 requires Node 20.9 or newer).
