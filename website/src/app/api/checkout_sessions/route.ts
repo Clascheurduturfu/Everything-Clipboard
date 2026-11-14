@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Everything Clipboard - Full Access (MacOS, Windows, Android)',
-              description: 'One-time purchase for full access to Everything Clipboard across all platforms.',
+              name: 'Everything Clipboard - lifetime access (Windows, macOS, Android, iOS)',
+              description: 'One-time payment for the Everything Clipboard apps on Windows, macOS, Android and iOS, including future updates.',
               images: [productImageUrl],
             },
             unit_amount: 300, // $3.00

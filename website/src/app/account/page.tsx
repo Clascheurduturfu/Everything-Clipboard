@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Apple, Check, CheckCircle2, Download, Laptop, Lock, Monitor, ShieldCheck, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -12,11 +12,12 @@ import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Account",
   description: "Your Everything Clipboard license, downloads and setup.",
-  robots: { index: false, follow: false },
-};
+  path: "/account",
+  indexable: false,
+});
 
 type DownloadItem = {
   os: "windows" | "macos" | "android" | "ios";

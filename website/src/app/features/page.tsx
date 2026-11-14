@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Lock, Monitor, Network, Image as ImageIcon, Smartphone, Apple } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Features",
   description:
     "Text and image clipboard sync for Windows, macOS, Android and iOS, encrypted with AES-256-GCM using a key you choose. Use the hosted relay, your own server or your local network.",
-  alternates: { canonical: "/features" },
-};
+  path: "/features",
+});
 
 const hosting = [
   {

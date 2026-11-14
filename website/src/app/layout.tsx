@@ -13,11 +13,34 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  // Only used for code snippets on the account page.
+  preload: false,
 });
 
+const description =
+  "Copy on one device and paste on another. Encrypted text and image clipboard sync for Windows, macOS, Android and iOS. Use the hosted relay or run your own server. $3, paid once.";
+
 export const metadata: Metadata = {
-  title: "Everything Clipboard - Sync Across MacOS, Windows & Android",
-  description: "Seamlessly share your clipboard between MacOS, Windows, and Android. Host it yourself, locally, or use our encrypted relay. Get Everything Clipboard today.",
+  metadataBase: new URL("https://www.everything-clipboard.com"),
+  title: {
+    default: "Everything Clipboard - clipboard sync for Windows, macOS, Android and iOS",
+    template: "%s | Everything Clipboard",
+  },
+  description,
+  applicationName: "Everything Clipboard",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Everything Clipboard",
+    url: "/",
+    title: "Everything Clipboard - clipboard sync for Windows, macOS, Android and iOS",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Everything Clipboard - clipboard sync for Windows, macOS, Android and iOS",
+    description,
+  },
 };
 
 export default function RootLayout({

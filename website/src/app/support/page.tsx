@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Script from "next/script";
 import { Mail } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Support",
   description: "Answers about your license, downloads, installing on iOS, encryption keys and setup for Everything Clipboard.",
-  alternates: { canonical: "/support" },
-};
+  path: "/support",
+});
 
 const faqs = [
   {
