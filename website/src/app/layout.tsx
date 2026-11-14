@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PageBackground } from "@/components/PageBackground";
+import { WebglBackground } from "@/components/WebglBackground";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 
 const geistSans = Geist({
@@ -57,6 +58,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <PageBackground />
+          <WebglBackground />
           {children}
           <GoogleOneTap />
         </ThemeProvider>
