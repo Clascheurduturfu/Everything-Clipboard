@@ -238,18 +238,11 @@ button:not(:disabled),
   animation: knob-stretch 220ms ease-in-out 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0s !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    transition-delay: 0s !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* No blanket `prefers-reduced-motion` kill switch on purpose. Windows reports
+   reduced motion whenever "Animation effects" is off, which many people set
+   for OS speed, and it left the desktop site with no transitions and no
+   background at all. Everything here is short (under 250ms) and small in
+   travel, so it stays on for everyone. */
 
 /* Animated WebGL layer. Invisible until the scene is running, then it fades
    in over the static .page-bg. */
@@ -269,5 +262,5 @@ button:not(:disabled),
 }
 
 :root.dark .webgl-bg-ready {
-  opacity: 0.1;
+  opacity: 0.3;
 }

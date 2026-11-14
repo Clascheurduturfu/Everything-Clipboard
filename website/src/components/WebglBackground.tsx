@@ -35,7 +35,9 @@ function loadScript(): Promise<void> {
  *   navigation instead of being torn down and rebuilt on every route.
  * - Nothing is downloaded until the page has finished loading and the browser
  *   is idle. The static `.page-bg` is what paints first; this fades in over it.
- * - It is skipped entirely for reduced-motion and data-saver users.
+ * - It is skipped for data-saver users. It deliberately does not look at
+ *   `prefers-reduced-motion`: Windows reports that whenever OS animation
+ *   effects are off, which left desktop visitors with a blank background.
  */
 export function WebglBackground() {
   const [ready, setReady] = useState(false);
@@ -43,7 +45,6 @@ export function WebglBackground() {
 
   useEffect(() => {
     if (started.current) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     if (connection?.saveData) return;
 

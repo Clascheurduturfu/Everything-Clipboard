@@ -26,10 +26,6 @@ export function useIsClient() {
   return useSyncExternalStore(noopSubscribe, () => true, () => false);
 }
 
-function reducedMotion() {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export function usePresence(open: boolean, exitMs: number = EXIT_MS) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
@@ -47,7 +43,7 @@ export function usePresence(open: boolean, exitMs: number = EXIT_MS) {
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() => setEntered(true));
     });
-    const fallback = window.setTimeout(() => setEntered(true), reducedMotion() ? 0 : 80);
+    const fallback = window.setTimeout(() => setEntered(true), 80);
     return () => {
       cancelAnimationFrame(first);
       cancelAnimationFrame(second);
@@ -61,7 +57,7 @@ export function usePresence(open: boolean, exitMs: number = EXIT_MS) {
     const timer = window.setTimeout(() => {
       setMounted(false);
       setEntered(false);
-    }, reducedMotion() ? 0 : exitMs);
+    }, exitMs);
     return () => window.clearTimeout(timer);
   }, [open, mounted, exitMs]);
 
