@@ -1,5 +1,4 @@
 import { pageMetadata } from "@/lib/seo";
-import Script from "next/script";
 import { Mail } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -36,13 +35,6 @@ const faqs = [
 export default function Support() {
   return (
     <div className="relative z-10 flex min-h-screen flex-col">
-      <Script
-        async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2851149974047726"
-        crossOrigin="anonymous"
-        strategy="afterInteractive"
-      />
-
       <Navbar />
 
       <main className="relative z-10 flex-grow px-4 pb-16 pt-28 sm:px-6 lg:pt-36">
