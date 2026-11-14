@@ -4,6 +4,7 @@ import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -12,6 +13,7 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
@@ -27,6 +29,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_POST_NOTIFICATIONS = 1001
+        private const val REQUEST_PICK_IMAGE = 1002
     }
 
     private var startServiceAfterNotificationPrompt = false
@@ -78,7 +81,8 @@ class MainActivity : Activity() {
         tvLastReceivedFrom = findViewById(R.id.tvLastReceivedFrom)
         tvLastReceived = findViewById(R.id.tvLastReceived)
         ivLastImage = findViewById(R.id.ivLastImage)
-        findViewById<TextView>(R.id.tvVersion).text = "ClipSync ${BuildConfig.VERSION_NAME} · Android"
+        findViewById<TextView>(R.id.tvVersion).text =
+            getString(R.string.app_version_label, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
         // Load saved prefs
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
@@ -177,6 +181,7 @@ class MainActivity : Activity() {
         }
 
         findViewById<Button>(R.id.btnSendClipboard).setOnClickListener { sendClipboardNow() }
+        findViewById<Button>(R.id.btnSendImage).setOnClickListener { pickAndSendImage() }
         findViewById<Button>(R.id.btnCopyLast).setOnClickListener { copyLastReceived() }
         findViewById<Button>(R.id.btnPrivacy).setOnClickListener {
             returningFromPrivacy = true
@@ -315,38 +320,86 @@ class MainActivity : Activity() {
             withClipboardConsent { sendClipboardNow() }
             return
         }
-        if (!hasUsableSettings()) {
-            Toast.makeText(this, "Set Server URL and Secret Key first!", Toast.LENGTH_SHORT).show()
+        if (!hasUsableSettings() || !ClipSyncSender.hasUsableSettings(this)) {
+            Toast.makeText(this, "Save Server URL and Secret Key first!", Toast.LENGTH_SHORT).show()
             return
         }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = clipboard.primaryClip
         val image = ClipImages.imageOf(this, clip)
-        val text = if (image == null && clip != null && clip.itemCount > 0) {
-            clip.getItemAt(0).coerceToText(this)?.toString()
+        if (image != null) {
+            if (ClipImages.isOwn(this, image.first)) {
+                Toast.makeText(this, "Image already synced by ClipSync", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val blocked = ClipSyncSender.imageBlockReason(this)
+            if (blocked != null) {
+                Toast.makeText(this, blocked, Toast.LENGTH_LONG).show()
+                return
+            }
+            ClipSyncSender.dispatchImage(this, image.first, source = "in_app_button", force = true)
+            Toast.makeText(this, "Sending clipboard", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = if (clip != null && clip.itemCount > 0) {
+            (0 until clip.itemCount)
+                .firstNotNullOfOrNull { idx -> clip.getItemAt(idx).coerceToText(this)?.toString()?.takeIf { it.isNotBlank() } }
         } else {
             null
         }
-        if (image == null && text.isNullOrBlank()) {
+        if (text.isNullOrBlank()) {
             Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
             return
         }
-        val intent = Intent(this, ClipSyncService::class.java).apply {
-            action = ClipSyncService.ACTION_SEND_TEXT
-            if (image != null) {
-                putExtra(ClipSyncService.EXTRA_IMAGE_URI, image.first.toString())
-            } else {
-                putExtra(ClipSyncService.EXTRA_TEXT, text)
-            }
-            putExtra(ClipSyncService.EXTRA_SOURCE, "in_app_button")
-            putExtra(ClipSyncService.EXTRA_FORCE, true)
-        }
-        if (needsPersistentNotification() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        ClipSyncSender.dispatchText(this, text, source = "in_app_button", force = true)
         Toast.makeText(this, "Sending clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun pickAndSendImage() {
+        if (!PrivacyConsent.isGranted(this)) {
+            withClipboardConsent { pickAndSendImage() }
+            return
+        }
+        if (!hasUsableSettings() || !ClipSyncSender.hasUsableSettings(this)) {
+            Toast.makeText(this, "Save Server URL and Secret Key first!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val blocked = ClipSyncSender.imageBlockReason(this)
+        if (blocked != null) {
+            Toast.makeText(this, blocked, Toast.LENGTH_LONG).show()
+            return
+        }
+        val fallbackIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                val pickIntent = Intent(MediaStore.ACTION_PICK_IMAGES).apply { type = "image/*" }
+                @Suppress("DEPRECATION")
+                startActivityForResult(pickIntent, REQUEST_PICK_IMAGE)
+                return
+            } catch (_: ActivityNotFoundException) {
+            }
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(fallbackIntent, REQUEST_PICK_IMAGE)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_PICK_IMAGE || resultCode != RESULT_OK) return
+        val uri = data?.data
+            ?: data?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+            ?: return
+        if (!PrivacyConsent.isGranted(this) || !ClipSyncSender.hasUsableSettings(this)) return
+        ClipSyncSender.stageAndDispatchImage(
+            activity = this,
+            uri = uri,
+            source = "photo_picker",
+            failMessage = "Could not read selected image"
+        )
     }
 
     private fun copyLastReceived() {
@@ -460,11 +513,7 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.labelServerUrl).visibility = visibility
     }
 
-    private fun needsPersistentNotification(): Boolean {
-        val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
-        return prefs.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false) ||
-            prefs.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
-    }
+    private fun needsPersistentNotification(): Boolean = ClipSyncSender.needsPersistentNotification(this)
 
     @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(

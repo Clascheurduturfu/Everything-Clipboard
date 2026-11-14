@@ -44,6 +44,7 @@ class PrivacyActivity : Activity() {
                     stopService(Intent(this, ClipSyncService::class.java))
                     getSharedPreferences("clipsync_prefs", MODE_PRIVATE).edit().clear().apply()
                     cacheDir.resolve("clips").deleteRecursively()
+                    ClipImages.clearOutgoing(this)
                     ClipState.clear()
                     finish()
                 }.show()

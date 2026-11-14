@@ -24,7 +24,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         private const val TAG = "ClipSyncService"
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "clipsync_channel"
-        private const val PREFS_NAME = "clipsync_prefs"
+        const val PREFS_NAME = "clipsync_prefs"
         const val PREF_SHOW_SEND_NOTIFICATION_ACTION = "show_send_notification_action"
         const val PREF_SERVICE_STATUS = "service_status"
         const val PREF_RUN_IN_BACKGROUND = "service_running"
@@ -271,11 +271,13 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
     private fun sendClipboardImage(uri: Uri, source: String, oneShot: Boolean, force: Boolean = false) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (ClipImages.isOwn(this, uri) || !prefs.getBoolean(PREF_SYNC_IMAGES, true)) {
+            ClipImages.deleteOutgoing(this, uri)
             if (oneShot) maybeStopIfIdle()
             return
         }
         if (prefs.getBoolean(PREF_IMAGES_WIFI_ONLY, true) && ClipImages.isMetered(this)) {
             Log.i(TAG, "Image from $source not sent: on mobile data with Wi-Fi only on")
+            ClipImages.deleteOutgoing(this, uri)
             setStatus("Image not sent (Wi-Fi only)")
             ClipState.update(detail = "Image not sent: Wi-Fi only is on")
             if (oneShot) maybeStopIfIdle()
@@ -283,50 +285,55 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
         val key = keyBytes ?: run {
             Log.w(TAG, "Cannot send image from $source: encryption key is not ready")
+            ClipImages.deleteOutgoing(this, uri)
             if (oneShot) maybeStopIfIdle()
             return
         }
 
         imageExecutor.execute {
-            var bytes = ClipImages.read(this, uri)
-            var mime = contentResolver.getType(uri) ?: "image/png"
-            var resized = false
-            var payload: String? = null
-            var status = ""
-            if (bytes != null && bytes.size > ClipImages.MAX_IMAGE_BYTES) {
-                // Oversize: re-encode off the main thread instead of refusing.
-                val fit = ClipImages.shrink(this, uri, mime)
-                bytes = fit?.bytes
-                if (fit == null) {
-                    status = "Image too large to sync"
-                } else {
-                    mime = fit.mime
-                    resized = true
-                }
-            }
-            when {
-                bytes == null -> Log.w(TAG, "Could not read image from $source")
-                else -> {
-                    val hash = CryptoUtils.sha256Hex(bytes)
-                    if (hash == lastImageHash && !force) {
-                        Log.d(TAG, "Ignored duplicate image from $source")
+            try {
+                var bytes = ClipImages.read(this, uri)
+                var mime = ClipImages.resolveMime(this, uri, bytes)
+                var resized = false
+                var payload: String? = null
+                var status = ""
+                if (bytes != null && bytes.size > ClipImages.MAX_IMAGE_BYTES) {
+                    // Oversize: re-encode off the main thread instead of refusing.
+                    val fit = ClipImages.shrink(this, uri, mime)
+                    bytes = fit?.bytes
+                    if (fit == null) {
+                        status = "Image too large to sync"
                     } else {
-                        lastImageHash = hash
-                        val (width, height) = ClipImages.dimensions(bytes)
-                        payload = CryptoUtils.encryptImagePayload(deviceName, bytes, mime, width, height, key)
-                        status = if (resized) "Image resized to fit (${width}\u00d7${height})" else "Sent image ${width}\u00d7${height}"
+                        mime = fit.mime
+                        resized = true
                     }
                 }
-            }
-            mainHandler.post {
-                val ready = payload
-                if (ready != null) {
-                    deliver(ready, oneShot, source, status)
-                } else if (status.isNotEmpty()) {
-                    setStatus(status)
-                    ClipState.update(detail = status)
+                when {
+                    bytes == null -> Log.w(TAG, "Could not read image from $source")
+                    else -> {
+                        val hash = CryptoUtils.sha256Hex(bytes)
+                        if (hash == lastImageHash && !force) {
+                            Log.d(TAG, "Ignored duplicate image from $source")
+                        } else {
+                            lastImageHash = hash
+                            val (width, height) = ClipImages.dimensions(bytes)
+                            payload = CryptoUtils.encryptImagePayload(deviceName, bytes, mime, width, height, key)
+                            status = if (resized) "Image resized to fit (${width}\u00d7${height})" else "Sent image ${width}\u00d7${height}"
+                        }
+                    }
                 }
-                if (oneShot && ready == null) maybeStopIfIdle()
+                mainHandler.post {
+                    val ready = payload
+                    if (ready != null) {
+                        deliver(ready, oneShot, source, status)
+                    } else if (status.isNotEmpty()) {
+                        setStatus(status)
+                        ClipState.update(detail = status)
+                    }
+                    if (oneShot && ready == null) maybeStopIfIdle()
+                }
+            } finally {
+                ClipImages.deleteOutgoing(this, uri)
             }
         }
     }
@@ -551,6 +558,7 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
         }
         wsClient?.disconnect()
         imageExecutor.shutdownNow()
+        ClipImages.clearOutgoing(this)
         cancelNotification()
 
         ClipState.update(ClipState.Connection.IDLE, "")

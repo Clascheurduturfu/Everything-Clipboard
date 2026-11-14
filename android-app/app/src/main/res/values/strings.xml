@@ -46,5 +46,9 @@
     <string name="status_idle">Idle</string>
     <string name="status_not_configured">Not configured</string>
     <string name="send_clipboard_action">Send Clipboard</string>
+    <string name="send_image_action">Send Image</string>
+    <string name="image_sync_disabled">Enable Sync images in ClipSync settings first</string>
+    <string name="image_wifi_only_blocked">Image not sent: Wi-Fi only is on</string>
     <string name="quick_settings_tile_label">Send ClipSync</string>
+    <string name="app_version_label">ClipSync %1$s (%2$d) · Android</string>
 </resources>
