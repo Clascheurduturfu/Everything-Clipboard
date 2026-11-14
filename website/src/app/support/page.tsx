@@ -4,7 +4,6 @@ import Script from "next/script";
 import { Mail, HelpCircle, Shield, Sparkles, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { UnicornBackground } from "@/components/UnicornBackground";
 
 export default function Support() {
   return (
@@ -15,15 +14,6 @@ export default function Support() {
         crossOrigin="anonymous"
         strategy="afterInteractive"
       />
-
-      {/* Background Effects */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-400/20 dark:bg-blue-900/40 blur-[7.5rem] will-change-transform" />
-        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform" />
-        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform" />
-        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }} />
-        <UnicornBackground />
-      </div>
 
       {/* Global Unified Navigation */}
       <Navbar />

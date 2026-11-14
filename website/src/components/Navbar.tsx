@@ -89,10 +89,12 @@ export function Navbar() {
             {/* Brand Logo & Name */}
             <Link href="/" className="flex items-center space-x-3 group">
               <Image 
-                src="/logo.png" 
-                alt="Everything Clipboard Logo" 
-                width={36} 
-                height={36} 
+                src="/logo-72.png"
+                alt="Everything Clipboard Logo"
+                width={36}
+                height={36}
+                unoptimized
+                preload
                 className="rounded-xl shadow-[0_2px_8px_rgba(59,130,246,0.3)] transition-transform duration-300 group-hover:scale-105" 
               />
               <span className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">

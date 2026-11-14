@@ -4,22 +4,11 @@ import { Monitor, MonitorUp, Shield, Zap, CheckCircle2, ClipboardCopy, ArrowRigh
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
-import { UnicornBackground } from "@/components/UnicornBackground";
 import OrbitImages from "@/components/OrbitImages";
 
 export default function Home() {
   return (
     <div className="relative z-10 flex flex-col min-h-screen">
-      {/* Background Effects */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="aura-bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-400/20 dark:bg-blue-900/40 blur-[7.5rem] will-change-transform" />
-        <div className="aura-bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-300/15 dark:bg-sky-900/30 blur-[8.75rem] will-change-transform" />
-        <div className="aura-bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/40 dark:bg-white/10 blur-[5rem] will-change-transform" />
-        <div className="aura-bg-dots absolute inset-0 opacity-[0.4] dark:opacity-[0.1]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)", backgroundSize: "2rem 2rem" }} />
-        {/* Interactive WebGL Background */}
-        <UnicornBackground />
-      </div>
-
       {/* Global Unified Navigation */}
       <Navbar />
 
@@ -29,7 +18,7 @@ export default function Home() {
           
           {/* Hero Text */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white dark:border-slate-700 px-3.5 py-2 shadow-sm mb-6 sm:mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 px-3.5 py-2 shadow-sm mb-6 sm:mb-8">
               <span className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </span>
@@ -52,7 +41,7 @@ export default function Home() {
                 buyLabel="Buy for $3" 
                 downloadLabel="Download Everything Clipboard" 
               />
-              <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full sm:w-auto">
+              <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full sm:w-auto">
                 <Shield className="w-5 h-5 text-emerald-500" />
                 One-Time Payment
               </div>
@@ -112,16 +101,16 @@ export default function Home() {
                     baseWidth={600}
                     items={[
                       <div key="ios" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
-                        <Image src="/IOS app.png" alt="iOS App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
+                        <Image src="/app-ios.webp" alt="iOS App" width={360} height={783} sizes="180px" className="w-full h-auto object-cover pointer-events-none" />
                       </div>,
                       <div key="android" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
-                        <Image src="/Android app.png" alt="Android App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
+                        <Image src="/app-android.webp" alt="Android App" width={360} height={732} sizes="180px" className="w-full h-auto object-cover pointer-events-none" />
                       </div>,
                       <div key="mac" className="rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 transition-transform duration-500 hover:scale-110 hover:z-40 cursor-pointer pointer-events-auto w-[250px] mx-auto">
-                        <Image src="/MacOs app.png" alt="MacOS App" width={600} height={600} className="w-full h-auto pointer-events-none" priority />
+                        <Image src="/app-macos.webp" alt="MacOS App" width={664} height={520} sizes="250px" className="w-full h-auto pointer-events-none" preload />
                       </div>,
                       <div key="windows" className="rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 transition-transform duration-500 hover:scale-110 hover:z-40 cursor-pointer pointer-events-auto w-[250px] mx-auto">
-                        <Image src="/Windows app.png" alt="Windows App" width={600} height={600} className="w-full h-auto pointer-events-none" priority />
+                        <Image src="/app-windows.webp" alt="Windows App" width={347} height={242} sizes="250px" className="w-full h-auto pointer-events-none" />
                       </div>
                     ]}
                  />

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const origin = getBaseUrl(request);
     const stripe = getStripe();
-    const productImageUrl = new URL('/MacOs app.png', origin).toString();
+    const productImageUrl = new URL('/app-macos.png', origin).toString();
     const successUrl = `${new URL('/account', origin).toString()}?purchase=success&session_id={CHECKOUT_SESSION_ID}`;
 
     // Create Checkout Sessions from body params.

@@ -5,10 +5,10 @@ import { SITE_VERSION } from "@/lib/version";
 
 export function Footer() {
   return (
-    <footer className="relative z-10 border-t border-slate-200/50 dark:border-slate-800/50 py-12 mt-auto glass-nav rounded-t-[2.5rem]">
+    <footer className="relative z-10 border-t border-slate-200/50 dark:border-slate-800/50 py-12 mt-auto glass-card rounded-t-[2.5rem]">
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <Link href="/" className="flex items-center space-x-2.5 opacity-90 hover:opacity-100 transition-opacity">
-          <Image src="/logo.png" alt="Everything Clipboard Logo" width={28} height={28} className="rounded-lg shadow-sm" />
+          <Image src="/logo-56.png" alt="Everything Clipboard Logo" width={28} height={28} unoptimized className="rounded-lg shadow-sm" />
           <span className="text-slate-900 dark:text-white font-bold tracking-tight text-sm">
             Everything Clipboard
           </span>
