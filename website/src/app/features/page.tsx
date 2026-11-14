@@ -1,126 +1,120 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Shield, Zap, Monitor, Network, Lock, Smartphone, Apple, CheckCircle2 } from "lucide-react";
+import type { Metadata } from "next";
+import { Lock, Monitor, Network, Image as ImageIcon, Smartphone, Apple } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
 
+export const metadata: Metadata = {
+  title: "Features",
+  description:
+    "Text and image clipboard sync for Windows, macOS, Android and iOS, encrypted with AES-256-GCM using a key you choose. Use the hosted relay, your own server or your local network.",
+  alternates: { canonical: "/features" },
+};
+
+const hosting = [
+  {
+    title: "Hosted relay",
+    body: "The apps connect to our relay by default, so there is nothing to set up. It only forwards encrypted data and cannot read your clipboard.",
+  },
+  {
+    title: "Self-hosted",
+    body: "Run the relay on your own server. You control it, and nothing depends on ours.",
+  },
+  {
+    title: "Local network",
+    body: "Sync directly over your own Wi-Fi, so the traffic stays on your network.",
+  },
+];
+
+const platforms = [
+  { Icon: Monitor, label: "Windows 10 / 11 (64-bit)" },
+  { Icon: Apple, label: "macOS 12 or later (Apple Silicon and Intel)" },
+  { Icon: Smartphone, label: "Android 8.0 or later" },
+  { Icon: Apple, label: "iOS 15.0 or later, sideload only (AltStore or Sideloadly)" },
+];
+
 export default function Features() {
   return (
-    <div className="relative z-10 flex flex-col min-h-screen">
-      {/* Global Unified Navigation */}
+    <div className="relative z-10 flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="relative z-10 flex-grow pt-28 pb-20 lg:pt-36 lg:pb-32 flex flex-col items-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full space-y-16">
-          
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white mb-6">
-              Features & Capabilities
-            </h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400 font-light leading-relaxed">
-              Everything Clipboard is designed to seamlessly integrate into your workflow, providing military-grade encryption, cross-platform speed, and flexible hosting options.
+      <main className="relative z-10 flex-grow px-4 pb-16 pt-28 sm:px-6 lg:pt-36">
+        <div className="mx-auto max-w-5xl space-y-8">
+          <header className="mx-auto max-w-2xl text-center">
+            <h1 className="text-4xl font-medium tracking-tight text-slate-950 sm:text-5xl dark:text-white">Features</h1>
+            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg dark:text-slate-400">
+              Everything Clipboard syncs text and images between your devices. It is encrypted with a key you choose,
+              and you decide where the relay runs.
             </p>
-          </div>
+          </header>
 
-          {/* Hosting Flexibility Section */}
-          <div className="glass-card rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xl">
-            <div className="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/20 blur-3xl rounded-full pointer-events-none" />
-            <h2 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-950 dark:text-white mb-8 flex items-center gap-3">
-               <Network className="w-8 h-8 text-emerald-500" /> Hosting Flexibility
+          <section className="card p-6 sm:p-8" aria-labelledby="hosting">
+            <h2 id="hosting" className="flex items-center gap-3 text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+              <span className="icon-tile">
+                <Network className="h-5 w-5" />
+              </span>
+              Where it runs
             </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-               <div className="space-y-4">
-                  <h3 className="text-xl font-medium text-slate-900 dark:text-white">Local Network</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-light leading-relaxed">
-                     Configure Everything Clipboard to sync exclusively over your local Wi-Fi. Your data never touches the internet, ensuring maximum privacy.
-                  </p>
-               </div>
-               <div className="space-y-4">
-                  <h3 className="text-xl font-medium text-slate-900 dark:text-white">Self-Hosted</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-light leading-relaxed">
-                     Deploy the server on your own infrastructure. You have complete control over the relay, ensuring zero third-party dependencies.
-                  </p>
-               </div>
-               <div className="space-y-4">
-                  <h3 className="text-xl font-medium text-slate-900 dark:text-white">Cloud Hosted</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-light leading-relaxed">
-                     Want a zero-setup experience? Use our hosted relay network. Everything remains fully encrypted, meaning we can never read your clipboard.
-                  </p>
-               </div>
+            <div className="mt-6 grid gap-6 md:grid-cols-3">
+              {hosting.map(({ title, body }) => (
+                <div key={title}>
+                  <h3 className="text-base font-medium text-slate-900 dark:text-white">{title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{body}</p>
+                </div>
+              ))}
             </div>
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            <section className="card p-6 sm:p-8" aria-labelledby="encryption">
+              <h2 id="encryption" className="flex items-center gap-3 text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                <span className="icon-tile">
+                  <Lock className="h-5 w-5" />
+                </span>
+                Encryption
+              </h2>
+              <p className="mt-5 text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-400">
+                Text and images are encrypted on your device with AES-256-GCM before they are sent. You choose the key
+                and set the same one in each app. Without it, what the relay carries is unreadable.
+              </p>
+            </section>
+
+            <section className="card p-6 sm:p-8" aria-labelledby="platforms">
+              <h2 id="platforms" className="flex items-center gap-3 text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                <span className="icon-tile">
+                  <Monitor className="h-5 w-5" />
+                </span>
+                Platforms
+              </h2>
+              <ul className="mt-5 space-y-3">
+                {platforms.map(({ Icon, label }) => (
+                  <li key={label} className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+                    <Icon className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
 
-          {/* Security & Cross Platform */}
-          <div className="grid lg:grid-cols-2 gap-8">
-            <div className="glass-card rounded-[2.5rem] p-8 md:p-12 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-               <h2 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-950 dark:text-white mb-6 flex items-center gap-3">
-                  <Lock className="w-8 h-8 text-blue-500" /> End-to-End Encryption
-               </h2>
-               <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-6">
-                  Security isn&apos;t an afterthought. With Everything Clipboard, your data is encrypted locally on your device before it ever leaves. 
-                  You configure a custom encryption key across your devices. Without this key, the synchronized data is completely unreadable.
-               </p>
-               <div className="flex items-center gap-4 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-6 py-4 rounded-2xl border border-blue-100 dark:border-blue-800/50">
-                  <Shield className="w-5 h-5 shrink-0" />
-                  Military-grade AES client-side encryption
-               </div>
+          <section className="card p-6 sm:p-8" aria-labelledby="images">
+            <h2 id="images" className="flex items-center gap-3 text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+              <span className="icon-tile">
+                <ImageIcon className="h-5 w-5" />
+              </span>
+              Image sync
+            </h2>
+            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base dark:text-slate-400">
+              Copy a screenshot or photo on one device and paste it on another. Images up to 16 MB are sent in chunks
+              with the same AES-256-GCM encryption as text.
+            </p>
+            <div className="mt-6">
+              <PurchaseButton buyLabel="Buy for $3" downloadLabel="Download" size="md" />
             </div>
-
-            <div className="glass-card rounded-[2.5rem] p-8 md:p-12 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-               <h2 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-950 dark:text-white mb-6 flex items-center gap-3">
-                  <Monitor className="w-8 h-8 text-purple-500" /> Native Cross-Platform
-               </h2>
-               <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-6">
-                  Your workflow isn&apos;t limited to one operating system. Your clipboard shouldn&apos;t be either.
-               </p>
-               <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Monitor className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                     </div>
-                     <span className="font-medium text-slate-900 dark:text-white">Windows 10 & 11 (64-bit)</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Apple className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                     </div>
-                     <span className="font-medium text-slate-900 dark:text-white">macOS 12+ (Apple Silicon & Intel)</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Smartphone className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                     </div>
-                     <span className="font-medium text-slate-900 dark:text-white">Android 8.0+</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Apple className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                     </div>
-                     <span className="font-medium text-slate-900 dark:text-white">iOS 15.0+</span>
-                  </div>
-               </div>
-            </div>
-          </div>
-
-          {/* Roadmap */}
-          <div className="glass-card rounded-[2.5rem] p-8 md:p-12 text-center border border-amber-200/50 dark:border-amber-800/50 bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-900/10 dark:to-transparent shadow-lg">
-             <h2 className="text-2xl md:text-3xl font-medium tracking-tight text-slate-950 dark:text-white mb-4 flex items-center justify-center gap-3">
-               <Zap className="w-8 h-8 text-amber-500" /> High-Resolution Image Sync (v2.0)
-             </h2>
-             <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-2xl mx-auto mb-8">
-                Everything Clipboard v2.0 now synchronizes photos, screenshots, and visual assets up to 16 MB in full resolution. Using an adaptive chunking protocol with end-to-end AES-256-GCM encryption, your images stream securely and instantly between Android, Windows, and Mac.
-             </p>
-             <PurchaseButton 
-               buyLabel="Get Lifetime Access – $3" 
-               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold shadow-md hover:from-blue-500 hover:to-indigo-500 transition-all cursor-pointer"
-             />
-          </div>
-
+          </section>
         </div>
       </main>
-      
-      {/* Global Unified Footer */}
+
       <Footer />
     </div>
   );

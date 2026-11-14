@@ -19,6 +19,11 @@
   --foreground: #f1f5f9; /* slate-100 */
 }
 
+html {
+  /* Keeps the layout from shifting when a dialog locks page scroll. */
+  scrollbar-gutter: stable;
+}
+
 html, body {
   min-height: 100vh;
   background-color: var(--background);
@@ -31,43 +36,16 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
+/* Real buttons are clickable; Tailwind v4 no longer sets this itself. Things
+   that are not interactive never get a pointer. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
 }
 
-@keyframes float-delayed {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
-  100% { transform: translateY(0px); }
-}
-
-@keyframes aura-bubble-in {
-  0% {
-    opacity: 0;
-    transform: translateX(18px) translateY(8px) scale(0.96);
-    filter: blur(6px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-.aura-float-bubble {
-  opacity: 0;
-  animation: aura-bubble-in 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
-             float 4.5s ease-in-out infinite;
-}
-
-.aura-float-bubble:nth-child(1) { animation-delay: 300ms, 1100ms; }
-.aura-float-bubble:nth-child(2) { animation-delay: 600ms, 1400ms; }
-.aura-float-bubble:nth-child(3) { animation-delay: 900ms, 1700ms; }
-.aura-float-bubble:nth-child(4) { animation-delay: 1200ms, 2000ms; }
-
-/* Static page background (see PageBackground) */
+/* ------------------------------------------------------------------ */
+/* Static page background (see PageBackground)                         */
+/* ------------------------------------------------------------------ */
 .page-bg {
   position: fixed;
   inset: 0;
@@ -75,7 +53,7 @@ html, body {
   pointer-events: none;
   background:
     radial-gradient(60rem 36rem at 12% -8%, rgb(37 99 235 / 0.10), transparent 70%),
-    radial-gradient(50rem 30rem at 100% 100%, rgb(14 165 233 / 0.08), transparent 70%);
+    radial-gradient(50rem 30rem at 100% 100%, rgb(37 99 235 / 0.06), transparent 70%);
 }
 
 .page-bg::after {
@@ -91,53 +69,184 @@ html, body {
 
 :root.dark .page-bg {
   background:
-    radial-gradient(60rem 36rem at 12% -8%, rgb(37 99 235 / 0.22), transparent 70%),
-    radial-gradient(50rem 30rem at 100% 100%, rgb(14 165 233 / 0.12), transparent 70%);
+    radial-gradient(60rem 36rem at 12% -8%, rgb(37 99 235 / 0.20), transparent 70%),
+    radial-gradient(50rem 30rem at 100% 100%, rgb(37 99 235 / 0.10), transparent 70%);
 }
 
 :root.dark .page-bg::after {
   opacity: 0.06;
 }
 
-/* Liquid glass utilities */
-.glass-nav {
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 38px -22px rgba(15,23,42,0.42), inset 0 1px 0 rgba(255,255,255,1);
+/* ------------------------------------------------------------------ */
+/* Design tokens in use                                                */
+/*   accent      blue-600 (blue-400 for text in dark mode)             */
+/*   radius      full (buttons, pills) / 2xl (cards, dialogs)          */
+/*               / xl (nested tiles, menu items, inputs)               */
+/*   surfaces    .card, .card-inner                                    */
+/*   buttons     .btn + .btn-primary | .btn-secondary                  */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .glass-nav {
+    background: rgb(255 255 255 / 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgb(226 232 240 / 0.9); /* slate-200 */
+    box-shadow: 0 12px 32px -20px rgb(15 23 42 / 0.35);
+  }
+
+  :root.dark .glass-nav {
+    background: rgb(15 23 42 / 0.85); /* slate-900 */
+    border-color: rgb(255 255 255 / 0.1);
+    box-shadow: 0 16px 36px -14px rgb(0 0 0 / 0.55);
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white/80 shadow-sm dark:border-slate-800 dark:bg-slate-900/70;
+  }
+
+  /* A tile inside a card: plain translucent fill, no shadow. */
+  .card-inner {
+    @apply rounded-xl border border-slate-200/80 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/40;
+  }
+
+  .icon-tile {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400;
+  }
+
+  .btn {
+    @apply inline-flex h-11 select-none items-center justify-center gap-2 rounded-full px-6 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60;
+    transition-property: background-color, border-color, color, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-lg {
+    @apply h-12 px-8 text-base;
+  }
+
+  .btn-sm {
+    @apply h-9 px-4;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-500 dark:hover:bg-blue-500;
+  }
+
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700;
+  }
+
+  .btn-ghost {
+    @apply text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500;
+  }
 }
 
-:root.dark .glass-nav {
-  background: rgba(15, 23, 42, 0.7); /* slate-900 */
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+/* ------------------------------------------------------------------ */
+/* Motion                                                              */
+/*   enter 200ms ease-out, exit 160ms (20% shorter) ease-in-out        */
+/*   popovers scale from 0.95 at the trigger, never from 0             */
+/* ------------------------------------------------------------------ */
+.overlay-backdrop {
+  background: rgb(2 6 23 / 0.5);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.overlay-backdrop[data-state="open"] {
+  opacity: 1;
+}
+.overlay-backdrop[data-state="closed"] {
+  transition-duration: 160ms;
+  transition-timing-function: ease-in-out;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 1);
-  box-shadow: 0 10px 28px -20px rgba(15,23,42,0.24), inset 0 1px 0 rgba(255,255,255,1);
+.pop {
+  opacity: 0;
+  transform: scale(0.95);
+  transform-origin: var(--pop-origin, center);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.pop[data-state="open"] {
+  opacity: 1;
+  transform: none;
+}
+.pop[data-state="closed"] {
+  transition-duration: 160ms;
+  transition-timing-function: ease-in-out;
 }
 
-:root.dark .glass-card {
-  background: rgba(15, 23, 42, 0.7); /* slate-900 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
+/* Rows inside an open popover trail each other by 30ms; badges a further 50ms. */
+.stagger-item {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+[data-state="open"] .stagger-item {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--i, 0) * 30ms + 40ms);
+}
+[data-state="open"] .stagger-item .stagger-late {
+  animation: fade-in 200ms ease-out calc(var(--i, 0) * 30ms + 90ms) both;
 }
 
-.text-gradient {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Two icons stacked in one cell, crossfading with scale + opacity + blur. */
+.icon-swap {
+  display: inline-grid;
+}
+.icon-swap > * {
+  grid-area: 1 / 1;
+  transition: opacity 200ms ease-in-out, transform 200ms ease-in-out, filter 200ms ease-in-out;
+}
+.icon-swap > [data-on="false"] {
+  opacity: 0;
+  transform: scale(0.25);
+  filter: blur(4px);
 }
 
-:root.dark .text-gradient {
-  background: linear-gradient(135deg, #60a5fa, #c084fc); /* blue-400 to purple-400 */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fade-in 200ms ease-out both;
+}
+
+/* One pulse to confirm a success state (e.g. copied). */
+@keyframes pulse-once {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.pulse-once {
+  animation: pulse-once 300ms ease-in-out 1;
+}
+
+/* Theme switcher knob: stretches ~12% while it travels, area preserved. */
+@keyframes knob-stretch {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.12, 0.893); }
+}
+.knob-stretch {
+  animation: knob-stretch 220ms ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,13 +1,41 @@
-import Link from "next/link";
-import Image from "next/image";
+import type { Metadata } from "next";
 import Script from "next/script";
-import { Mail, HelpCircle, Shield, Sparkles, ArrowRight } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
+export const metadata: Metadata = {
+  title: "Support",
+  description: "Answers about your license, downloads, installing on iOS, encryption keys and setup for Everything Clipboard.",
+  alternates: { canonical: "/support" },
+};
+
+const faqs = [
+  {
+    q: "How do I get my downloads on another device?",
+    a: "Sign in with the same Google account on that device and open the Account page. Your license is tied to your Google account.",
+  },
+  {
+    q: "Is $3 a one-time fee or a subscription?",
+    a: "It is a single payment of $3. It covers the Windows, macOS, Android and iOS apps and all future updates. There are no recurring charges.",
+  },
+  {
+    q: "Are my clipboard contents private?",
+    a: "Text and images are encrypted on your device with AES-256-GCM, using a key you choose, before they are sent. The relay forwards encrypted data and cannot decrypt it.",
+  },
+  {
+    q: "How do I install the iOS app?",
+    a: "The iOS app is not on the App Store or TestFlight. You download the IPA from your Account page and install it by sideloading, using a tool such as AltStore or Sideloadly.",
+  },
+  {
+    q: "Why is the app called ClipSync?",
+    a: "Everything Clipboard is the name of this website and the product. The apps themselves are named ClipSync on your device.",
+  },
+];
+
 export default function Support() {
   return (
-    <div className="relative z-10 flex flex-col min-h-screen">
+    <div className="relative z-10 flex min-h-screen flex-col">
       <Script
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2851149974047726"
@@ -15,99 +43,52 @@ export default function Support() {
         strategy="afterInteractive"
       />
 
-      {/* Global Unified Navigation */}
       <Navbar />
 
-      <main className="relative z-10 flex-grow pt-28 pb-20 lg:pt-36 lg:pb-32 flex flex-col items-center">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 w-full space-y-12">
-          
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white mb-4">
-              Support & Help Center
-            </h1>
-            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-light">
-              Everything you need to know about your license, download recovery, encryption keys, and setup.
+      <main className="relative z-10 flex-grow px-4 pb-16 pt-28 sm:px-6 lg:pt-36">
+        <div className="mx-auto max-w-3xl space-y-8">
+          <header className="text-center">
+            <h1 className="text-4xl font-medium tracking-tight text-slate-950 sm:text-5xl dark:text-white">Support</h1>
+            <p className="mt-4 text-base text-slate-600 sm:text-lg dark:text-slate-400">
+              Your license, downloads, encryption keys and setup.
             </p>
-          </div>
+          </header>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="glass-card rounded-[2.5rem] p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6">
-              <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white flex items-center gap-2.5">
-                <HelpCircle className="w-6 h-6 text-blue-500" />
-                Frequently Asked Questions
-              </h2>
-              
-              <div className="space-y-6 text-sm text-slate-600 dark:text-slate-400">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-950 dark:text-white mb-1">
-                    How do I access my downloads on another device?
-                  </h3>
-                  <p className="font-light leading-relaxed">
-                    Simply sign in with the same Google account on any device by clicking <strong>Account / Sign In</strong> in the top navigation. Your lifetime license is tied to your email.
-                  </p>
+          <section className="card p-6 sm:p-8" aria-labelledby="faq">
+            <h2 id="faq" className="text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+              Frequently asked questions
+            </h2>
+            <dl className="mt-6 space-y-6">
+              {faqs.map(({ q, a }) => (
+                <div key={q}>
+                  <dt className="text-base font-medium text-slate-950 dark:text-white">{q}</dt>
+                  <dd className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{a}</dd>
                 </div>
-                
-                <div>
-                  <h3 className="text-base font-semibold text-slate-950 dark:text-white mb-1">
-                    Are my clipboard contents secure?
-                  </h3>
-                  <p className="font-light leading-relaxed">
-                    Yes. Everything Clipboard is fully encrypted with a passphrase you choose. Data is encrypted on your local device before transmission. No one, not even our relay servers, can decrypt your text.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-base font-semibold text-slate-950 dark:text-white mb-1">
-                    Is the \$3 price a one-time fee or a recurring subscription?
-                  </h3>
-                  <p className="font-light leading-relaxed">
-                    It is a 100% one-time payment. You get lifetime access on Windows, macOS, Android, iOS, all future platform releases, and all feature updates without recurring charges.
-                  </p>
-                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section className="card flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8" aria-labelledby="contact">
+            <div className="flex items-start gap-4">
+              <div className="icon-tile">
+                <Mail className="h-5 w-5" />
               </div>
-            </div>
-
-            <div className="space-y-8 flex flex-col justify-between">
-              <div className="glass-card rounded-[2.5rem] p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 shadow-sm">
-                  <Mail className="w-6 h-6" />
-                </div>
-                <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white mb-3">
-                  Direct Email Support
+              <div>
+                <h2 id="contact" className="text-lg font-medium text-slate-950 dark:text-white">
+                  Email support
                 </h2>
-                <p className="text-sm font-light text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-                  Have a question, feedback, or need assistance with your purchase? Send us an email and include your receipt or account email.
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Write to support@everything-clipboard.online. Include the email address of your account and, for payment questions, your receipt.
                 </p>
-                <a
-                  href="mailto:support@everything-clipboard.online"
-                  className="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold shadow-md hover:from-blue-500 hover:to-indigo-500 hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  support@everything-clipboard.online
-                </a>
-              </div>
-
-              <div className="glass-card rounded-[2.5rem] p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-                    <Shield className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-950 dark:text-white">
-                      Guaranteed Security
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Zero-knowledge client encryption on all platforms.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
-
+            <a href="mailto:support@everything-clipboard.online" className="btn btn-primary shrink-0">
+              Email us
+            </a>
+          </section>
         </div>
       </main>
 
-      {/* Global Unified Footer */}
       <Footer />
     </div>
   );

@@ -2,30 +2,30 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Download, CreditCard, Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { AuthModal } from "@/components/AuthModal";
 import { useAccount } from "@/lib/account-client";
 
 type PurchaseButtonProps = {
-  className?: string;
   buyLabel?: string;
   downloadLabel?: string;
   hideIfPurchased?: boolean;
-  showIcon?: boolean;
+  size?: "md" | "lg";
 };
 
 export function PurchaseButton({
-  className = "",
   buyLabel = "Buy for $3",
-  downloadLabel = "Download Everything Clipboard",
+  downloadLabel = "Download",
   hideIfPurchased = false,
-  showIcon = true,
+  size = "lg",
 }: PurchaseButtonProps) {
   const { account } = useAccount();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function handleBuy() {
+  const className = `btn btn-primary ${size === "lg" ? "btn-lg" : ""} w-full sm:w-auto`;
+
+  function handleBuy() {
     if (account?.signedIn && account.purchased) {
       window.location.assign("/account");
       return;
@@ -41,23 +41,15 @@ export function PurchaseButton({
       return;
     }
 
-    // If not signed in, open the intermediate Login / Register modal
+    // Not signed in: sign in first, then continue to checkout.
     setAuthModalOpen(true);
   }
 
-  // If already purchased and asked to hide:
-  if (account?.signedIn && account.purchased && hideIfPurchased) {
-    return null;
-  }
-
-  // If already purchased, transform into download button
   if (account?.signedIn && account.purchased) {
+    if (hideIfPurchased) return null;
     return (
-      <Link 
-        href="/account" 
-        className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300"}
-      >
-        {showIcon && <Download className="w-5 h-5" />}
+      <Link href="/account" className={`${className} fade-in`}>
+        <Download className="h-5 w-5" />
         {downloadLabel}
       </Link>
     );
@@ -65,32 +57,18 @@ export function PurchaseButton({
 
   return (
     <>
-      <div className="inline-flex flex-col items-center gap-1.5 w-full sm:w-auto">
-        <button
-          type="button"
-          onClick={handleBuy}
-          disabled={busy}
-          className={className || "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-base font-medium shadow-[0_10px_24px_rgba(59,130,246,0.26),inset_0_1px_0_rgba(255,255,255,0.35)] hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer"}
-        >
-          {busy ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Redirecting...</span>
-            </>
-          ) : (
-            <>
-              {showIcon && <CreditCard className="w-5 h-5" />}
-              <span>{buyLabel}</span>
-            </>
-          )}
-        </button>
-      </div>
+      <button type="button" onClick={handleBuy} disabled={busy} className={className}>
+        {busy ? (
+          <>
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Redirecting to checkout</span>
+          </>
+        ) : (
+          <span>{buyLabel}</span>
+        )}
+      </button>
 
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        isBuying={true}
-      />
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} isBuying={true} />
     </>
   );
 }

@@ -1,16 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { 
-  CheckCircle2, 
-  Download, 
-  Lock, 
-  Monitor, 
-  Smartphone, 
-  Apple, 
-  ShieldCheck, 
-  Sparkles, 
-  ArrowRight,
-  HelpCircle
-} from "lucide-react";
+import { Apple, Check, CheckCircle2, Download, Laptop, Lock, Monitor, ShieldCheck, Smartphone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ServerUrl } from "@/components/ServerUrl";
@@ -21,45 +12,52 @@ import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const downloads = [
-  { 
-    os: "windows", 
-    label: "Windows", 
-    detail: "Windows 10 / 11 (64-bit .exe)", 
-    Icon: Monitor,
-    color: "from-blue-500/20 to-sky-500/20",
-    badge: "Installer"
+export const metadata: Metadata = {
+  title: "Account",
+  description: "Your Everything Clipboard license, downloads and setup.",
+  robots: { index: false, follow: false },
+};
+
+type DownloadItem = {
+  os: "windows" | "macos" | "android" | "ios";
+  label: string;
+  detail: string;
+  badge: string;
+  Icon: LucideIcon;
+};
+
+const downloads: DownloadItem[] = [
+  { os: "windows", label: "Windows", detail: "Windows 10 / 11 (64-bit, .zip)", badge: "Portable zip", Icon: Monitor },
+  { os: "macos", label: "macOS", detail: "macOS 12 or later (Apple Silicon and Intel, .dmg)", badge: "DMG", Icon: Laptop },
+  { os: "android", label: "Android", detail: "Android 8.0 or later (.apk)", badge: "APK", Icon: Smartphone },
+  { os: "ios", label: "iOS", detail: "iOS 15.0 or later (.ipa)", badge: "Sideload IPA", Icon: Apple },
+];
+
+const steps = [
+  {
+    title: "Install the apps",
+    body: "Download the app for each of your devices and open it.",
   },
-  { 
-    os: "macos", 
-    label: "macOS", 
-    detail: "macOS 12+ (Apple Silicon & Intel)", 
-    Icon: Apple,
-    color: "from-purple-500/20 to-indigo-500/20",
-    badge: "Universal DMG"
+  {
+    title: "Set the same secret key",
+    body: "Enter the same secret key in every app. It encrypts your clipboard, so pick something only you know.",
   },
-  { 
-    os: "android", 
-    label: "Android", 
-    detail: "Android 8.0+ (.apk package)", 
-    Icon: Smartphone,
-    color: "from-emerald-500/20 to-teal-500/20",
-    badge: "Direct APK"
-  },
-  { 
-    os: "ios", 
-    label: "iOS", 
-    detail: "iOS 15.0+ (.ipa package)", 
-    Icon: Apple,
-    color: "from-sky-500/20 to-blue-500/20",
-    badge: "Direct IPA"
+  {
+    title: "Copy and paste",
+    body: "The apps use the official relay by default, so there is no server to enter. Copy on one device and paste on another.",
   },
 ];
 
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ purchase?: string; session_id?: string; signin?: string }> }) {
+const notice = "rounded-xl border p-4 text-sm";
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ purchase?: string; session_id?: string; signin?: string }>;
+}) {
   const user = await getSessionUser();
   const query = await searchParams;
-  
+
   if (user && query.session_id) {
     await fulfillCheckoutSession(query.session_id, user.uid);
   }
@@ -70,288 +68,209 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     account = await recoverPurchaseFromStripe(account);
   }
   const purchaseJustMade = query.purchase === "success";
+  const name = account?.displayName || "there";
+  const initial = (account?.displayName || user?.email || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="relative z-10 flex flex-col min-h-screen">
-      {/* Global Unified Navigation */}
+    <div className="relative z-10 flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="relative z-10 flex-grow pt-28 pb-24 lg:pt-36 lg:pb-32 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto space-y-8">
-          
-          {/* STATE 1: Unauthenticated */}
-          {!user && (
-            <div className="glass-card rounded-[2.5rem] p-8 sm:p-14 text-center max-w-2xl mx-auto relative overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl">
-              <div className="w-16 h-16 rounded-3xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/60 mx-auto flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 shadow-md">
-                <Lock className="w-8 h-8" />
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 dark:text-white mb-4">
-                Login / Register
-              </h1>
-              <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-lg mx-auto mb-8">
-                Login or create your account with Google to access your downloads on any device, manage your server settings, and keep your lifetime license permanently tied to your email.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <SignInButton
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base font-semibold shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
-                >
-                  Login / Register with Google
-                </SignInButton>
-                <Link
-                  href="/"
-                  className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Return to Home
-                </Link>
-              </div>
-            </div>
-          )}
-
+      <main className="relative z-10 flex-grow px-4 pb-16 pt-28 sm:px-6 lg:pt-36">
+        <div className="mx-auto max-w-4xl space-y-6">
           {/* Sent here by the checkout endpoint because there was no session */}
           {!user && query.signin === "required" && (
-            <div role="status" className="rounded-3xl bg-amber-500/10 border border-amber-500/30 p-5 text-sm text-amber-800 dark:text-amber-300">
+            <div role="status" className={`${notice} border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200`}>
               Please sign in first. Your purchase is linked to your Google account.
             </div>
           )}
 
-          {/* Success banner: only for a signed-in user whose purchase is confirmed */}
+          {/* Only for a signed-in user whose purchase is confirmed */}
           {purchaseJustMade && user && account?.purchased && (
-            <div className="rounded-3xl bg-emerald-500/10 border border-emerald-500/30 p-6 text-emerald-800 dark:text-emerald-300 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-              <CheckCircle2 className="w-6 h-6 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+            <div role="status" className={`${notice} flex items-start gap-3 border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200`}>
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <div>
-                <h3 className="text-base font-semibold">Payment Successful! Welcome to Lifetime Access.</h3>
-                <p className="text-xs sm:text-sm text-emerald-700/90 dark:text-emerald-400/90 mt-1">
-                  Your payment has been processed. Your downloads and relay server credentials are now unlocked below.
-                </p>
+                <p className="font-medium">Payment received</p>
+                <p className="mt-0.5">Your license is active and the downloads are unlocked below.</p>
               </div>
             </div>
           )}
 
           {purchaseJustMade && user && account && !account.purchased && (
-            <div role="status" className="rounded-3xl bg-slate-500/10 border border-slate-500/30 p-5 text-sm text-slate-700 dark:text-slate-300">
+            <div role="status" className={`${notice} border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300`}>
               We are still confirming your payment. Reload this page in a minute or two; your downloads unlock as soon as it is confirmed.
             </div>
           )}
 
-          {/* STATE 2: Logged In — NOT Purchased */}
-          {user && account && !account.purchased && (
-            <div className="space-y-8">
-              {/* Profile Card */}
-              <div className="glass-card rounded-[2.5rem] p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {/* Signed out */}
+          {!user && (
+            <section className="card mx-auto max-w-xl p-8 text-center sm:p-12" aria-labelledby="signin-title">
+              <div className="icon-tile mx-auto mb-5 h-12 w-12">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h1 id="signin-title" className="text-3xl font-medium tracking-tight text-slate-950 dark:text-white">
+                Sign in
+              </h1>
+              <p className="mx-auto mt-3 max-w-md text-base text-slate-600 dark:text-slate-400">
+                Sign in with Google to see your downloads and setup on any device. Your license is tied to your Google account.
+              </p>
+              <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <SignInButton className="btn btn-primary btn-lg w-full sm:w-auto">Sign in with Google</SignInButton>
+                <Link href="/" className="btn btn-ghost btn-lg w-full sm:w-auto">
+                  Back to home
+                </Link>
+              </div>
+            </section>
+          )}
+
+          {/* Signed in */}
+          {user && account && (
+            <>
+              <section className="card flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="account-title">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-md">
-                    {account.displayName ? account.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-lg font-medium text-white" aria-hidden="true">
+                    {initial}
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-                      Welcome, {account.displayName || "there"}
+                  <div className="min-w-0">
+                    <h1 id="account-title" className="truncate text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                      Welcome, {name}
                     </h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Signed in as {account.email || user.email}
-                    </p>
+                    <p className="truncate text-sm text-slate-500 dark:text-slate-400">{account.email || user.email}</p>
                   </div>
                 </div>
-                <span className="px-3.5 py-1.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-xs font-semibold tracking-wide">
-                  Unlicensed
-                </span>
-              </div>
 
-              {/* Upgrade Hero Card */}
-              <div className="glass-card rounded-[2.5rem] p-8 sm:p-12 border border-blue-200/80 dark:border-blue-900/80 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 relative overflow-hidden shadow-xl">
-                <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-4">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    One-Time Purchase • Lifetime License
-                  </div>
-                  <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-950 dark:text-white mb-4">
-                    Unlock ClipSync Everywhere for <span className="text-gradient">$3</span>
+                <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
+                  {account.purchased ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                      Lifetime license
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-800 dark:text-amber-300">
+                      No license yet
+                    </span>
+                  )}
+                  {account.purchased && account.latestOrderId && (
+                    <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                      Order {account.latestOrderId.slice(-8)}
+                    </span>
+                  )}
+                </div>
+              </section>
+
+              {!account.purchased && (
+                <section className="card p-6 sm:p-8" aria-labelledby="buy-title">
+                  <h2 id="buy-title" className="text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                    Get lifetime access for $3
                   </h2>
-                  <p className="text-base text-slate-600 dark:text-slate-400 font-light leading-relaxed mb-8">
-                    Get full unlimited access to Windows, macOS, Android, and iOS apps, our low-latency encrypted cloud relay, or self-hosting support. No subscriptions, ever.
+                  <p className="mt-2 max-w-xl text-base text-slate-600 dark:text-slate-400">
+                    One payment, no subscription.
                   </p>
-
-                  <div className="grid sm:grid-cols-2 gap-3 mb-8 text-xs text-slate-700 dark:text-slate-300 font-medium">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Unlimited devices sync
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      Windows, Mac, Android & iOS apps
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      AES End-to-end encryption
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      All future updates included
-                    </div>
-                  </div>
-
-                  <form method="POST" action="/api/checkout_sessions">
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-base shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
-                    >
-                      <Sparkles className="w-5 h-5" />
-                      Proceed to Checkout ($3)
-                      <ArrowRight className="w-4 h-4" />
+                  <ul className="mt-5 grid gap-2.5 text-sm text-slate-700 sm:grid-cols-2 dark:text-slate-300">
+                    {[
+                      "Windows, macOS, Android and iOS apps",
+                      "Text and image sync across your devices",
+                      "AES-256-GCM encryption with your own key",
+                      "All future updates",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <Check className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <form method="POST" action="/api/checkout_sessions" className="mt-7">
+                    <button type="submit" className="btn btn-primary btn-lg w-full sm:w-auto">
+                      Continue to checkout
                     </button>
                   </form>
-                </div>
-              </div>
+                </section>
+              )}
 
-              {/* Locked App Previews */}
-              <div className="glass-card rounded-[2.5rem] p-8 border border-slate-200/80 dark:border-slate-800">
-                <h3 className="text-xl font-bold text-slate-950 dark:text-white mb-2">
-                  Available Applications
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                  Downloads will unlock immediately after completing your lifetime purchase.
+              <section className="card p-6 sm:p-8" aria-labelledby="downloads-title">
+                <h2 id="downloads-title" className="text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                  Downloads
+                </h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  {account.purchased
+                    ? "The app is named ClipSync on your device."
+                    : "These unlock as soon as your purchase is complete."}
                 </p>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {downloads.map(({ os, label, detail, Icon, badge }) => (
-                    <div
+                <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+                  {downloads.map(({ os, label, detail, badge, Icon }) => (
+                    <li
                       key={os}
-                      className="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 bg-white/40 dark:bg-slate-900/40 relative opacity-75"
+                      className={`card-inner relative flex flex-col gap-4 p-5 ${
+                        account.purchased
+                          ? "transition-colors hover:border-blue-400 focus-within:border-blue-400 dark:hover:border-blue-500"
+                          : "opacity-70"
+                      }`}
                     >
                       <div className="flex items-center justify-between">
-                        <Icon className="h-7 w-7 text-slate-600 dark:text-slate-400" />
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                        <Icon className="h-6 w-6 text-slate-700 dark:text-slate-300" aria-hidden="true" />
+                        <span className="rounded-md bg-slate-200/70 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {badge}
                         </span>
                       </div>
-                      <h4 className="mt-4 font-semibold text-slate-950 dark:text-white">{label}</h4>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
-                      <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        <Lock className="w-3.5 h-3.5 text-amber-500" />
-                        Locked
+                      <div>
+                        <h3 className="text-base font-medium text-slate-950 dark:text-white">{label}</h3>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{detail}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* STATE 3: Logged In — BOUGHT (Lifetime License Active) */}
-          {user && account?.purchased && (
-            <div className="space-y-8">
-              {/* Profile Card */}
-              <div className="glass-card rounded-[2.5rem] p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-md">
-                    {account.displayName ? account.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-                      <ShieldCheck className="w-4 h-4" />
-                      Lifetime License Active
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 dark:text-white">
-                      Welcome, {account.displayName || "there"}
-                    </h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Account email: {account.email || user.email}
-                    </p>
-                  </div>
-                </div>
-
-                {account.latestOrderId && (
-                  <span className="rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3.5 py-2 font-mono text-xs text-slate-600 dark:text-slate-400">
-                    Order #{account.latestOrderId.slice(-8)}
-                  </span>
-                )}
-              </div>
-
-              {/* Download Hub */}
-              <div className="glass-card rounded-[2.5rem] p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-lg">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
-                      Download Apps
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Install Everything Clipboard across all your computers and mobile devices.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {downloads.map(({ os, label, detail, Icon, badge }) => {
-                    const downloadUrl = `/api/download?os=${os}`;
-
-                    return (
-                      <div
-                        key={os}
-                        className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 bg-white/60 dark:bg-slate-900/60 transition-all duration-200 hover:-translate-y-1 hover:border-blue-400 hover:shadow-xl flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <Icon className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-                              {badge}
-                            </span>
-                          </div>
-                          <h3 className="mt-4 font-semibold text-slate-950 dark:text-white">{label}</h3>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                      {account.purchased ? (
+                        <div className="mt-auto flex items-center justify-between text-sm">
+                          {/* The whole card is the click target: the link stretches over it. */}
                           <a
-                            href={downloadUrl}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:underline"
+                            href={`/api/download?os=${os}`}
+                            className="focus-ring inline-flex items-center gap-1.5 rounded-md font-medium text-blue-700 after:absolute after:inset-0 after:content-[''] dark:text-blue-400"
                           >
-                            <Download className="h-4 w-4" />
+                            <Download className="h-4 w-4" aria-hidden="true" />
                             Download
                           </a>
-
-                          {(os === "android" || os === "ios") && (
-                            <QrModalButton platform={os} />
-                          )}
+                          {(os === "android" || os === "ios") && <QrModalButton platform={os} />}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ) : (
+                        <p className="mt-auto inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                          <Lock className="h-4 w-4" aria-hidden="true" />
+                          Locked
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
 
-                {/* Relay Server Connection Box */}
-                <ServerUrl />
-              </div>
+                <p className="mt-5 text-sm text-slate-600 dark:text-slate-400">
+                  iOS has no App Store or TestFlight build. Install the IPA with a sideloading tool such as AltStore or Sideloadly.
+                </p>
+              </section>
 
-              {/* Quick Setup Instructions */}
-              <div className="glass-card rounded-[2.5rem] p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800">
-                <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4 flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-blue-500" />
-                  How to link your devices
-                </h3>
-                <ol className="grid sm:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-400">
-                  <li className="p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
-                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mb-2">1</span>
-                    <strong className="text-slate-900 dark:text-white block mb-1">Install the Apps</strong>
-                    Download and open Everything Clipboard on your Mac, Windows PC, Android phone, and iOS device.
-                  </li>
-                  <li className="p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
-                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mb-2">2</span>
-                    <strong className="text-slate-900 dark:text-white block mb-1">Connect to Relay</strong>
-                    Paste the server URL <code className="text-[11px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">wss://serv.everything-clipboard.com</code> into each app.
-                  </li>
-                  <li className="p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
-                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mb-2">3</span>
-                    <strong className="text-slate-900 dark:text-white block mb-1">Set Your Passphrase</strong>
-                    Enter your custom encryption key on all devices. You&apos;re now syncing securely!
-                  </li>
-                </ol>
-              </div>
-            </div>
+              {account.purchased && (
+                <section className="card p-6 sm:p-8" aria-labelledby="setup-title">
+                  <h2 id="setup-title" className="text-2xl font-medium tracking-tight text-slate-950 dark:text-white">
+                    How to link your devices
+                  </h2>
+                  <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+                    {steps.map(({ title, body }, i) => (
+                      <li key={title} className="card-inner p-4">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
+                          {i + 1}
+                        </span>
+                        <h3 className="mt-3 text-sm font-medium text-slate-950 dark:text-white">{title}</h3>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{body}</p>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="mt-6">
+                    <ServerUrl />
+                  </div>
+                </section>
+              )}
+            </>
           )}
-
         </div>
       </main>
 
-      {/* Global Unified Footer */}
       <Footer />
     </div>
   );
