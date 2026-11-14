@@ -140,7 +140,7 @@ async function handle(request: NextRequest, bodyWanted: boolean) {
     return NextResponse.json({ error: "Unknown download platform" }, { status: 400 });
   }
 
-  const user = await getSessionUser(request);
+  const user = await getSessionUser(request, { checkRevoked: true });
   if (!user) {
     return NextResponse.json({ error: "Sign in to download ClipSync" }, { status: 401 });
   }

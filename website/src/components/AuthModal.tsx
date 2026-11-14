@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useId, useRef } from "react";
-import { GoogleAuthProvider, signInWithCredential, signInWithPopup, inMemoryPersistence, setPersistence, signOut } from "firebase/auth";
-import { firebaseAuth, googleProvider } from "@/lib/firebase-client";
+import { useRouter } from "next/navigation";
+import { useAccount } from "@/lib/account-client";
 import { acquire, cancelPrompt, getGis, holdsLease, initializeFor, onGisReady, release } from "@/lib/gis";
 import { X, Shield, Sparkles, Loader2 } from "lucide-react";
 
@@ -18,6 +18,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
   const [error, setError] = useState<string | null>(null);
   const [gisReady, setGisReady] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { refresh } = useAccount();
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
 
   // Every mounted AuthModal needs its own identity: the homepage renders three
@@ -25,19 +27,26 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
   const ownerId = useId();
 
   const handleAuthSuccess = useCallback(async () => {
-    onClose();
     if (onSuccess) {
+      onClose();
       onSuccess();
     } else if (isBuying) {
+      // Full navigation to Stripe, so there is nothing to reset afterwards.
+      onClose();
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "/api/checkout_sessions";
       document.body.appendChild(form);
       form.submit();
     } else {
-      window.location.reload();
+      // No page reload: pick up the new account state, re-render server
+      // components with the new cookie, then close the dialog.
+      await refresh();
+      router.refresh();
+      onClose();
+      setBusy(false);
     }
-  }, [isBuying, onClose, onSuccess]);
+  }, [isBuying, onClose, onSuccess, refresh, router]);
 
   // Parents pass inline arrows (`onClose={() => setOpen(false)}`), so
   // handleAuthSuccess gets a new identity on every parent render. Keeping it in
@@ -53,6 +62,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
   useEffect(() => {
     isBuyingRef.current = isBuying;
   }, [isBuying]);
+
+  // Warm the Firebase chunk while the dialog is open so the click that follows
+  // a Google credential does not also wait for a download.
+  useEffect(() => {
+    if (isOpen) void import("@/lib/auth-flow");
+  }, [isOpen]);
 
   // When the modal opens, take the GIS lease and render the invisible GIS
   // button overlay for FedCM Button Mode. When it closes, hand the lease back
@@ -83,19 +98,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
           if (!response.credential) return;
           setBusy(true);
           try {
-            const auth = firebaseAuth();
-            const cred = GoogleAuthProvider.credential(response.credential);
-            const userCred = await signInWithCredential(auth, cred);
-            const idToken = await userCred.user.getIdToken(true);
-
-            const res = await fetch("/api/auth/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ idToken }),
-            });
-
-            if (!res.ok) throw new Error("Unable to create session");
-            await signOut(auth);
+            const { exchangeGoogleCredential } = await import("@/lib/auth-flow");
+            await exchangeGoogleCredential(response.credential);
             await authSuccessRef.current();
           } catch (err) {
             console.error("FedCM Button Mode sign-in error:", err);
@@ -159,21 +163,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, isBuying = false }: Auth
     setError(null);
 
     try {
-      const auth = firebaseAuth();
-      await setPersistence(auth, inMemoryPersistence);
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken(true);
-
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Unable to create session");
-      }
-      await signOut(auth);
+      const { exchangeGooglePopup } = await import("@/lib/auth-flow");
+      await exchangeGooglePopup();
       await handleAuthSuccess();
     } catch (err: unknown) {
       const errorObj = err as { code?: string; message?: string };

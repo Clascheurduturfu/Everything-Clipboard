@@ -15,9 +15,9 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ServerUrl } from "@/components/ServerUrl";
 import { QrModalButton } from "@/components/QrModal";
-import { PurchaseButton } from "@/components/PurchaseButton";
+import { SignInButton } from "@/components/SignInButton";
 import { UnicornBackground } from "@/components/UnicornBackground";
-import { getAccountProfile, fulfillCheckoutSession } from "@/lib/entitlements";
+import { getAccountProfile, fulfillCheckoutSession, recoverPurchaseFromStripe } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,7 @@ const downloads = [
   },
 ];
 
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ purchase?: string; session_id?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ purchase?: string; session_id?: string; signin?: string }> }) {
   const user = await getSessionUser();
   const query = await searchParams;
   
@@ -65,7 +65,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     await fulfillCheckoutSession(query.session_id, user.uid);
   }
 
-  const account = user ? await getAccountProfile(user.uid) : null;
+  let account = user ? await getAccountProfile(user.uid) : null;
+  // Rare, explicit recovery for "paid but still unlicensed" (see entitlements).
+  if (account && !account.purchased) {
+    account = await recoverPurchaseFromStripe(account);
+  }
+  const purchaseJustMade = query.purchase === "success";
 
   return (
     <div className="relative z-10 flex flex-col min-h-screen">
@@ -97,11 +102,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                 Login or create your account with Google to access your downloads on any device, manage your server settings, and keep your lifetime license permanently tied to your email.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <PurchaseButton 
-                  buyLabel="Login / Register with Google" 
-                  showIcon={false}
+                <SignInButton
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-base font-semibold shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
-                />
+                >
+                  Login / Register with Google
+                </SignInButton>
                 <Link
                   href="/"
                   className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-4 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -112,8 +117,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             </div>
           )}
 
-          {/* Success Banner if redirected after Stripe checkout */}
-          {query.purchase === "success" && (
+          {/* Sent here by the checkout endpoint because there was no session */}
+          {!user && query.signin === "required" && (
+            <div role="status" className="rounded-3xl bg-amber-500/10 border border-amber-500/30 p-5 text-sm text-amber-800 dark:text-amber-300">
+              Please sign in first. Your purchase is linked to your Google account.
+            </div>
+          )}
+
+          {/* Success banner: only for a signed-in user whose purchase is confirmed */}
+          {purchaseJustMade && user && account?.purchased && (
             <div className="rounded-3xl bg-emerald-500/10 border border-emerald-500/30 p-6 text-emerald-800 dark:text-emerald-300 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
               <CheckCircle2 className="w-6 h-6 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
               <div>
@@ -122,6 +134,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   Your payment has been processed. Your downloads and relay server credentials are now unlocked below.
                 </p>
               </div>
+            </div>
+          )}
+
+          {purchaseJustMade && user && account && !account.purchased && (
+            <div role="status" className="rounded-3xl bg-slate-500/10 border border-slate-500/30 p-5 text-sm text-slate-700 dark:text-slate-300">
+              We are still confirming your payment. Reload this page in a minute or two; your downloads unlock as soon as it is confirmed.
             </div>
           )}
 

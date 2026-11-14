@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { signOut } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase-client";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAccount } from "@/lib/account-client";
 import { ThemeSwitcher, MobileThemeToggle } from "@/components/ThemeSwitcher";
 import { AuthModal } from "@/components/AuthModal";
 import { 
@@ -20,39 +19,15 @@ import {
   Sparkles
 } from "lucide-react";
 
-export type AccountInfo = {
-  signedIn: boolean;
-  displayName?: string | null;
-  email?: string | null;
-  purchased?: boolean;
-  latestOrderId?: string | null;
-};
-
 export function Navbar() {
   const pathname = usePathname();
-  const [account, setAccount] = useState<AccountInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { account, loading, refresh } = useAccount();
   const [authBusy, setAuthBusy] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalIsBuying, setAuthModalIsBuying] = useState(false);
-
-  useEffect(() => {
-    fetchAccount();
-  }, [pathname]);
-
-  async function fetchAccount() {
-    try {
-      const res = await fetch("/api/account", { cache: "no-store" });
-      const data = await res.json();
-      setAccount(data);
-    } catch {
-      setAccount({ signedIn: false });
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openLoginModal(isBuying = false) {
     setAuthModalIsBuying(isBuying);
@@ -65,9 +40,18 @@ export function Navbar() {
     setAuthBusy(true);
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
-      await signOut(firebaseAuth());
-      // Always reload so the entire UI resets cleanly
-      window.location.assign(pathname.startsWith("/account") ? "/" : pathname);
+      // Clean up any Firebase user an older build left in IndexedDB. Loaded
+      // lazily and not awaited: the cookie is already gone.
+      void import("@/lib/auth-flow").then((m) => m.clearFirebaseUser()).catch(() => {});
+      await refresh();
+      if (pathname.startsWith("/account")) {
+        router.push("/");
+      }
+      router.refresh();
+      setUserDropdownOpen(false);
+      setAuthBusy(false);
+      // Bring passive One Tap back for the signed-out visitor.
+      window.__reinitOneTap?.();
     } catch (err) {
       console.error("Sign-out error:", err);
       setAuthBusy(false);
@@ -146,7 +130,7 @@ export function Navbar() {
 
               {/* CTA Button: Get Everything Clipboard (or Download if purchased) */}
               {loading ? (
-                <div className="w-28 h-9 bg-slate-200/60 dark:bg-slate-800/60 rounded-full animate-pulse hidden sm:block" />
+                <div className="w-28 h-9 bg-slate-200/60 dark:bg-slate-800/60 rounded-full hidden sm:block" aria-hidden="true" />
               ) : account?.purchased ? (
                 <Link
                   href="/account"
@@ -167,7 +151,9 @@ export function Navbar() {
               )}
 
               {/* User Avatar (when signed in) or Login / Register button (when signed out) */}
-              {account?.signedIn ? (
+              {loading ? (
+                <div className="hidden sm:block h-9 w-[4.5rem] rounded-full bg-slate-200/60 dark:bg-slate-800/60" aria-hidden="true" />
+              ) : account?.signedIn ? (
                 <div className="relative">
                   <button
                     type="button"
@@ -349,7 +335,7 @@ export function Navbar() {
                       Get Everything Clipboard
                     </button>
                   )}
-                  {!account?.signedIn && (
+                  {!loading && !account?.signedIn && (
                     <button
                       type="button"
                       onClick={() => openLoginModal(false)}
@@ -374,7 +360,6 @@ export function Navbar() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={fetchAccount}
         isBuying={authModalIsBuying}
       />
     </>

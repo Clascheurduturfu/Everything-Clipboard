@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
     }
 
-    const user = await getSessionUser(request);
+    const user = await getSessionUser(request, { checkRevoked: true });
 
     if (!user) {
       return NextResponse.redirect(new URL('/account?signin=required', getBaseUrl(request)), 303);

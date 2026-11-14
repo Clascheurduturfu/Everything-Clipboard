@@ -1,16 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Download, CreditCard, Loader2 } from "lucide-react";
 import { AuthModal } from "@/components/AuthModal";
-
-type AccountState = {
-  signedIn: boolean;
-  purchased?: boolean;
-  displayName?: string | null;
-  email?: string | null;
-};
+import { useAccount } from "@/lib/account-client";
 
 type PurchaseButtonProps = {
   className?: string;
@@ -27,16 +21,9 @@ export function PurchaseButton({
   hideIfPurchased = false,
   showIcon = true,
 }: PurchaseButtonProps) {
-  const [account, setAccount] = useState<AccountState | null>(null);
+  const { account } = useAccount();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/account", { cache: "no-store" })
-      .then(async (response) => response.json() as Promise<AccountState>)
-      .then(setAccount)
-      .catch(() => setAccount({ signedIn: false }));
-  }, []);
 
   async function handleBuy() {
     if (account?.signedIn && account.purchased) {
