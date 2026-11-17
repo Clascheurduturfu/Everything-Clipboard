@@ -1,35 +1,15 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-
 /**
  * Muted, looping product demo for the landing hero: text, then a photo, copied
- * on a PC and received by the real Android app. Visitors who ask for reduced
- * motion get the poster frame instead of playback.
+ * on a PC and received by the real Android app.
+ *
+ * It plays even when the OS reports prefers-reduced-motion: Windows reports
+ * that whenever "Animation effects" is off, and pausing left desktop visitors
+ * with a still frame (same reasoning as the WebGL background).
  */
 export function HeroLoop() {
-  const ref = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => {
-      if (query.matches) {
-        video.pause();
-      } else {
-        video.play().catch(() => {});
-      }
-    };
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
-  }, []);
-
   return (
     <video
-      ref={ref}
-      className="block w-full h-full object-cover"
+      className="block h-full w-full object-cover"
       autoPlay
       muted
       loop
