@@ -6,6 +6,9 @@ const root = resolve(import.meta.dirname, "..");
 process.loadEnvFile(resolve(root, ".env.local"));
 const downloads = [
   ["windows", "downloads/clipsync-windows.zip", "../desktop-client/build-output/windows/ClipSync.zip"],
+  // Website MSIX must be signed with a publicly trusted certificate to install
+  // outside the Store (see desktop-client/msix/README.md).
+  ["windows-msix", "downloads/everything-clipboard-windows.msix", "../desktop-client/build-output/msix/EverythingClipboard-website.msix"],
   ["macos", "downloads/clipsync-macos.dmg", "../desktop-client/build-output/macos/ClipSync.dmg"],
   ["android", "downloads/clipsync-android.apk", "../android-app/ClypSync.apk"],
   ["ios", "downloads/clipsync-ios.ipa", "../ios-app/build/ClipSync-unsigned.ipa"],

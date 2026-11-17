@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
 import { HeroLoop } from "@/components/HeroLoop";
+import { StoreBadges } from "@/components/StoreBadges";
 
 /** Real screenshots of every client (2.0), shown in the "Native apps" gallery. */
 const apps = [
@@ -122,6 +123,7 @@ export default function Home() {
             <div className="mt-7 flex justify-center">
               <PurchaseButton buyLabel="Buy for $3" downloadLabel="Download" />
             </div>
+            <StoreBadges className="mt-6 justify-center" />
           </div>
         </section>
       </main>

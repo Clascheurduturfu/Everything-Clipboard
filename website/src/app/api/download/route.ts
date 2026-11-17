@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 // Bumped on every fix so a deployed build can be identified from the response
 // headers (X-ClipSync-Download-Version) without guessing.
-const ROUTE_VERSION = "2.0";
+const ROUTE_VERSION = "2.1";
 
 type DownloadTarget = {
   filename: string;
@@ -31,6 +31,12 @@ const downloads: Record<string, DownloadTarget> = {
     contentType: "application/zip",
     blobPath: "downloads/clipsync-windows.zip",
     mirrorUrl: `${ESIEE_MIRROR}/ClipSync.zip`,
+  },
+  "windows-msix": {
+    filename: "EverythingClipboard-windows.msix",
+    contentType: "application/msix",
+    blobPath: "downloads/everything-clipboard-windows.msix",
+    mirrorUrl: `${ESIEE_MIRROR}/EverythingClipboard.msix`,
   },
   macos: {
     filename: "ClipSync-macos.dmg",

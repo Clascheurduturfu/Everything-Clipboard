@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ServerUrl } from "@/components/ServerUrl";
 import { QrModalButton } from "@/components/QrModal";
 import { SignInButton } from "@/components/SignInButton";
+import { StoreBadges } from "@/components/StoreBadges";
 import { getAccountProfile, fulfillCheckoutSession, recoverPurchaseFromStripe } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
 
@@ -20,7 +21,7 @@ export const metadata = pageMetadata({
 });
 
 type DownloadItem = {
-  os: "windows" | "macos" | "android" | "ios";
+  os: "windows" | "windows-msix" | "macos" | "android" | "ios";
   label: string;
   detail: string;
   badge: string;
@@ -28,7 +29,8 @@ type DownloadItem = {
 };
 
 const downloads: DownloadItem[] = [
-  { os: "windows", label: "Windows", detail: "Windows 10 / 11 (64-bit, .zip)", badge: "Portable zip", Icon: Monitor },
+  { os: "windows-msix", label: "Windows", detail: "Windows 10 / 11 (64-bit, .msix installer)", badge: "MSIX", Icon: Monitor },
+  { os: "windows", label: "Windows (portable)", detail: "Windows 10 / 11 (64-bit, .zip, no install)", badge: "Portable zip", Icon: Monitor },
   { os: "macos", label: "macOS", detail: "macOS 12 or later (Apple Silicon and Intel, .dmg)", badge: "DMG", Icon: Laptop },
   { os: "android", label: "Android", detail: "Android 8.0 or later (.apk)", badge: "APK", Icon: Smartphone },
   { os: "ios", label: "iOS", detail: "iOS 15.0 or later (.ipa)", badge: "Sideload IPA", Icon: Apple },
@@ -239,6 +241,8 @@ export default async function AccountPage({
                     </li>
                   ))}
                 </ul>
+
+                <StoreBadges className="mt-6" />
 
                 <p className="mt-5 text-sm text-slate-600 dark:text-slate-400">
                   iOS has no App Store or TestFlight build. Install the IPA with a sideloading tool such as AltStore or Sideloadly.
