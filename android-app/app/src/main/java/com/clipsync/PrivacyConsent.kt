@@ -3,7 +3,7 @@ package com.clipsync
 import android.content.Context
 
 object PrivacyConsent {
-    const val VERSION = "2026-10-29"
+    const val VERSION = "2026-11-17"
     const val POLICY_URL = "https://everything-clipboard.online/clipsync-privacy.html"
     private const val PREF_VERSION = "clipboard_consent_version"
 

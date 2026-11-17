@@ -8,6 +8,7 @@ import { ServerUrl } from "@/components/ServerUrl";
 import { QrModalButton } from "@/components/QrModal";
 import { SignInButton } from "@/components/SignInButton";
 import { StoreBadges } from "@/components/StoreBadges";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { getAccountProfile, fulfillCheckoutSession, recoverPurchaseFromStripe } from "@/lib/entitlements";
 import { getSessionUser } from "@/lib/session";
 
@@ -271,6 +272,18 @@ export default async function AccountPage({
                   </div>
                 </section>
               )}
+
+              <section id="delete-account" className="card p-6 sm:p-8" aria-labelledby="delete-title">
+                <h2 id="delete-title" className="text-lg font-medium text-slate-950 dark:text-white">
+                  Delete account
+                </h2>
+                <p className="mt-1 mb-4 max-w-xl text-sm text-slate-600 dark:text-slate-400">
+                  Removes your profile, purchase records and sign-in sessions on the website and in the apps. Order
+                  records required for accounting may be kept as the law requires. See the{" "}
+                  <a href="/clipsync-privacy.html" className="underline">privacy policy</a>.
+                </p>
+                <DeleteAccountButton />
+              </section>
             </>
           )}
         </div>
