@@ -11,7 +11,7 @@ android {
         applicationId = "com.clipsync"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
+        versionCode = 13
         versionName = "2.0-rc.6"
         testInstrumentationRunner = "com.clipsync.PrivacyFlowInstrumentation"
         // Account + Google Play Billing backend (the website) and its public web OAuth client.

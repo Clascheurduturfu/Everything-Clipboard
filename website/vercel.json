@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["cdg1"],
   "crons": [
     { "path": "/api/cron/play-voided", "schedule": "0 4 * * *" }
   ]

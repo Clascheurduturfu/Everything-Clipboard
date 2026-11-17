@@ -56,6 +56,7 @@ class VersionTest(unittest.TestCase):
         self.assertEqual(updater.parse_version("2.0-rc.4"), updater.parse_version("2.0 rc 4"))
         self.assertGreater(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0"))
         self.assertLess(updater.parse_version("2.0.1-beta.1"), updater.parse_version("2.0.1"))
+        self.assertGreater(updater.parse_version("2.0-rc.5"), updater.parse_version("2.0.1-beta.2"))
 
     def test_ordering(self):
         order = ["1.0.2", "2.0 beta 1", "2.0 beta 2", "2.0 beta 10", "2.0 rc 1", "2.0", "2.0.1", "2.1 beta 1"]
@@ -194,16 +195,23 @@ class ReleaseDiscoveryTest(unittest.TestCase):
         with self.assertRaisesRegex(updater.UpdateError, "digest"):
             updater.check("2.0", "preview")
 
+    def test_missing_platform_package_is_not_reported_as_up_to_date(self):
+        self.platform.stop()
+        self.platform = patch.object(updater, "platform_key", return_value="macos")
+        self.platform.start()
+        with self.assertRaisesRegex(updater.UpdateError, "macOS package is not available for Preview 2.0-rc.4"):
+            updater.check("2.0 beta 2", "preview")
+
 
 class PackageSafetyTest(unittest.TestCase):
     def test_archive_paths_are_checked_before_extraction(self):
         with tempfile.TemporaryDirectory() as folder:
             package = os.path.join(folder, "package.zip")
             with zipfile.ZipFile(package, "w") as archive:
-                archive.writestr("ClipSync/ClipSync.exe", b"fixture")
+                archive.writestr("ClipSync.exe", b"fixture")
             updater._validate_windows_package(package)
             with zipfile.ZipFile(package, "a") as archive:
-                archive.writestr("ClipSync/../../outside", b"bad")
+                archive.writestr("../../outside", b"bad")
             with self.assertRaisesRegex(updater.UpdateError, "Unsafe path"):
                 updater._validate_windows_package(package)
 

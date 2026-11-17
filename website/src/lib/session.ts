@@ -7,7 +7,19 @@ import { isAllowedOrigin } from "@/lib/origin";
 export const SESSION_COOKIE_NAME = "clipsync_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
 
-export async function getSessionUser(request?: NextRequest): Promise<DecodedIdToken | null> {
+type SessionOptions = {
+  /**
+   * Ask Firebase whether the session was revoked. That is a network call per
+   * request, so ordinary reads skip it; use it where a revoked session must
+   * stop working immediately (downloads, starting a checkout).
+   */
+  checkRevoked?: boolean;
+};
+
+export async function getSessionUser(
+  request?: NextRequest,
+  { checkRevoked = false }: SessionOptions = {},
+): Promise<DecodedIdToken | null> {
   const sessionCookie = request
     ? request.cookies.get(SESSION_COOKIE_NAME)?.value
     : (await cookies()).get(SESSION_COOKIE_NAME)?.value;
@@ -17,20 +29,10 @@ export async function getSessionUser(request?: NextRequest): Promise<DecodedIdTo
   }
 
   try {
-    return await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    return await getAdminAuth().verifySessionCookie(sessionCookie, checkRevoked);
   } catch {
     return null;
   }
-}
-
-export async function requireSessionUser(request: NextRequest) {
-  const user = await getSessionUser(request);
-
-  if (!user) {
-    throw new Error("AUTH_REQUIRED");
-  }
-
-  return user;
 }
 
 /**

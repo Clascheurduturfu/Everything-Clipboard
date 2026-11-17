@@ -11,6 +11,7 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.ConnectivityManager
 import android.net.Uri
+import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -27,19 +28,91 @@ object ClipImages {
     const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
     private const val THUMBNAIL_PX = 320
     private const val MAX_DECODE_PIXELS = 24_000_000L
+    private const val MAX_STAGE_BYTES = 64 * 1024 * 1024
 
     fun authority(context: Context) = "${context.packageName}.clips"
 
-    /** The clip's image URI and MIME type, or null when it is not an image. */
+    /** Resolves an image MIME type for [uri] via ContentResolver, returning null if not an image. */
+    fun mimeOfUri(context: Context, uri: Uri): String? = try {
+        val resolver = context.contentResolver
+        resolver.getType(uri)?.takeIf { it.startsWith("image/") }
+            ?: resolver.getStreamTypes(uri, "image/*")?.firstOrNull { it.startsWith("image/") }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Resolves MIME type from [uri] metadata or encoded image header bytes. */
+    fun resolveMime(context: Context, uri: Uri, bytes: ByteArray? = null): String {
+        mimeOfUri(context, uri)?.let { return it }
+        if (bytes != null && bytes.isNotEmpty()) {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            options.outMimeType?.takeIf { it.startsWith("image/") }?.let { return it }
+        }
+        return "image/png"
+    }
+
+    /** The clip's first image URI and MIME type, or null when it is not an image. */
     fun imageOf(context: Context, clip: ClipData?): Pair<Uri, String>? {
         if (clip == null || clip.itemCount == 0) return null
-        val uri = clip.getItemAt(0).uri ?: return null
-        val mime = context.contentResolver.getType(uri)
-            ?: (0 until clip.description.mimeTypeCount)
-                .map { clip.description.getMimeType(it) }
-                .firstOrNull { it.startsWith("image/") }
-            ?: return null
-        return if (mime.startsWith("image/")) uri to mime else null
+        val descriptionMime = (0 until clip.description.mimeTypeCount)
+            .map { clip.description.getMimeType(it) }
+            .firstOrNull { it.startsWith("image/") }
+        for (i in 0 until clip.itemCount) {
+            val uri = clip.getItemAt(i).uri ?: continue
+            val mime = mimeOfUri(context, uri) ?: descriptionMime ?: continue
+            if (mime.startsWith("image/")) return uri to mime
+        }
+        return null
+    }
+
+    /**
+     * Copies a temporary picker/share [uri] into a private cache file (up to [MAX_STAGE_BYTES])
+     * so [ClipSyncService] can read and resize complete oversize images after the caller closes.
+     */
+    fun stageOutgoing(context: Context, uri: Uri): Uri? = try {
+        val dir = File(context.cacheDir, "outgoing").apply { mkdirs() }
+        val mime = mimeOfUri(context, uri)
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "img"
+        val file = File(dir, "outgoing_${System.nanoTime()}.$ext")
+        var exceededLimit = false
+        val copied = context.contentResolver.openInputStream(uri)?.use { input ->
+            file.outputStream().use { out ->
+                val buffer = ByteArray(64 * 1024)
+                var total = 0
+                while (total <= MAX_STAGE_BYTES) {
+                    val remaining = (MAX_STAGE_BYTES + 1) - total
+                    val n = input.read(buffer, 0, minOf(buffer.size, remaining))
+                    if (n < 0) break
+                    out.write(buffer, 0, n)
+                    total += n
+                }
+                exceededLimit = total > MAX_STAGE_BYTES
+                total
+            }
+        }
+        if (copied == null || copied <= 0 || exceededLimit) {
+            file.delete()
+            null
+        } else {
+            Uri.fromFile(file)
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    fun deleteOutgoing(context: Context, uri: Uri?) {
+        if (uri?.scheme != "file") return
+        val path = uri.path ?: return
+        val dir = File(context.cacheDir, "outgoing")
+        val target = File(path)
+        if (target.parentFile?.canonicalPath == dir.canonicalPath) {
+            target.delete()
+        }
+    }
+
+    fun clearOutgoing(context: Context) {
+        File(context.cacheDir, "outgoing").deleteRecursively()
     }
 
     /** True for the file ClipSync itself put on the clipboard. */

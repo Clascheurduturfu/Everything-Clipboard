@@ -1,0 +1,23 @@
+One clipboard. All your devices.
+
+Copy on your PC, paste on your phone. Everything Clipboard syncs text and photos between your Android phone, your Windows PC, your Mac and your iPhone or iPad, end-to-end encrypted with a key only you know.
+
+• Copy text on your computer and it's ready on your phone, and the other way round. No more emailing yourself.
+• Photos too: send images up to 16 MB in either direction, with an optional limit on mobile data.
+• Encrypted before it leaves your device: AES-256-GCM, using a key you choose. The relay only passes along data it can't read.
+• Your relay or ours: use the hosted relay, or run your own server on your network.
+• Send from anywhere: use Send Clipboard in Quick Settings, the optional notification action, or share text and images to Everything Clipboard from other apps.
+• Background receiving: turn on a visible background session when you want to receive clips without keeping the app open.
+
+One-time purchase, no subscription
+Sign in with Google and unlock sync with a single "Lifetime" purchase. The same Google account also works on the Windows and macOS apps and the website, and every future update is included. There are no ads.
+
+Good to know
+Android limits clipboard access for apps in the background. Everything Clipboard doesn't use accessibility services to get around that. On Android 15 and later, background data-sync sessions are limited to six hours; open the app again to resume.
+
+Clipboard contents are encrypted, but the relay still sees connection metadata such as your IP address and room identifier. Use a long, unique key and only share it with your own devices. A wss:// relay also protects that metadata with TLS.
+
+You need at least one other device running Everything Clipboard to sync.
+
+Privacy: https://everything-clipboard.online/clipsync-privacy.html
+Support: support@everything-clipboard.online

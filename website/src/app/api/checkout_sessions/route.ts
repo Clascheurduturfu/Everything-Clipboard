@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
     }
 
-    const user = await getSessionUser(request);
+    const user = await getSessionUser(request, { checkRevoked: true });
 
     if (!user) {
       return NextResponse.redirect(new URL('/account?signin=required', getBaseUrl(request)), 303);
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const origin = getBaseUrl(request);
     const stripe = getStripe();
-    const productImageUrl = new URL('/MacOs app.png', origin).toString();
+    const productImageUrl = new URL('/app-macos.png', origin).toString();
     const successUrl = `${new URL('/account', origin).toString()}?purchase=success&session_id={CHECKOUT_SESSION_ID}`;
 
     // Create Checkout Sessions from body params.
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Everything Clipboard - Full Access (MacOS, Windows, Android)',
-              description: 'One-time purchase for full access to Everything Clipboard across all platforms.',
+              name: 'Everything Clipboard - lifetime access (Windows, macOS, Android, iOS)',
+              description: 'One-time payment for the Everything Clipboard apps on Windows, macOS, Android and iOS, including future updates.',
               images: [productImageUrl],
             },
             unit_amount: 300, // $3.00

@@ -22,22 +22,27 @@ export async function POST(request: NextRequest) {
     }
 
     const auth = getAdminAuth();
-    const decodedToken = await auth.verifyIdToken(idToken, true);
+    // The token was minted seconds ago by the sign-in that is calling us, so
+    // the revocation lookup (a network call) buys nothing here.
+    const decodedToken = await auth.verifyIdToken(idToken);
     const signedInRecently = typeof decodedToken.auth_time === "number"
       && Date.now() / 1000 - decodedToken.auth_time < 5 * 60;
 
     if (!signedInRecently) {
       return NextResponse.json({ error: "Please sign in again" }, { status: 401 });
     }
-    const sessionCookie = await auth.createSessionCookie(idToken, {
-      expiresIn: SESSION_MAX_AGE_SECONDS * 1000,
-    });
 
-    await createOrRefreshAccount({
-      uid: decodedToken.uid,
-      displayName: decodedToken.name,
-      email: decodedToken.email,
-    });
+    // Independent of each other, so run them together.
+    const [sessionCookie] = await Promise.all([
+      auth.createSessionCookie(idToken, {
+        expiresIn: SESSION_MAX_AGE_SECONDS * 1000,
+      }),
+      createOrRefreshAccount({
+        uid: decodedToken.uid,
+        displayName: decodedToken.name,
+        email: decodedToken.email,
+      }),
+    ]);
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {

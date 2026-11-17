@@ -2,8 +2,8 @@
 
 import Script from "next/script";
 import { useEffect, useCallback, useRef, useState } from "react";
-import { GoogleAuthProvider, signInWithCredential, signOut } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase-client";
+import { useRouter } from "next/navigation";
+import { getAccountOnce, peekAccount, refreshAccount } from "@/lib/account-client";
 import { acquire, getGis, holdsLease, initializeFor, onRelease, release } from "@/lib/gis";
 
 type GoogleCredentialResponse = {
@@ -43,6 +43,11 @@ const SETTLE_DELAY_MS = 2000;
 export function GoogleOneTap() {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.replace(/[\uFEFF\r\n\t ]/g, "").trim();
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const router = useRouter();
+  const routerRef = useRef(router);
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   // Tracks the in-flight attempt so a second call (or unmount) can abandon it.
   const attemptRef = useRef(0);
@@ -51,21 +56,12 @@ export function GoogleOneTap() {
     if (!response.credential) return;
 
     try {
-      const auth = firebaseAuth();
-      const credential = GoogleAuthProvider.credential(response.credential);
-      const userCredential = await signInWithCredential(auth, credential);
-      const idToken = await userCredential.user.getIdToken(true);
-
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (res.ok) {
-        await signOut(auth);
-        window.location.reload();
-      }
+      const { exchangeGoogleCredential } = await import("@/lib/auth-flow");
+      await exchangeGoogleCredential(response.credential);
+      // No full reload: refresh the shared account state, then let the server
+      // components re-render with the new session cookie.
+      await refreshAccount();
+      routerRef.current.refresh();
     } catch (err) {
       console.error("Google One Tap sign-in error:", err);
     }
@@ -79,15 +75,11 @@ export function GoogleOneTap() {
     const attempt = ++attemptRef.current;
     const abandoned = () => attempt !== attemptRef.current;
 
-    // Check if user is already signed in — don't show One Tap if so
-    try {
-      const res = await fetch("/api/account", { cache: "no-store" });
-      const data = await res.json();
-      if (data?.signedIn) {
-        return; // User is already logged in, skip One Tap
-      }
-    } catch {
-      // If check fails, proceed with showing One Tap anyway
+    // Check if user is already signed in — don't show One Tap if so. This
+    // reuses the page's single /api/account request instead of making its own.
+    const account = await getAccountOnce();
+    if (account.signedIn) {
+      return; // User is already logged in, skip One Tap
     }
     if (abandoned()) return;
 
@@ -100,6 +92,10 @@ export function GoogleOneTap() {
     // AuthModal had just rendered — which is why the sign-in button so often
     // did nothing.
     if (abandoned() || typeof window === "undefined" || !getGis()) return;
+
+    // Without a page reload the same component instance lives on after a
+    // sign-in, so also re-check the shared account state here.
+    if (peekAccount()?.signedIn) return;
 
     // Passive One Tap is the lowest priority holder: refused while a dialog is
     // open. We re-arm from the onRelease subscription below instead.
