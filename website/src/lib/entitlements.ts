@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { getStripe, getPaidCheckoutSession } from "@/lib/stripe";
+import { getPaidCheckoutSession } from "@/lib/stripe";
 
 export type AccountProfile = {
   uid: string;
@@ -15,35 +15,12 @@ export async function getAccountProfile(uid: string): Promise<AccountProfile> {
   const snapshot = await getAdminDb().collection("users").doc(uid).get();
   const data = snapshot.data();
 
-  let purchased = data?.purchased === true;
-  let latestOrderId = data?.latestOrderId ?? null;
+  const purchased = data?.purchased === true;
+  const latestOrderId = data?.latestOrderId ?? null;
   const email = data?.email ?? null;
 
-  // Self-healing check: If not marked purchased in DB, check recent completed Stripe sessions
-  if (!purchased) {
-    try {
-      const stripe = getStripe();
-      const sessions = await stripe.checkout.sessions.list({ limit: 15 });
-      const matchingSession = sessions.data.find(
-        (s) => (s.client_reference_id === uid || (email && s.customer_details?.email?.toLowerCase() === email.toLowerCase())) && s.payment_status === "paid"
-      );
-
-      if (matchingSession) {
-        purchased = true;
-        latestOrderId = matchingSession.id;
-        await getAdminDb().collection("users").doc(uid).set(
-          {
-            purchased: true,
-            latestOrderId: matchingSession.id,
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
-    } catch (err) {
-      console.error("Error auto-verifying Stripe purchase:", err);
-    }
-  }
+  // Account reads must never resurrect a revoked entitlement by looking at
+  // historical Checkout payment_status, which alone does not prove current access.
 
   return {
     uid,
@@ -74,16 +51,34 @@ export async function fulfillCheckoutSession(sessionId: string, uid: string) {
   try {
     const session = await getPaidCheckoutSession(sessionId);
     if (!session) return false;
+    const owner = session.client_reference_id ?? session.metadata?.firebaseUid;
+    if (owner !== uid) return false;
 
-    await getAdminDb().collection("users").doc(uid).set(
-      {
+    const db = getAdminDb();
+    const orderRef = db.collection("orders").doc(session.id);
+    return await db.runTransaction(async (transaction) => {
+      const order = await transaction.get(orderRef);
+      if (order.data()?.status === "refunded" || order.data()?.status === "disputed") return false;
+      transaction.set(orderRef, {
+        firebaseUid: uid,
+        stripeCheckoutSessionId: session.id,
+        paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+        customerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
+        customerEmail: session.customer_details?.email ?? null,
+        amountTotal: session.amount_total ?? null,
+        currency: session.currency ?? null,
+        status: "paid",
+        paidAt: order.data()?.paidAt ?? FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      transaction.set(db.collection("users").doc(uid), {
         purchased: true,
         latestOrderId: session.id,
+        purchasedAt: order.data()?.paidAt ?? FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return true;
+      }, { merge: true });
+      return true;
+    });
   } catch (err) {
     console.error("Error fulfilling checkout session:", err);
     return false;

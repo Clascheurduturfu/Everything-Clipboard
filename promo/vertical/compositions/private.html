@@ -1,0 +1,64 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: #020617; }
+    #pv-flood { position: absolute; inset: 0; background: radial-gradient(1200px 1400px at 30% 20%, #0a3f3a 0%, #052e2b 60%, #042320 100%); }
+    .pv-title { position: absolute; left: 120px; top: 262px; width: 920px; color: #ecfeff; font-weight: 600; font-size: 104px; line-height: 1.02; letter-spacing: -0.045em; }
+    .pv-title span { display: inline-block; }
+    #pv-wire { position: absolute; left: 120px; top: 779px; width: 800px; height: 3px; background: rgba(94, 234, 212, 0.45); transform-origin: 0 50%; }
+    .node { position: absolute; top: 771px; width: 18px; height: 18px; border-radius: 50%; background: #5eead4; }
+    .pv-lbl { position: absolute; top: 806px; color: #99f6e4; font-size: 30px; font-weight: 500; }
+    #pv-pkt { position: absolute; left: 120px; top: 704px; font-family: "Geist Mono", monospace; font-size: 36px; color: #ecfeff; white-space: pre; }
+    #pv-facts { position: absolute; left: 120px; top: 930px; font-family: "Geist Mono", monospace; font-size: 30px; color: #5eead4; }
+    #pv-run { position: absolute; left: 120px; top: 1020px; height: 90px; display: flex; align-items: flex-start; color: #ecfeff; font-weight: 600; font-size: 68px; line-height: 90px; letter-spacing: -0.04em; }
+    #pv-slot { margin-left: 20px; height: 90px; overflow: hidden; color: #5eead4; }
+    #pv-stack div { height: 90px; }
+  </style>
+  <div id="root" data-composition-id="private" data-width="1080" data-height="1920">
+    <div id="pv-flood"></div>
+    <h1 class="pv-title"><span>Encrypted</span><br /><span>before</span> <span>it</span> <span>leaves.</span></h1>
+    <div id="pv-wire"></div>
+    <div class="node" style="left: 111px"></div>
+    <div class="node" style="left: 511px"></div>
+    <div class="node" style="left: 911px"></div>
+    <div class="pv-lbl" id="pv-l1" style="left: 120px">Your PC</div>
+    <div class="pv-lbl" id="pv-l2" style="left: 320px; width: 400px; text-align: center">What the relay sees</div>
+    <div class="pv-lbl" id="pv-l3" style="left: 620px; width: 300px; text-align: right">Your phone</div>
+    <div id="pv-pkt">Wi-Fi: blue-otter-2026</div>
+    <div id="pv-facts">AES-256-GCM · with a key you choose</div>
+    <div id="pv-run"><span>Run it on</span><div id="pv-slot" data-layout-allow-overflow><div id="pv-stack"><div>your Wi-Fi.</div><div>your server.</div><div>our relay.</div></div></div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const PLAIN = "Wi-Fi: blue-otter-2026";
+    const CIPHER = "q7Z+e1Kx9/aR0mT4wB=c2L";
+    const pkt = document.getElementById("pv-pkt");
+    const st = { enc: 0, dec: 0 };
+    const paint = () => {
+      const n = PLAIN.length;
+      let s = "";
+      for (let i = 0; i < n; i++) s += i < st.enc * n && !(i < st.dec * n) ? CIPHER[i] : PLAIN[i];
+      pkt.textContent = s;
+    };
+    tl.fromTo("#pv-flood", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.inOut" }, 0);
+    tl.fromTo(".pv-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.07, ease: "power2.out" }, 0.12);
+    tl.fromTo("#pv-wire", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power3.out" }, 0.45);
+    tl.fromTo(".node", { scale: 0 }, { scale: 1, duration: 0.3, stagger: 0.12, ease: "back.out(1.6)" }, 0.55);
+    tl.fromTo(["#pv-l1", "#pv-l3"], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.7);
+    tl.fromTo("#pv-pkt", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0.8);
+    tl.fromTo("#pv-pkt", { x: 0 }, { x: 800 - 476, duration: 2.4, ease: "power1.inOut" }, 1.0);
+    tl.fromTo(st, { enc: 0 }, { enc: 1, duration: 0.6, ease: "none" }, 1.1);
+    tl.fromTo(st, { dec: 0 }, { dec: 1, duration: 0.6, ease: "none", immediateRender: false }, 2.75);
+    tl.eventCallback("onUpdate", paint);
+    tl.fromTo("#pv-pkt", { color: "#ecfeff" }, { color: "#5eead4", duration: 0.3 }, 1.4);
+    tl.to("#pv-pkt", { color: "#ecfeff", duration: 0.3 }, 2.9);
+    tl.fromTo("#pv-l2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 1.9);
+    tl.fromTo("#pv-facts", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.25, ease: "power2.out" }, 3.6);
+    tl.fromTo("#pv-run", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power2.out" }, 4.3);
+    tl.fromTo("#pv-stack", { y: 0, filter: "blur(0px)" }, { keyframes: [{ y: -45, filter: "blur(6px)", duration: 0.1, ease: "power2.in" }, { y: -90, filter: "blur(0px)", duration: 0.12, ease: "power2.out" }] }, 5.3);
+    tl.to("#pv-stack", { keyframes: [{ y: -135, filter: "blur(6px)", duration: 0.1, ease: "power2.in" }, { y: -180, filter: "blur(0px)", duration: 0.12, ease: "power2.out" }] }, 6.3);
+    paint();
+    window.__timelines["private"] = tl;
+  </script>
+</template>

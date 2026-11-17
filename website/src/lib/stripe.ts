@@ -18,9 +18,15 @@ export async function getPaidCheckoutSession(sessionId: string) {
   }
 
   try {
-    const session = await getStripe().checkout.sessions.retrieve(sessionId);
-
-    return session.payment_status === 'paid' ? session : null;
+    const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent.latest_charge'],
+    });
+    if (session.payment_status !== 'paid') return null;
+    const intent = session.payment_intent;
+    if (!intent || typeof intent === 'string' || intent.status !== 'succeeded') return null;
+    const charge = intent.latest_charge;
+    if (!charge || typeof charge === 'string' || charge.refunded || charge.disputed) return null;
+    return session;
   } catch (error) {
     console.error('Unable to verify Stripe checkout session:', error);
     return null;

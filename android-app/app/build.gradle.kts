@@ -11,9 +11,13 @@ android {
         applicationId = "com.clipsync"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "2.0-rc.4"
+        versionCode = 11
+        versionName = "2.0-rc.6"
         testInstrumentationRunner = "com.clipsync.PrivacyFlowInstrumentation"
+        // Account + Google Play Billing backend (the website) and its public web OAuth client.
+        buildConfigField("String", "API_BASE_URL", "\"https://www.everything-clipboard.com\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID",
+            "\"617545496431-hvj85ktgnt6cdd4dum4mjv7iaq6sml69.apps.googleusercontent.com\"")
     }
 
     signingConfigs {
@@ -60,4 +64,8 @@ gradle.taskGraph.whenReady {
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("com.android.billingclient:billing:8.0.0")
 }

@@ -1,0 +1,78 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; }
+    #ib-ground { position: absolute; inset: 0; background: #e8ecf2; }
+    #ib-night { position: absolute; inset: 0; background: #020617; opacity: 0; }
+    #ib-taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: #f7f8fb; border-top: 1px solid #d5dbe5; }
+    #ib-taskbar i { position: absolute; top: 16px; width: 32px; height: 32px; border-radius: 8px; background: #cfd6e2; }
+    #ib-cam { position: absolute; inset: 0; transform-origin: 540px 800px; }
+    .ib-title { position: absolute; left: 120px; top: 270px; width: 860px; color: #0f172a; font-weight: 600; font-size: 112px; line-height: 1.02; letter-spacing: -0.045em; }
+    .ib-title span { display: inline-block; }
+    #ib-t2 .accent { color: #2563eb; }
+    #ib-t2 span { opacity: 0; }
+    #ib-win { position: absolute; left: 120px; top: 580px; width: 840px; height: 680px; background: #ffffff; border-radius: 18px; box-shadow: 0 30px 70px rgba(15, 23, 42, 0.18), 0 0 0 1px #d7dde7; overflow: hidden; }
+    #ib-win .bar { height: 72px; background: #f1f4f9; border-bottom: 1px solid #e2e7ef; display: flex; align-items: center; padding: 0 30px; font-size: 30px; font-weight: 600; color: #1e293b; }
+    #ib-win .bar b { margin-left: auto; font-weight: 400; color: #64748b; }
+    #ib-win .row { height: 66px; border-bottom: 1px solid #edf0f5; display: flex; align-items: center; padding: 0 30px; font-size: 30px; color: #0f172a; }
+    #ib-win .row em { font-style: normal; color: #64748b; width: 140px; }
+    #ib-body { padding: 28px 30px 0; }
+    #ib-line { font-family: "Geist Mono", monospace; font-size: 34px; color: #0f172a; }
+    #ib-att { margin-top: 30px; display: flex; align-items: center; gap: 18px; width: 440px; padding: 12px; border: 1px solid #dfe4ec; border-radius: 12px; background: #f8fafc; }
+    #ib-att img { width: 130px; height: 89px; border-radius: 8px; object-fit: cover; }
+    #ib-att div { font-size: 30px; color: #0f172a; }
+    #ib-att small { display: block; font-size: 28px; color: #64748b; margin-top: 4px; }
+    #ib-send { position: absolute; left: 30px; bottom: 34px; width: 170px; height: 66px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 30px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    #ib-prog { position: absolute; left: 230px; bottom: 34px; width: 580px; height: 66px; opacity: 0; }
+    #ib-prog .lbl { font-size: 28px; color: #475569; }
+    #ib-prog .track { margin-top: 10px; height: 10px; border-radius: 5px; background: #e2e8f0; overflow: hidden; }
+    #ib-prog .fill { height: 100%; width: 100%; background: #2563eb; transform-origin: 0 50%; }
+    #ib-cursor { position: absolute; left: 0; top: 0; width: 60px; height: 60px; }
+    #ib-carry { position: absolute; left: 150px; top: 812px; font-family: "Geist Mono", monospace; font-size: 34px; color: #0f172a; opacity: 0; white-space: nowrap; transform-origin: 0 0; }
+  </style>
+  <div id="root" data-composition-id="inbox" data-width="1080" data-height="1920">
+    <div id="ib-ground"></div>
+    <div id="ib-cam">
+      <div id="ib-taskbar"><i style="left: 460px"></i><i style="left: 508px"></i><i style="left: 556px"></i><i style="left: 604px"></i></div>
+      <h1 id="ib-t1" class="ib-title"><span>Emailing</span> <span>yourself</span> <span>again?</span></h1>
+      <h1 id="ib-t2" class="ib-title"><span>Skip</span> <span>the</span> <span class="accent">inbox.</span></h1>
+      <div id="ib-win">
+        <div class="bar">New message<b>✕</b></div>
+        <div class="row"><em>To</em>me</div>
+        <div class="row"><em>Subject</em>wifi + pic for my phone</div>
+        <div id="ib-body">
+          <div id="ib-line">Wi-Fi: blue-otter-2026</div>
+          <div id="ib-att"><img src="assets/shots/sunset.png" alt="" /><div>sunset.png<small>Attachment</small></div></div>
+        </div>
+        <div id="ib-send">Send</div>
+        <div id="ib-prog"><div class="lbl" id="ib-pct">Sending… 0%</div><div class="track"><div class="fill"></div></div></div>
+      </div>
+      <svg id="ib-cursor" viewBox="0 0 24 24"><path d="M4 2 L4 20 L9 15.5 L12.5 22 L15.5 20.6 L12 14 L19 14 Z" fill="#0f172a" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round" /></svg>
+    </div>
+    <div id="ib-night"></div>
+    <div id="ib-carry">Wi-Fi: blue-otter-2026</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.set("#ib-t1 span", { opacity: 1, filter: "blur(0px)" }, 0);
+    tl.fromTo("#ib-cursor", { x: 1060, y: 1900 }, { x: 226, y: 1178, duration: 0.75, ease: "power3.out" }, 0.5);
+    tl.to("#ib-cursor", { scale: 0.86, duration: 0.07, ease: "power2.in", transformOrigin: "10% 10%" }, 1.3);
+    tl.to("#ib-cursor", { scale: 1, duration: 0.12, ease: "power2.out" }, 1.37);
+    tl.to("#ib-send", { backgroundColor: "#1e40af", duration: 0.08 }, 1.33);
+    tl.to("#ib-send", { backgroundColor: "#94a3b8", duration: 0.2 }, 1.45);
+    tl.to("#ib-prog", { opacity: 1, duration: 0.15 }, 1.4);
+    const p = { v: 0 };
+    tl.fromTo(".fill", { scaleX: 0 }, { scaleX: 0.34, duration: 1.0, ease: "power1.out" }, 1.45);
+    tl.fromTo(p, { v: 0 }, { v: 34, duration: 1.0, ease: "power1.out", onUpdate: () => { document.getElementById("ib-pct").textContent = "Sending… " + Math.round(p.v) + "%"; } }, 1.45);
+    tl.to("#ib-cursor", { x: 300, y: 1260, opacity: 0, duration: 0.4, ease: "power2.in" }, 2.3);
+    tl.to("#ib-t1 span", { opacity: 0, filter: "blur(8px)", duration: 0.16, stagger: 0.05, ease: "power2.in" }, 2.45);
+    tl.fromTo("#ib-t2 span", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, stagger: 0.08, ease: "power2.out" }, 2.7);
+    tl.set("#ib-carry", { opacity: 1 }, 3.55);
+    tl.set("#ib-line", { opacity: 0 }, 3.55);
+    tl.to("#ib-cam", { scale: 1.5, opacity: 0, filter: "blur(14px)", duration: 0.7, ease: "power3.in" }, 3.6);
+    tl.to("#ib-night", { opacity: 1, duration: 0.45, ease: "power2.inOut" }, 3.85);
+    tl.to("#ib-carry", { x: 160 - 150, y: 692 - 812, scale: 52 / 34, color: "#f8fafc", duration: 0.75, ease: "power3.inOut" }, 3.6);
+    window.__timelines["inbox"] = tl;
+  </script>
+</template>

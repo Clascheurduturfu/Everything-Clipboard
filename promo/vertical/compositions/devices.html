@@ -1,0 +1,89 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1100px 1300px at 50% 55%, #0b1a3a 0%, #020617 70%); }
+    .phone { position: absolute; padding: 16px; background: #0b0d12; border-radius: 48px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #2a2f3a; }
+    .phone .screen { position: relative; overflow: hidden; border-radius: 34px; background: #0f1725; }
+    .sbar { position: absolute; left: 0; top: 0; width: 720px; height: 60px; background: #0f1725; color: #f1f5f9; font: 600 28px "Geist", sans-serif; padding: 16px 0 0 46px; }
+    .sbar i { position: absolute; top: 24px; height: 16px; border-radius: 3px; background: #f1f5f9; }
+    #dv-android { left: 385px; top: 520px; }
+    #dv-android .screen { width: 282px; height: 588px; }
+    #dv-android .inner { position: absolute; left: 0; top: 0; width: 720px; height: 1500px; transform-origin: 0 0; transform: scale(0.392); }
+    #dv-android .inner img { position: absolute; left: 0; top: 60px; width: 720px; height: 1488px; }
+    #dv-iphone { left: 710px; top: 520px; }
+    #dv-iphone .screen { width: 270px; height: 588px; }
+    #dv-iphone .screen img { width: 100%; height: 100%; display: block; }
+    .shot { position: absolute; border-radius: 14px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.25); }
+    #dv-mac { left: 120px; top: 520px; width: 250px; }
+    #dv-win { left: 120px; top: 800px; width: 250px; border-radius: 10px; }
+    #dv-ipad { left: 120px; top: 1060px; width: 170px; border-radius: 16px; }
+    .lbl { position: absolute; color: #94a3b8; font-size: 30px; font-weight: 500; letter-spacing: -0.01em; }
+    .dv-title { position: absolute; left: 120px; top: 262px; width: 960px; color: #f1f5f9; font-weight: 600; font-size: 104px; line-height: 1.02; letter-spacing: -0.045em; }
+    .dv-title span { display: inline-block; }
+    .grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #dv-marks { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+    #dv-marks rect { fill: rgba(96, 165, 250, 0.1); stroke: #60a5fa; stroke-width: 3; }
+  </style>
+  <div id="root" data-composition-id="devices" data-width="1080" data-height="1920">
+    <h1 class="dv-title"><span>One</span> <span>clipboard.</span><br /><span class="grad">All</span> <span class="grad">your</span> <span class="grad">devices.</span></h1>
+
+    <img id="dv-mac" class="shot" src="assets/shots/mac.png" alt="ClipSync menu on macOS" />
+    <div id="dv-l-mac" class="lbl" style="left: 120px; top: 722px">macOS</div>
+    <img id="dv-win" class="shot" src="assets/shots/windows.png" alt="ClipSync tray menu on Windows" />
+    <div id="dv-l-win" class="lbl" style="left: 120px; top: 1000px">Windows</div>
+    <img id="dv-ipad" class="shot" src="assets/shots/ipad.png" alt="ClipSync on iPad" />
+    <div id="dv-l-ipad" class="lbl" style="left: 120px; top: 1264px">iPad</div>
+
+    <div id="dv-android" class="phone">
+      <div class="screen">
+        <div class="inner">
+          <div class="sbar">9:41<i style="left: 560px; width: 26px"></i><i style="left: 596px; width: 26px"></i><i style="left: 632px; width: 44px"></i></div>
+          <img src="assets/shots/phone-top.png" alt="ClipSync on Android" />
+        </div>
+      </div>
+    </div>
+    <div id="dv-l-and" class="lbl" style="left: 385px; top: 1160px; width: 314px; text-align: center">Android</div>
+    <div id="dv-iphone" class="phone">
+      <div class="screen"><img src="assets/shots/ios.png" alt="ClipSync on iPhone" /></div>
+    </div>
+    <div id="dv-l-iph" class="lbl" style="left: 710px; top: 1160px; width: 302px; text-align: center">iPhone</div>
+
+    <svg id="dv-marks" viewBox="0 0 1080 1920">
+      <rect id="dv-m1" rx="6" /><rect id="dv-m2" rx="6" /><rect id="dv-m3" rx="10" /><rect id="dv-m4" rx="6" /><rect id="dv-m5" rx="5" />
+    </svg>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // Proof lines in each screenshot's own pixels -> canvas (left, top, scale), padded by 5 px
+    const marks = [
+      ["#dv-m1", 120, 520, 250 / 664, [25, 128, 605, 44]],
+      ["#dv-m2", 120, 800, 250 / 347, [40, 30, 295, 28]],
+      ["#dv-m3", 401, 536, 0.392, [40, 248, 636, 136]],
+      ["#dv-m4", 726, 536, 270 / 1206, [120, 2277, 966, 158]],
+      ["#dv-m5", 120, 1060, 170 / 1060, [41, 899, 970, 66]],
+    ];
+    marks.forEach(([id, L, T, s, [x, y, w, h]]) => {
+      const r = document.querySelector(id);
+      r.setAttribute("x", L + x * s - 5); r.setAttribute("y", T + y * s - 5);
+      r.setAttribute("width", w * s + 10); r.setAttribute("height", h * s + 10);
+    });
+    tl.fromTo("#dv-android", { opacity: 1, scale: 1.7, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 0);
+    tl.fromTo("#dv-l-and", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.3);
+    tl.fromTo(".dv-title span:nth-child(-n+2)", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.08, ease: "power2.out" }, 0.15);
+    const land = (sel, lbl, fromX, at) => {
+      tl.fromTo(sel, { opacity: 0, x: fromX, scale: 0.9, filter: "blur(10px)" }, { opacity: 1, x: 0, scale: 1, filter: "blur(0px)", duration: 0.55, ease: "back.out(1.3)" }, at);
+      tl.fromTo(lbl, { opacity: 0 }, { opacity: 1, duration: 0.25 }, at + 0.2);
+    };
+    land("#dv-mac", "#dv-l-mac", -100, 0.48);
+    land("#dv-win", "#dv-l-win", -100, 0.98);
+    land("#dv-iphone", "#dv-l-iph", 100, 1.48);
+    land("#dv-ipad", "#dv-l-ipad", -100, 1.98);
+    tl.fromTo(".dv-title span.grad", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.08, ease: "power2.out" }, 2.5);
+    marks.forEach(([id], i) => {
+      const r = document.querySelector(id);
+      const per = 2 * (+r.getAttribute("width") + +r.getAttribute("height"));
+      tl.fromTo(id, { strokeDasharray: per, strokeDashoffset: per, fillOpacity: 0 }, { strokeDashoffset: 0, fillOpacity: 1, duration: 0.45, ease: "power2.inOut" }, 3.6 + i * 0.6);
+    });
+    window.__timelines["devices"] = tl;
+  </script>
+</template>

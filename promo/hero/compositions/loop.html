@@ -1,0 +1,131 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(900px 900px at 62% 40%, #0b1a3a 0%, #020617 72%); }
+    /* PC window */
+    #lp-win { position: absolute; left: 36px; top: 300px; width: 540px; height: 400px; background: #1f1f1f; border-radius: 14px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px #3a3a3a; overflow: hidden; }
+    #lp-win .bar { position: relative; height: 46px; background: #2b2b2b; color: #e5e5e5; font-size: 19px; }
+    #lp-win .bar span { position: absolute; left: 20px; top: 12px; white-space: nowrap; }
+    #lp-win .bar b { position: absolute; right: 18px; top: 12px; font-weight: 400; letter-spacing: 22px; color: #bdbdbd; }
+    #lp-menu { position: absolute; left: 0; top: 46px; width: 540px; height: 38px; background: #272727; color: #cfcfcf; font-size: 17px; padding: 9px 0 0 22px; word-spacing: 18px; }
+    #lp-sel { position: absolute; left: 62px; top: 397px; width: 405px; height: 42px; background: #0067c0; border-radius: 3px; transform-origin: 0 50%; }
+    .lp-line { position: absolute; left: 66px; top: 400px; font-family: "Geist Mono", monospace; font-size: 30px; line-height: 36px; color: #f8fafc; white-space: nowrap; transform-origin: 0 0; }
+    #lp-dim { position: absolute; left: 66px; top: 452px; font-family: "Geist Mono", monospace; font-size: 22px; color: #8a90a0; white-space: nowrap; }
+    #lp-photo-bg { position: absolute; left: 36px; top: 346px; width: 540px; height: 354px; background: #1b1b1b; }
+    .lp-img { position: absolute; left: 56px; top: 350px; width: 500px; height: 344px; transform-origin: 0 0; border-radius: 4px; }
+    #lp-ring { position: absolute; left: 50px; top: 344px; width: 512px; height: 356px; border: 4px solid #3b82f6; border-radius: 8px; }
+    /* Keys */
+    .key { position: absolute; top: 770px; height: 76px; border-radius: 13px; background: #e2e8f0; color: #0f172a; font-size: 30px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-shadow: 0 7px 0 #94a3b8, 0 16px 26px rgba(0, 0, 0, 0.45); }
+    #lp-ctrl { left: 190px; width: 120px; }
+    #lp-c { left: 350px; width: 76px; }
+    #lp-plus { position: absolute; left: 320px; top: 786px; color: #94a3b8; font-size: 30px; }
+    /* Phone */
+    .phone { position: absolute; padding: 16px; background: #0b0d12; border-radius: 58px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #2a2f3a; }
+    .phone .screen { position: relative; overflow: hidden; border-radius: 44px; background: #0f1725; }
+    .phone .inner { position: absolute; left: 0; top: 0; width: 720px; height: 1500px; transform-origin: 0 0; transform: scale(0.62); }
+    .sbar { position: absolute; left: 0; top: 0; width: 720px; height: 60px; background: #0f1725; color: #f1f5f9; font: 600 28px "Geist", sans-serif; padding: 16px 0 0 46px; }
+    .sbar i { position: absolute; top: 24px; height: 16px; border-radius: 3px; background: #f1f5f9; }
+    .feed { position: absolute; left: 0; top: 60px; width: 720px; height: 1488px; }
+    #lp-reset { opacity: 0; }
+    .mask { position: absolute; left: 70px; top: 836px; width: 400px; height: 42px; background: #172033; color: #b7c0d3; font: 400 25px "Roboto", sans-serif; line-height: 42px; padding-left: 5px; }
+    #lp-phone { left: 562px; top: 59px; }
+    #lp-phone .screen { width: 446px; height: 930px; }
+    #lp-glow { position: absolute; left: 562px; top: 59px; width: 478px; height: 962px; border-radius: 58px; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.9), 0 0 60px rgba(96, 165, 250, 0.55); opacity: 0; }
+    #lp-fly { opacity: 0; }
+    #lp-pill { position: absolute; left: 140px; top: 176px; height: 58px; padding: 0 26px 0 20px; border-radius: 29px; background: rgba(15, 23, 42, 0.85); box-shadow: 0 0 0 1.5px rgba(96, 165, 250, 0.55), 0 12px 30px rgba(0, 0, 0, 0.4); color: #e2e8f0; font-size: 28px; font-weight: 500; display: flex; align-items: center; gap: 12px; white-space: nowrap; opacity: 0; }
+    #lp-pill svg { width: 26px; height: 26px; }
+    #lp-flyimg { opacity: 0; }
+  </style>
+  <div id="root" data-composition-id="loop" data-width="1080" data-height="1080">
+    <div id="lp-win">
+      <div class="bar"><span id="lp-t1">wifi.txt — Notepad</span><span id="lp-t2" style="opacity: 0">sunset.png — Photos</span><b>—▢✕</b></div>
+      <div id="lp-menu">File Edit View</div>
+    </div>
+    <div id="lp-sel"></div>
+    <div id="lp-line" class="lp-line">Wi-Fi: blue-otter-2026</div>
+    <div id="lp-dim">guest: same password</div>
+    <div id="lp-photo-bg" style="opacity: 0"></div>
+    <img id="lp-img" class="lp-img" src="assets/shots/sunset.png" alt="" style="opacity: 0" />
+    <div id="lp-ring" style="opacity: 0"></div>
+    <div id="lp-ctrl" class="key">Ctrl</div>
+    <div id="lp-plus">+</div>
+    <div id="lp-c" class="key">C</div>
+
+    <div id="lp-glow"></div>
+    <div id="lp-phone" class="phone">
+      <div class="screen">
+        <div class="inner">
+          <div class="sbar">9:41<i style="left: 560px; width: 26px"></i><i style="left: 596px; width: 26px"></i><i style="left: 632px; width: 44px"></i></div>
+          <video id="lp-va" class="clip feed" src="assets/footage/take_text.mp4" data-start="0" data-duration="4.2" data-media-start="1.67" data-track-index="1" muted playsinline></video>
+          <video id="lp-vb" class="clip feed" src="assets/footage/take_img.mp4" data-start="4.2" data-duration="5.8" data-media-start="2.551" data-track-index="2" muted playsinline></video>
+          <img id="lp-reset" class="feed" src="assets/shots/loop-start.png" alt="" />
+          <div class="mask">Last received from Windows PC:</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="lp-pill"><svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>End-to-end encrypted</div>
+    <div id="lp-fly" class="lp-line">Wi-Fi: blue-otter-2026</div>
+    <img id="lp-flyimg" class="lp-img" src="assets/shots/sunset.png" alt="" />
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const keyDown = { y: 6, boxShadow: "0 1px 0 #94a3b8, 0 6px 12px rgba(0,0,0,0.45)", duration: 0.06, ease: "power2.in" };
+    const keyUp = { y: 0, boxShadow: "0 7px 0 #94a3b8, 0 16px 26px rgba(0,0,0,0.45)", backgroundColor: "#e2e8f0", duration: 0.14, ease: "power2.out" };
+    const press = (at) => {
+      tl.to("#lp-ctrl", keyDown, at);
+      tl.to("#lp-c", { ...keyDown, backgroundColor: "#bfdbfe" }, at + 0.13);
+      tl.to(["#lp-ctrl", "#lp-c"], keyUp, at + 0.3);
+    };
+    const pill = (a, b) => {
+      tl.fromTo("#lp-pill", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out", immediateRender: a < 1.5 }, a);
+      tl.to("#lp-pill", { opacity: 0, y: -6, duration: 0.35, ease: "power2.in" }, b);
+    };
+    const glow = (at) => {
+      tl.fromTo("#lp-glow", { opacity: 0 }, { keyframes: [{ opacity: 1, duration: 0.12, ease: "power2.out" }, { opacity: 0, duration: 0.7, ease: "power2.in" }] }, at);
+      tl.fromTo("#lp-phone", { scale: 1 }, { keyframes: [{ scale: 1.012, duration: 0.12, ease: "power2.out" }, { scale: 1, duration: 0.5, ease: "power2.inOut" }] }, at);
+    };
+
+    // 1. Text: select, copy, fly (encrypted in transit), land as the real app receives it at 2.0 s
+    tl.fromTo("#lp-sel", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "power2.inOut" }, 0.45);
+    press(0.95);
+    tl.set("#lp-fly", { opacity: 1 }, 1.3);
+    tl.fromTo("#lp-fly", { x: 0, scale: 1 }, { x: 638 - 66, scale: 0.384, duration: 0.7, ease: "power2.inOut" }, 1.3);
+    tl.fromTo("#lp-fly", { filter: "blur(0px)" }, { keyframes: [{ filter: "blur(4px)", duration: 0.35, ease: "power1.in" }, { filter: "blur(0px)", duration: 0.35, ease: "power1.out" }] }, 1.3);
+    tl.fromTo("#lp-fly", { y: 0 }, { keyframes: [{ y: -110, duration: 0.3, ease: "power2.out" }, { y: 638.6 - 400, duration: 0.4, ease: "power2.in" }] }, 1.3);
+    const plain = "Wi-Fi: blue-otter-2026", cipher = "q7Z+e1Kx9/aR0mT4wB=c2L";
+    const fly = document.querySelector("#lp-fly"), prog = { p: 0 };
+    const paint = () => {
+      const s = Math.sin(Math.PI * prog.p) * 1.25;
+      let out = "";
+      for (let i = 0; i < plain.length; i++) out += ((i * 7) % plain.length) / plain.length < s ? cipher[i] : plain[i];
+      fly.textContent = out;
+    };
+    tl.fromTo(prog, { p: 0 }, { p: 1, duration: 0.7, ease: "none", onUpdate: paint }, 1.3);
+    tl.to("#lp-fly", { opacity: 0, duration: 0.1, ease: "none" }, 2.0);
+    glow(2.0);
+    pill(1.2, 2.1);
+
+    // 2. Photo: the window becomes Photos, select, copy, fly, land at 5.8 s
+    tl.to("#lp-sel", { opacity: 0, duration: 0.25, ease: "power2.in" }, 3.4);
+    tl.fromTo(["#lp-photo-bg", "#lp-img", "#lp-t2"], { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 3.6);
+    tl.fromTo(["#lp-line", "#lp-dim", "#lp-t1", "#lp-menu"], { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "power2.in" }, 3.6);
+    tl.fromTo("#lp-ring", { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.25, ease: "power2.out" }, 4.3);
+    press(4.65);
+    tl.set("#lp-flyimg", { opacity: 1 }, 5.0);
+    tl.fromTo("#lp-flyimg", { x: 0, scale: 1 }, { x: 682 - 56, scale: 238 / 500, duration: 0.8, ease: "power2.inOut" }, 5.0);
+    tl.fromTo("#lp-flyimg", { y: 0 }, { keyframes: [{ y: -120, duration: 0.35, ease: "power2.out" }, { y: 634 - 350, duration: 0.45, ease: "power2.in" }] }, 5.0);
+    tl.fromTo("#lp-flyimg", { filter: "blur(0px)" }, { keyframes: [{ filter: "blur(9px)", duration: 0.4, ease: "power1.in" }, { filter: "blur(0px)", duration: 0.4, ease: "power1.out" }] }, 5.0);
+    tl.to("#lp-flyimg", { opacity: 0, duration: 0.12, ease: "none" }, 5.8);
+    glow(5.8);
+    pill(4.9, 5.9);
+
+    // 3. Back to the opening frame so the loop is seamless
+    tl.to(["#lp-photo-bg", "#lp-img", "#lp-t2", "#lp-ring"], { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 8.4);
+    tl.to(["#lp-line", "#lp-dim", "#lp-t1", "#lp-menu"], { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 8.4);
+    tl.fromTo("#lp-sel", { opacity: 1, scaleX: 0 }, { opacity: 1, scaleX: 0, duration: 0.01, immediateRender: false }, 8.4);
+    tl.fromTo("#lp-reset", { opacity: 0 }, { opacity: 1, duration: 0.7, ease: "power2.inOut" }, 8.9);
+    window.__timelines["loop"] = tl;
+  </script>
+</template>

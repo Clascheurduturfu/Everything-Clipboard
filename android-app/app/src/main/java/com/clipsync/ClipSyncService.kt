@@ -81,6 +81,14 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
             return START_NOT_STICKY
         }
 
+        // Sync is a paid feature. Covers every entry point: app, tile, share sheet.
+        if (!Account.isPaid(this)) {
+            stopLocked()
+            return START_NOT_STICKY
+        }
+        // Daily re-check for long-running background sync; no network call when fresh.
+        Account.refresh(this) { paid -> if (!paid) stopLocked() }
+
         when (intent?.action) {
             ACTION_APP_OPENED -> {
                 prefs.edit().putBoolean(PREF_APP_VISIBLE, true).apply()
@@ -526,6 +534,17 @@ class ClipSyncService : Service(), ClipboardManager.OnPrimaryClipChangedListener
                 stopSelf()
             }
         }, 700)
+    }
+
+    /** Sync is not unlocked on this account (never paid, refunded, or signed out). */
+    private fun stopLocked() {
+        Log.i(TAG, "Stopping: ClipSync is not unlocked on this account")
+        stopping = true
+        wsClient?.disconnect()
+        ClipState.update(ClipState.Connection.IDLE, "")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        foregroundActive = false
+        stopSelf()
     }
 
     // Android 15+ gives dataSync services six hours in the background.

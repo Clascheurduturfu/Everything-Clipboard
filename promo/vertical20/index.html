@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #020617; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1080" data-height="1920">
+      <div id="photo" data-composition-id="photo" data-composition-src="compositions/photo.html" data-start="0" data-duration="5" data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="devices" data-composition-id="devices" data-composition-src="compositions/devices.html" data-start="5" data-duration="6" data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="11" data-duration="9" data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <audio id="music" class="clip" src="assets/audio/music.mp3" data-start="0" data-duration="20" data-media-start="0.015" data-volume="0.5" data-fade-in="0.04" data-fade-out="2" data-track-index="3"></audio>
+      <audio id="sfx-k3" class="clip" src="assets/sfx/keypress-004.wav" data-start="0.82" data-duration="0.1" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-k4" class="clip" src="assets/sfx/keypress-011.wav" data-start="0.97" data-duration="0.2" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-fly2" class="clip" src="assets/sfx/card-slide-5.ogg" data-start="1.22" data-duration="0.5" data-volume="0.75" data-track-index="2"></audio>
+      <audio id="sfx-land2" class="clip" src="assets/sfx/drop_002.ogg" data-start="2.02" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev1" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="5.52" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev2" class="clip" src="assets/sfx/impactSoft_medium_003.ogg" data-start="6.02" data-duration="0.14" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev3" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="6.52" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev4" class="clip" src="assets/sfx/impactSoft_medium_003.ogg" data-start="7.02" data-duration="0.14" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-price" class="clip" src="assets/sfx/impactSoft_heavy_003.ogg" data-start="11.03" data-duration="0.55" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-once" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="11.53" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-logo" class="clip" src="assets/sfx/impactSoft_heavy_003.ogg" data-start="14.97" data-duration="0.55" data-volume="0.9" data-track-index="2"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

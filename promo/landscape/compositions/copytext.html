@@ -1,0 +1,49 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1300px 900px at 78% 28%, #0b1a3a 0%, #020617 68%); }
+    #ct-win { position: absolute; left: 160px; top: 240px; width: 1000px; height: 560px; background: #1f1f1f; border-radius: 14px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px #3a3a3a; overflow: hidden; }
+    #ct-win .bar { height: 56px; background: #2b2b2b; display: flex; align-items: center; padding: 0 22px; color: #e5e5e5; font-size: 24px; }
+    #ct-win .bar span { background: #1f1f1f; padding: 10px 22px; border-radius: 8px 8px 0 0; margin-top: 12px; }
+    #ct-win .bar b { margin-left: auto; font-weight: 400; letter-spacing: 34px; color: #bdbdbd; }
+    #ct-win .menu { height: 46px; display: flex; gap: 34px; align-items: center; padding: 0 28px; color: #cfcfcf; font-size: 22px; border-bottom: 1px solid #333; }
+    #ct-sel { position: absolute; left: 194px; top: 366px; width: 752px; height: 72px; background: #0067c0; border-radius: 4px; transform-origin: 0 50%; }
+    .ct-line { position: absolute; left: 200px; top: 372px; font-family: "Geist Mono", monospace; font-size: 56px; color: #f8fafc; white-space: nowrap; }
+    #ct-fly { opacity: 0; }
+    .key { position: absolute; top: 850px; height: 110px; border-radius: 16px; background: #e2e8f0; color: #0f172a; font-size: 44px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 0 #94a3b8, 0 20px 30px rgba(0, 0, 0, 0.45); }
+    #ct-ctrl { left: 440px; width: 200px; }
+    #ct-c { left: 720px; width: 110px; }
+    #ct-plus { position: absolute; left: 662px; top: 878px; color: #94a3b8; font-size: 44px; }
+    .ct-title { position: absolute; left: 1250px; top: 360px; width: 600px; color: #f1f5f9; font-weight: 600; font-size: 120px; line-height: 1.02; letter-spacing: -0.045em; }
+    .ct-title span { display: inline-block; }
+  </style>
+  <div id="root" data-composition-id="copytext" data-width="1920" data-height="1080">
+    <div id="ct-win">
+      <div class="bar"><span>wifi.txt</span><b>—▢✕</b></div>
+      <div class="menu"><span>File</span><span>Edit</span><span>View</span></div>
+    </div>
+    <div id="ct-sel"></div>
+    <div id="ct-line" class="ct-line">Wi-Fi: blue-otter-2026</div>
+    <div id="ct-fly" class="ct-line">Wi-Fi: blue-otter-2026</div>
+    <div id="ct-ctrl" class="key">Ctrl</div>
+    <div id="ct-plus">+</div>
+    <div id="ct-c" class="key">C</div>
+    <h1 class="ct-title"><span>Copy</span> <span>on</span> <span>your</span> <span>PC.</span></h1>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#ct-win", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out" }, 0);
+    tl.fromTo("#ct-sel", { scaleX: 0 }, { scaleX: 1, duration: 0.32, ease: "power2.inOut" }, 0.15);
+    tl.fromTo(["#ct-ctrl", "#ct-plus", "#ct-c"], { opacity: 0, y: 30, filter: "blur(8px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.35, stagger: 0.05, ease: "expo.out" }, 0.2);
+    // Ctrl down, C down, release
+    tl.to("#ct-ctrl", { y: 7, boxShadow: "0 1px 0 #94a3b8, 0 8px 14px rgba(0,0,0,0.45)", duration: 0.06, ease: "power2.in" }, 0.6);
+    tl.to("#ct-c", { y: 7, boxShadow: "0 1px 0 #94a3b8, 0 8px 14px rgba(0,0,0,0.45)", backgroundColor: "#bfdbfe", duration: 0.06, ease: "power2.in" }, 0.72);
+    tl.to(["#ct-ctrl", "#ct-c"], { y: 0, boxShadow: "0 8px 0 #94a3b8, 0 20px 30px rgba(0,0,0,0.45)", backgroundColor: "#e2e8f0", duration: 0.14, ease: "power2.out" }, 0.95);
+    tl.fromTo(".ct-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.067, ease: "power2.out" }, 0.45);
+    // The copied line leaves for the phone
+    tl.set("#ct-fly", { opacity: 1 }, 1.32);
+    tl.fromTo("#ct-fly", { x: 0, filter: "blur(0px)" }, { x: 1900, filter: "blur(16px)", duration: 0.62, ease: "power3.in" }, 1.35);
+    window.__timelines["copytext"] = tl;
+  </script>
+</template>

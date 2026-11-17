@@ -50,3 +50,8 @@ android-app/privacy/clipsync-logrotate.conf
 # Downloaded Android inspection/signing utilities are local tools.
 android-app/apktool.jar
 android-app/uber-apk-signer-1.3.0.jar
+
+# Promo video/store renders and HyperFrames caches are regenerated locally.
+.hyperframes/
+promo/out/
+promo/store/out/

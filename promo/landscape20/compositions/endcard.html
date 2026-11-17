@@ -1,0 +1,43 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1400px 900px at 50% 40%, #0b1a3a 0%, #020617 70%); }
+    .ec-row { position: absolute; left: 0; width: 1920px; display: flex; justify-content: center; }
+    #ec-price { top: 270px; gap: 56px; font-weight: 700; font-size: 280px; line-height: 1; letter-spacing: -0.055em; color: #f8fafc; }
+    #ec-price span { display: inline-block; }
+    .grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #ec-sub { top: 610px; color: #94a3b8; font-size: 50px; letter-spacing: -0.02em; }
+    #ec-logo { position: absolute; left: 875px; top: 190px; width: 170px; height: 170px; }
+    #ec-word { top: 398px; color: #f8fafc; font-weight: 600; font-size: 80px; letter-spacing: -0.045em; line-height: 1.1; }
+    #ec-tag { top: 512px; gap: 14px; color: #cbd5e1; font-size: 46px; letter-spacing: -0.02em; }
+    #ec-tag span { display: inline-block; }
+    #ec-cta-row { top: 620px; }
+    #ec-cta { padding: 24px 52px; border-radius: 16px; background: #2563eb; color: #ffffff; font-size: 44px; font-weight: 600; letter-spacing: -0.02em; box-shadow: 0 20px 40px rgba(37, 99, 235, 0.3); }
+    #ec-plat { top: 790px; color: #94a3b8; font-size: 32px; letter-spacing: -0.01em; }
+  </style>
+  <div id="root" data-composition-id="endcard" data-width="1920" data-height="1080">
+    <div id="ec-price" class="ec-row"><span id="ec-3">$3.</span><span id="ec-once" class="grad">Once.</span></div>
+    <div id="ec-sub" class="ec-row">Every app. Every future update.</div>
+
+    <img id="ec-logo" src="assets/logo.png" alt="Everything Clipboard logo" />
+    <div id="ec-word" class="ec-row">Everything Clipboard</div>
+    <div id="ec-tag" class="ec-row"><span>One</span><span>Clipboard.</span><span>All</span><span>Your</span><span>Devices.</span></div>
+    <div id="ec-cta-row" class="ec-row"><div id="ec-cta">everything-clipboard.com</div></div>
+    <div id="ec-plat" class="ec-row">Windows · macOS · Android · iOS · end-to-end encrypted</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#ec-3", { opacity: 0, scale: 1.3, filter: "blur(12px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 0);
+    tl.fromTo("#ec-once", { opacity: 0, scale: 1.3, filter: "blur(12px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 0.5);
+    tl.fromTo("#ec-sub", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.25, ease: "power2.out" }, 1.1);
+    tl.to(["#ec-price", "#ec-sub"], { opacity: 0, filter: "blur(10px)", duration: 0.24, ease: "power3.in" }, 3.15);
+    // The mark drops in and lands with weight, then the name wipes out of it
+    tl.fromTo("#ec-logo", { opacity: 0, y: -460, scale: 0.7 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "back.out(1.3)" }, 3.4);
+    tl.fromTo("#ec-word", { clipPath: "inset(0 50% 0 50%)", opacity: 0 }, { clipPath: "inset(0 0% 0 0%)", opacity: 1, duration: 0.5, ease: "power3.out" }, 3.95);
+    tl.fromTo("#ec-tag span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.07, ease: "power2.out" }, 4.35);
+    tl.fromTo("#ec-cta", { opacity: 0, scale: 0.92, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.4, ease: "expo.out" }, 4.85);
+    tl.fromTo("#ec-plat", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 5.3);
+    window.__timelines["endcard"] = tl;
+  </script>
+</template>

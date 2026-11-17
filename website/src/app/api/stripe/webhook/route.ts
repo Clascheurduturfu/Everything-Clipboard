@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { getStripe } from "@/lib/stripe";
+import { fulfillCheckoutSession } from "@/lib/entitlements";
+import { recomputeAccess } from "@/lib/access";
 
 export const runtime = "nodejs";
 
@@ -16,33 +18,16 @@ async function grantPurchase(session: Stripe.Checkout.Session) {
   const uid = getFirebaseUid(session);
   if (!uid) throw new Error(`Checkout session ${session.id} has no Firebase user ID`);
 
-  const db = getAdminDb();
-  const orderRef = db.collection("orders").doc(session.id);
-  const userRef = db.collection("users").doc(uid);
-
-  await db.runTransaction(async (transaction) => {
-    const order = await transaction.get(orderRef);
-    if (order.exists && order.data()?.status === "paid") return;
-
-    transaction.set(orderRef, {
-      firebaseUid: uid,
-      stripeCheckoutSessionId: session.id,
-      paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
-      customerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
-      customerEmail: session.customer_details?.email ?? null,
-      amountTotal: session.amount_total ?? null,
-      currency: session.currency ?? null,
-      status: "paid",
-      paidAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-    transaction.set(userRef, {
-      purchased: true,
-      latestOrderId: session.id,
-      purchasedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-  });
+  // The same verified, owner-bound transaction serves the webhook and return page.
+  if (!await fulfillCheckoutSession(session.id, uid)) {
+    // A completed Checkout event can arrive after a refund. Acknowledge that
+    // obsolete event only after checking current Stripe state; retry API failures.
+    const current = await getStripe().checkout.sessions.retrieve(session.id, { expand: ["payment_intent.latest_charge"] });
+    const intent = current.payment_intent;
+    const charge = intent && typeof intent !== "string" ? intent.latest_charge : null;
+    if (charge && typeof charge !== "string" && (charge.refunded || charge.disputed)) return;
+    throw new Error("Purchase fulfillment did not complete");
+  }
 }
 
 async function handleRefund(charge: Stripe.Charge) {
@@ -57,26 +42,13 @@ async function handleRefund(charge: Stripe.Charge) {
   if (!order) return;
 
   const uid = order.data().firebaseUid as string;
-  await db.runTransaction(async (transaction) => {
-    transaction.set(order.ref, {
-      status: "refunded",
-      refundedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    const activeOrders = await transaction.get(
-      db.collection("orders").where("firebaseUid", "==", uid).where("status", "==", "paid"),
-    );
-    const hasAnotherPurchase = activeOrders.docs.some((activeOrder) => activeOrder.id !== order.id);
-    if (!hasAnotherPurchase) {
-      transaction.set(db.collection("users").doc(uid), {
-        purchased: false,
-        latestOrderId: null,
-        purchasedAt: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true });
-    }
-  });
+  await order.ref.set({
+    status: "refunded",
+    refundedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  // Access stays while another Stripe order, a Play purchase or a manual grant remains.
+  await recomputeAccess(uid);
 }
 
 export async function POST(request: NextRequest) {

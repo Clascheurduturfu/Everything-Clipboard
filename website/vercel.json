@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/play-voided", "schedule": "0 4 * * *" }
+  ]
+}

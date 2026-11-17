@@ -92,8 +92,91 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Account: sign in and the one-time unlock; sync stays hidden until paid. -->
+        <LinearLayout
+            android:id="@+id/accountCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/panel_bg"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/ClipSync.CardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/account" />
+
+            <TextView
+                android:id="@+id/tvAccountStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/cs_text_primary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvPaywallPitch"
+                style="@style/ClipSync.Hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/paywall_pitch" />
+
+            <Button
+                android:id="@+id/btnSignIn"
+                style="@style/ClipSync.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/sign_in_google" />
+
+            <Button
+                android:id="@+id/btnBuy"
+                style="@style/ClipSync.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/unlock_clipsync" />
+
+            <Button
+                android:id="@+id/btnRestore"
+                style="@style/ClipSync.Button.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/restore_purchase" />
+
+            <LinearLayout
+                android:id="@+id/accountActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnSignOut"
+                    style="@style/ClipSync.Button.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/sign_out"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnDeleteAccount"
+                    style="@style/ClipSync.Button.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/delete_account"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- Connection -->
         <LinearLayout
+            android:id="@+id/connectionCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
@@ -179,6 +262,7 @@
 
         <!-- Clipboard -->
         <LinearLayout
+            android:id="@+id/clipboardCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
@@ -247,6 +331,7 @@
 
         <!-- Behaviour (Android only) -->
         <LinearLayout
+            android:id="@+id/behaviourCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"

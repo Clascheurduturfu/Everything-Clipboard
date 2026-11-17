@@ -1,0 +1,72 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1300px 900px at 22% 70%, #0b1a3a 0%, #020617 68%); }
+    #ph-cam { position: absolute; inset: 0; }
+    .phone { position: absolute; padding: 16px; background: #0b0d12; border-radius: 58px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #2a2f3a; }
+    .phone .screen { position: relative; overflow: hidden; border-radius: 44px; background: #0f1725; }
+    .phone .inner { position: absolute; left: 0; top: 0; width: 720px; height: 1500px; transform-origin: 0 0; }
+    .sbar { position: absolute; left: 0; top: 0; width: 720px; height: 60px; background: #0f1725; color: #f1f5f9; font: 600 28px "Geist", sans-serif; padding: 16px 0 0 46px; }
+    .sbar i { position: absolute; top: 24px; height: 16px; border-radius: 3px; background: #f1f5f9; }
+    .feed { position: absolute; left: 0; top: 60px; width: 720px; height: 1488px; }
+    .mask { position: absolute; left: 70px; top: 836px; width: 400px; height: 42px; background: #172033; color: #b7c0d3; font: 400 25px "Roboto", sans-serif; line-height: 42px; padding-left: 5px; }
+    #ph-phone { left: 1250px; top: 59px; }
+    #ph-phone .screen { width: 446px; height: 930px; }
+    #ph-phone .inner { transform: scale(0.62); }
+    #ph-win { position: absolute; left: 120px; top: 320px; width: 800px; height: 560px; background: #1b1b1b; border-radius: 14px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px #3a3a3a; overflow: hidden; }
+    #ph-win .bar { height: 52px; background: #2b2b2b; display: flex; align-items: center; padding: 0 22px; color: #e5e5e5; font-size: 22px; }
+    #ph-win .bar b { margin-left: auto; font-weight: 400; letter-spacing: 30px; color: #bdbdbd; }
+    .ph-img { position: absolute; left: 150px; top: 372px; width: 739px; height: 508px; transform-origin: 0 0; }
+    #ph-fly { opacity: 0; border-radius: 6px; }
+    .key { position: absolute; top: 912px; height: 100px; border-radius: 16px; background: #e2e8f0; color: #0f172a; font-size: 40px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 0 #94a3b8, 0 20px 30px rgba(0, 0, 0, 0.45); }
+    #ph-ctrl { left: 300px; width: 190px; }
+    #ph-c { left: 572px; width: 100px; }
+    #ph-plus { position: absolute; left: 512px; top: 936px; color: #94a3b8; font-size: 40px; }
+    .ph-title { position: absolute; left: 120px; top: 104px; color: #f1f5f9; font-weight: 600; font-size: 108px; line-height: 1; letter-spacing: -0.045em; white-space: nowrap; }
+    .ph-title span { display: inline-block; }
+    .grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #ph-sub { position: absolute; left: 124px; top: 232px; color: #94a3b8; font-size: 40px; }
+  </style>
+  <div id="root" data-composition-id="photo" data-width="1920" data-height="1080">
+    <div id="ph-cam">
+      <div id="ph-phone" class="phone">
+        <div class="screen">
+          <div class="inner">
+            <div class="sbar">9:41<i style="left: 560px; width: 26px"></i><i style="left: 596px; width: 26px"></i><i style="left: 632px; width: 44px"></i></div>
+            <video id="ph-vid" class="clip feed" src="assets/footage/take_img.mp4" data-start="0" data-duration="5" data-media-start="2.151" data-track-index="1" muted playsinline></video>
+            <div class="mask">Last received from Windows PC:</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="ph-win"><div class="bar">sunset.png — Photos<b>—▢✕</b></div></div>
+    <img id="ph-img" class="ph-img" src="assets/shots/sunset.png" alt="" />
+    <div id="ph-ctrl" class="key">Ctrl</div>
+    <div id="ph-plus">+</div>
+    <div id="ph-c" class="key">C</div>
+    <h1 class="ph-title"><span class="grad">Photos</span> <span>too.</span></h1>
+    <div id="ph-sub">Up to 16 MB each.</div>
+    <img id="ph-fly" class="ph-img" src="assets/shots/sunset.png" alt="" />
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(["#ph-win", "#ph-img"], { opacity: 0, x: -60, filter: "blur(10px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 0);
+    tl.fromTo("#ph-phone", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.5, ease: "expo.out" }, 0.08);
+    tl.fromTo(".ph-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.08, ease: "power2.out" }, 0.15);
+    tl.fromTo("#ph-sub", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power2.out" }, 0.4);
+    tl.fromTo(["#ph-ctrl", "#ph-plus", "#ph-c"], { opacity: 0, y: 24, filter: "blur(8px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.35, stagger: 0.05, ease: "expo.out" }, 0.35);
+    tl.to("#ph-ctrl", { y: 7, boxShadow: "0 1px 0 #94a3b8, 0 8px 14px rgba(0,0,0,0.45)", duration: 0.06, ease: "power2.in" }, 0.8);
+    tl.to("#ph-c", { y: 7, boxShadow: "0 1px 0 #94a3b8, 0 8px 14px rgba(0,0,0,0.45)", backgroundColor: "#bfdbfe", duration: 0.06, ease: "power2.in" }, 0.95);
+    tl.to(["#ph-ctrl", "#ph-c"], { y: 0, boxShadow: "0 8px 0 #94a3b8, 0 20px 30px rgba(0,0,0,0.45)", backgroundColor: "#e2e8f0", duration: 0.14, ease: "power2.out" }, 1.15);
+    // The photo arcs into the phone and lands as the real app shows it (2.0 s)
+    tl.set("#ph-fly", { opacity: 1 }, 1.15);
+    tl.fromTo("#ph-fly", { x: 0, scale: 1 }, { x: 1220, scale: 0.322, duration: 0.8, ease: "power2.inOut" }, 1.15);
+    tl.fromTo("#ph-fly", { y: 0 }, { keyframes: [{ y: -140, duration: 0.35, ease: "power2.out" }, { y: 262, duration: 0.45, ease: "power2.in" }] }, 1.15);
+    tl.fromTo("#ph-fly", { filter: "blur(0px)" }, { keyframes: [{ filter: "blur(9px)", duration: 0.4, ease: "power1.in" }, { filter: "blur(0px)", duration: 0.4, ease: "power1.out" }] }, 1.15);
+    tl.to("#ph-fly", { opacity: 0, duration: 0.14, ease: "none" }, 1.98);
+    // Punch in on the real thumbnail
+    tl.fromTo("#ph-cam", { scale: 1 }, { scale: 1.6, duration: 0.6, ease: "power2.inOut", transformOrigin: "1489px 716px" }, 2.45);
+    tl.to(["#ph-win", "#ph-img", "#ph-ctrl", "#ph-plus", "#ph-c"], { opacity: 0.35, duration: 0.6, ease: "power2.inOut" }, 2.45);
+    window.__timelines["photo"] = tl;
+  </script>
+</template>

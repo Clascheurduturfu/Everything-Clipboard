@@ -8,7 +8,7 @@ import app
 
 class ConnectionSettingsTests(unittest.TestCase):
     def test_default_and_custom_routing(self):
-        self.assertTrue(app.DEFAULT_CONFIG['custom_server_url'])
+        self.assertFalse(app.DEFAULT_CONFIG['custom_server_url'])
         saved = app._preferences_values('Laptop', 'wss://custom.example', 'key', False, False, False, True, 8000,
                                         custom_server=False)
         self.assertEqual(saved['server_url'], app.DEFAULT_RELAY_URL)

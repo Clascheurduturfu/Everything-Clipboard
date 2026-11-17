@@ -1,11 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
-import { Monitor, MonitorUp, Shield, Zap, CheckCircle2, ClipboardCopy, ArrowRight } from "lucide-react";
+import { Monitor, MonitorUp, Shield, Zap, CheckCircle2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PurchaseButton } from "@/components/PurchaseButton";
 import { UnicornBackground } from "@/components/UnicornBackground";
-import OrbitImages from "@/components/OrbitImages";
+import { HeroLoop } from "@/components/HeroLoop";
 
 export default function Home() {
   return (
@@ -73,58 +72,9 @@ export default function Home() {
             
             <div className="relative rounded-[2rem] glass-card p-4 sm:p-5 h-[380px] sm:h-[480px] lg:h-[580px] flex items-center justify-center overflow-hidden">
               
-              {/* Floating Bubbles (Aura style) */}
-              <div className="hidden md:block absolute inset-0 z-30 pointer-events-none">
-                <div className="aura-float-bubble absolute -right-4 top-10 pointer-events-auto rounded-2xl glass-card px-4 py-3 min-w-[12rem] cursor-pointer transition-transform duration-300 hover:scale-110 hover:shadow-2xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <ClipboardCopy className="w-4 h-4 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-900 dark:text-white font-medium">Text &amp; Images Copied</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Available on all devices</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="aura-float-bubble absolute left-4 bottom-[20%] pointer-events-auto rounded-2xl glass-card px-4 py-3 min-w-[12rem] cursor-pointer transition-transform duration-300 hover:scale-110 hover:shadow-2xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Shield className="w-4 h-4 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-900 dark:text-white font-medium">Encrypted</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Zero-Knowledge</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Apps - Orbiting with React Bits Component */}
-              <div className="relative w-full max-w-[500px] sm:max-w-[600px] h-full flex items-center justify-center">
-                 <OrbitImages
-                    radiusX={220}
-                    radiusY={100}
-                    rotation={-15}
-                    duration={45}
-                    itemSize={280}
-                    responsive={true}
-                    baseWidth={600}
-                    items={[
-                      <div key="ios" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
-                        <Image src="/IOS app.png" alt="iOS App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
-                      </div>,
-                      <div key="android" className="rounded-[2rem] overflow-hidden shadow-2xl ring-4 ring-slate-900 dark:ring-slate-800 bg-slate-900 transition-transform duration-500 hover:scale-110 cursor-pointer pointer-events-auto w-[160px] sm:w-[180px] mx-auto">
-                        <Image src="/Android app.png" alt="Android App" width={300} height={600} className="w-full h-auto object-cover pointer-events-none" priority />
-                      </div>,
-                      <div key="mac" className="rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 transition-transform duration-500 hover:scale-110 hover:z-40 cursor-pointer pointer-events-auto w-[250px] mx-auto">
-                        <Image src="/MacOs app.png" alt="MacOS App" width={600} height={600} className="w-full h-auto pointer-events-none" priority />
-                      </div>,
-                      <div key="windows" className="rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 transition-transform duration-500 hover:scale-110 hover:z-40 cursor-pointer pointer-events-auto w-[250px] mx-auto">
-                        <Image src="/Windows app.png" alt="Windows App" width={600} height={600} className="w-full h-auto pointer-events-none" priority />
-                      </div>
-                    ]}
-                 />
+              {/* Product demo loop: real PC to phone sync, text then a photo */}
+              <div className="relative z-10 h-full max-w-full aspect-square rounded-[1.5rem] overflow-hidden bg-[#020617] shadow-2xl ring-1 ring-slate-900/10 dark:ring-white/10">
+                <HeroLoop />
               </div>
             </div>
           </div>
@@ -182,6 +132,37 @@ export default function Home() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Native apps: real screenshots of every client (ClipSync 2.0) */}
+      <section className="relative z-10 py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <h2 className="font-mono text-xs font-semibold tracking-widest text-blue-600 dark:text-blue-400 uppercase mb-3">
+              Native Apps
+            </h2>
+            <p className="text-3xl md:text-5xl font-light tracking-tight text-slate-950 dark:text-white max-w-2xl mx-auto">
+              Every device. <br/><span className="font-normal text-slate-500 dark:text-slate-400">Same clipboard.</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-end justify-center gap-x-6 gap-y-10 sm:gap-x-8">
+            {[
+              { name: "Windows", src: "/apps/windows.webp", w: 640, h: 690, box: "w-[240px] sm:w-[260px] rounded-xl", alt: "ClipSync preferences window on Windows, connected" },
+              { name: "macOS", src: "/apps/macos.webp", w: 640, h: 719, box: "w-[240px] sm:w-[260px] rounded-xl", alt: "ClipSync preferences window on macOS, connected" },
+              { name: "Android", src: "/apps/android.webp", w: 480, h: 992, box: "w-[150px] rounded-[1.75rem] ring-4 ring-slate-900 dark:ring-slate-800", alt: "ClipSync on Android showing a photo received from a Windows PC" },
+              { name: "iPhone", src: "/apps/iphone.webp", w: 480, h: 1043, box: "w-[150px] rounded-[1.75rem] ring-4 ring-slate-900 dark:ring-slate-800", alt: "ClipSync on iPhone showing a photo received from a Windows PC" },
+              { name: "iPad", src: "/apps/ipad.webp", w: 720, h: 960, box: "w-[200px] rounded-[1.25rem] ring-4 ring-slate-900 dark:ring-slate-800", alt: "ClipSync on iPad showing a photo received from a Windows PC" },
+            ].map((app) => (
+              <figure key={app.name} className="flex flex-col items-center gap-4">
+                <div className={`${app.box} overflow-hidden shadow-2xl bg-slate-900 border border-slate-200/50 dark:border-slate-700/50 transition-transform duration-500 hover:-translate-y-1`}>
+                  <Image src={app.src} alt={app.alt} width={app.w} height={app.h} className="block w-full h-auto" loading="lazy" />
+                </div>
+                <figcaption className="text-sm font-medium text-slate-600 dark:text-slate-400">{app.name}</figcaption>
+              </figure>
+            ))}
           </div>
         </div>
       </section>

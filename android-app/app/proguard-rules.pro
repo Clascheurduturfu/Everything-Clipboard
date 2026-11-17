@@ -24,3 +24,9 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+
+# Credential Manager loads its Play Services provider reflectively.
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** {
+  *;
+}

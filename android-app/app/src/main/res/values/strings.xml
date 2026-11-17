@@ -47,4 +47,18 @@
     <string name="status_not_configured">Not configured</string>
     <string name="send_clipboard_action">Send Clipboard</string>
     <string name="quick_settings_tile_label">Send ClipSync</string>
+    <string name="account">Account</string>
+    <string name="status_locked">Sync locked</string>
+    <string name="paywall_pitch">One-time purchase, no subscription. Unlocks syncing on this phone and works with the same Google account on the ClipSync website and desktop apps.</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="unlock_clipsync">Unlock ClipSync</string>
+    <string name="unlock_clipsync_price">Unlock ClipSync · %1$s</string>
+    <string name="restore_purchase">Restore purchase</string>
+    <string name="sign_out">Sign out</string>
+    <string name="delete_account">Delete account</string>
+    <string name="account_signed_out">Sign in to unlock clipboard sync.</string>
+    <string name="account_unpaid">%1$s
+ClipSync is not unlocked on this account yet.</string>
+    <string name="account_paid">%1$s
+ClipSync Lifetime ✓</string>
 </resources>

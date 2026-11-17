@@ -1,0 +1,25 @@
+@font-face { font-family: "Geist"; src: url("assets/geist.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("assets/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; background: #020617; }
+body { position: relative; font-family: "Geist", sans-serif; color: #f1f5f9; }
+.bg { position: absolute; inset: 0; background: radial-gradient(1400px 1000px at 72% 42%, #0b1a3a 0%, #020617 70%); }
+.glow { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 0)); }
+.brand { position: absolute; display: flex; align-items: center; gap: 16px; font-size: 32px; font-weight: 600; letter-spacing: -0.02em; color: #e2e8f0; }
+.brand img { width: 52px; height: 52px; border-radius: 12px; }
+h1 { position: absolute; font-weight: 600; line-height: 1.02; letter-spacing: -0.045em; }
+.grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { position: absolute; color: #94a3b8; line-height: 1.35; }
+/* Windows 11 window frame around a client-area capture */
+.win { position: absolute; border-radius: 12px; overflow: hidden; background: #111827; box-shadow: 0 50px 100px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(148, 163, 184, 0.28); }
+.win .bar { height: 40px; background: #1c2333; display: flex; align-items: center; padding: 0 0 0 16px; color: #cbd5e1; font-size: 15px; font-family: "Segoe UI", "Geist", sans-serif; }
+.win .bar img { width: 18px; height: 18px; margin-right: 10px; border-radius: 4px; }
+.win .bar .ctl { margin-left: auto; display: flex; height: 100%; }
+.win .bar .ctl span { width: 46px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 14px; }
+.win > img.cap { display: block; width: 100%; }
+/* Phone frame around a full Android screenshot */
+.phone { position: absolute; padding: 14px; background: #0b0d12; border-radius: 64px; box-shadow: 0 50px 100px rgba(0, 0, 0, 0.55), inset 0 0 0 2px #2a2f3a; }
+.phone .screen { position: relative; overflow: hidden; border-radius: 52px; background: #0f1725; }
+.phone .screen > img { display: block; width: 100%; }
+.pill { position: absolute; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 26px 0 20px; border-radius: 30px; background: rgba(15, 23, 42, 0.85); box-shadow: 0 0 0 1.5px rgba(96, 165, 250, 0.55), 0 12px 30px rgba(0, 0, 0, 0.4); color: #e2e8f0; font-size: 26px; font-weight: 500; white-space: nowrap; }
+.pill svg { width: 26px; height: 26px; }

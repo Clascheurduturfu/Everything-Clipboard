@@ -10,5 +10,14 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read, write: if false;
     }
+
+    // Server-only: native app sessions and Google Play purchase bindings.
+    match /appSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    match /playPurchases/{purchaseId} {
+      allow read, write: if false;
+    }
   }
 }

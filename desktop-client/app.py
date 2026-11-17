@@ -65,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0.1-beta.2"
+APP_VERSION = "2.0-rc.5"
 _IS_MACOS = platform.system() == "Darwin"
 
 # A value that crossed the wire (in either direction) is remembered for this
@@ -99,7 +99,7 @@ DEFAULT_CONFIG = {
     "device_name": platform.node() or "Desktop",
     "server_url": "",
     "normal_server_url": "",
-    "custom_server_url": True,
+    "custom_server_url": False,
     "secret_key": "",
     "host_mode": False,
     # False = reachable on the local network only; True = published via ngrok.
@@ -295,7 +295,7 @@ def ngrok_add_authtoken(token: str) -> tuple[bool, str]:
 
 
 def remote_relay_url(config: dict) -> str:
-    return (config.get("normal_server_url") or config.get("server_url", "")) if config.get("custom_server_url", True) else DEFAULT_RELAY_URL
+    return (config.get("normal_server_url") or config.get("server_url", "")) if config.get("custom_server_url", False) else DEFAULT_RELAY_URL
 
 
 def generate_secret_key() -> str:
@@ -623,7 +623,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
 
     # --- Hosting tab
     host_var = ctk.BooleanVar(value=bool(config.get("host_mode")))
-    custom_server_var = ctk.BooleanVar(value=bool(config.get("custom_server_url", True)))
+    custom_server_var = ctk.BooleanVar(value=bool(config.get("custom_server_url", False)))
     exposure_var = ctk.StringVar(
         value="ngrok tunnel" if config.get("use_ngrok_with_host") else "Local network"
     )
@@ -714,11 +714,7 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
         else:
             details.pack_forget()
             server_entry.configure(state="normal", text_color=p["text"])
-            if custom_server_var.get():
-                server_hint.pack_forget()
-            else:
-                server_hint.configure(text=f"Default relay: {DEFAULT_RELAY_URL}")
-                server_hint.pack(fill="x", padx=8, pady=(2, 2))
+            server_hint.pack_forget()
         port = host_port({"host_port": port_entry.get()})
         if exposure_var.get() == "Local network":
             ngrok_box.pack_forget()
@@ -826,7 +822,7 @@ def _show_basic_preferences_dialog() -> bool:
     device_var = tk.StringVar(value=config.get("device_name", "Desktop"))
     server_var = tk.StringVar(value=config.get("normal_server_url") or config.get("server_url", ""))
     secret_var = tk.StringVar(value=config.get("secret_key", ""))
-    custom_var = tk.BooleanVar(value=bool(config.get("custom_server_url", True)))
+    custom_var = tk.BooleanVar(value=bool(config.get("custom_server_url", False)))
     startup_var = tk.BooleanVar(value=bool(config.get("start_on_login")))
     host_var = tk.BooleanVar(value=bool(config.get("host_mode")))
     ngrok_var = tk.BooleanVar(value=bool(config.get("use_ngrok_with_host")))

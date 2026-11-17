@@ -49,6 +49,8 @@ class MainActivity : Activity() {
     private var consentDialog: AlertDialog? = null
     private var returningFromPrivacy = false
     private var refreshingPrivacyControls = false
+    private var billing: PlayBilling? = null
+    private var playPrice: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +81,7 @@ class MainActivity : Activity() {
         tvLastReceived = findViewById(R.id.tvLastReceived)
         ivLastImage = findViewById(R.id.ivLastImage)
         findViewById<TextView>(R.id.tvVersion).text = "ClipSync ${BuildConfig.VERSION_NAME} · Android"
+        setupAccount()
 
         // Load saved prefs
         val prefs = getSharedPreferences("clipsync_prefs", Context.MODE_PRIVATE)
@@ -92,7 +95,7 @@ class MainActivity : Activity() {
         editServerUrl.setText(normalizedUrl)
         editSecretKey.setText(prefs.getString("secret_key", ""))
         switchCustomServer = findViewById(R.id.switchCustomServer)
-        switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+        switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, false)
         updateServerVisibility()
         switchCustomServer.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(RelayAddress.PREF_CUSTOM_SERVER, checked).apply()
@@ -223,7 +226,7 @@ class MainActivity : Activity() {
             editDeviceName.setText(prefs.getString("device_name", "Android Phone"))
             editServerUrl.setText(prefs.getString("server_url", ""))
             editSecretKey.setText(prefs.getString("secret_key", ""))
-            switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, true)
+            switchCustomServer.isChecked = prefs.getBoolean(RelayAddress.PREF_CUSTOM_SERVER, false)
             updateServerVisibility()
         }
         val saved = getSharedPreferences("clipsync_prefs", MODE_PRIVATE)
@@ -231,10 +234,112 @@ class MainActivity : Activity() {
         switchService.isChecked = PrivacyConsent.isGranted(this) && saved.getBoolean(ClipSyncService.PREF_RUN_IN_BACKGROUND, false)
         switchSendNotificationAction.isChecked = PrivacyConsent.isGranted(this) && saved.getBoolean(ClipSyncService.PREF_SHOW_SEND_NOTIFICATION_ACTION, false)
         refreshingPrivacyControls = false
-        if (hasUsableSettings() && PrivacyConsent.isGranted(this)) {
+        if (Account.isPaid(this) && hasUsableSettings() && PrivacyConsent.isGranted(this)) {
             startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
         }
+        renderAccount()
         render()
+        // At most once a day; offline keeps the cached answer.
+        Account.refresh(this) { onPaidStateChanged() }
+    }
+
+    override fun onDestroy() {
+        billing?.stop()
+        super.onDestroy()
+    }
+
+    private fun setupAccount() {
+        billing = PlayBilling(this, object : PlayBilling.Listener {
+            override fun onPrice(formattedPrice: String?) {
+                playPrice = formattedPrice
+                renderAccount()
+            }
+
+            override fun onPurchasePending() {
+                Toast.makeText(this@MainActivity,
+                    "Payment pending. ClipSync unlocks once Google confirms it.", Toast.LENGTH_LONG).show()
+            }
+
+            override fun onPurchaseVerified(paid: Boolean, message: String?) {
+                if (paid) Toast.makeText(this@MainActivity, "ClipSync unlocked. Thanks!", Toast.LENGTH_LONG).show()
+                else if (message != null) Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                onPaidStateChanged()
+            }
+        }).also { it.start() }
+
+        findViewById<Button>(R.id.btnSignIn).setOnClickListener { button ->
+            button.isEnabled = false
+            Account.signIn(this) { error ->
+                button.isEnabled = true
+                if (error != null) Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                // A website purchase or an earlier Play purchase unlocks right away.
+                billing?.restore(userInitiated = false)
+                onPaidStateChanged()
+            }
+        }
+        findViewById<Button>(R.id.btnBuy).setOnClickListener {
+            billing?.launch()?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
+        }
+        findViewById<Button>(R.id.btnRestore).setOnClickListener {
+            Toast.makeText(this, "Checking your purchase…", Toast.LENGTH_SHORT).show()
+            billing?.restore(userInitiated = true)
+            Account.refresh(this, force = true) { paid ->
+                if (!paid) Toast.makeText(this, "No purchase found on this account yet.", Toast.LENGTH_SHORT).show()
+                onPaidStateChanged()
+            }
+        }
+        findViewById<Button>(R.id.btnSignOut).setOnClickListener {
+            Account.signOut(this)
+            onPaidStateChanged()
+        }
+        findViewById<Button>(R.id.btnDeleteAccount).setOnClickListener {
+            AlertDialog.Builder(this).setTitle("Delete your ClipSync account?")
+                .setMessage("This deletes your account and signs you out on every device. " +
+                    "A Google Play purchase can be restored later on a new account; " +
+                    "Google Play purchases are not refunded by deleting the account.")
+                .setPositiveButton("Delete") { _, _ ->
+                    Account.deleteAccount(this) { error ->
+                        Toast.makeText(this, error ?: "Account deleted", Toast.LENGTH_LONG).show()
+                        onPaidStateChanged()
+                    }
+                }
+                .setNegativeButton("Cancel", null).show()
+        }
+    }
+
+    /** Shows sync only when paid; starts or stops the service to match. */
+    private fun onPaidStateChanged() {
+        renderAccount()
+        if (Account.isPaid(this)) {
+            if (hasUsableSettings() && PrivacyConsent.isGranted(this)) {
+                startClipSyncServiceWithPermissionPrompt(ClipSyncService.ACTION_APP_OPENED)
+            }
+        } else {
+            stopClipSyncService()
+        }
+        render()
+    }
+
+    private fun renderAccount() {
+        val signedIn = Account.isSignedIn(this)
+        val paid = Account.isPaid(this)
+        val who = Account.email(this) ?: "Signed in"
+        findViewById<TextView>(R.id.tvAccountStatus).text = when {
+            !signedIn -> getString(R.string.account_signed_out)
+            paid -> getString(R.string.account_paid, who)
+            else -> getString(R.string.account_unpaid, who)
+        }
+        val buy = findViewById<Button>(R.id.btnBuy)
+        buy.text = playPrice?.let { getString(R.string.unlock_clipsync_price, it) } ?: getString(R.string.unlock_clipsync)
+        findViewById<View>(R.id.tvPaywallPitch).visibility = if (paid) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.btnSignIn).visibility = if (signedIn) View.GONE else View.VISIBLE
+        buy.visibility = if (signedIn && !paid) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btnRestore).visibility = if (signedIn && !paid) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.accountActions).visibility = if (signedIn) View.VISIBLE else View.GONE
+        val syncVisibility = if (paid) View.VISIBLE else View.GONE
+        for (id in intArrayOf(R.id.connectionCard, R.id.clipboardCard, R.id.behaviourCard)) {
+            findViewById<View>(id).visibility = syncVisibility
+        }
     }
 
     override fun onPause() {
@@ -254,6 +359,8 @@ class MainActivity : Activity() {
 
     private fun render() {
         val (title, color, animate) = when {
+            !Account.isPaid(this) ->
+                Triple(getString(R.string.status_locked), R.color.cs_text_secondary, false)
             !hasUsableSettings() ->
                 Triple(getString(R.string.status_not_configured), R.color.cs_text_secondary, false)
             ClipState.connection == ClipState.Connection.CONNECTED ->
@@ -266,6 +373,7 @@ class MainActivity : Activity() {
         }
         tvStatusTitle.text = title
         tvStatus.text = when {
+            !Account.isPaid(this) -> "Sign in and unlock ClipSync to start syncing."
             !hasUsableSettings() -> "Enter your server URL and secret key below."
             ClipState.detail.isNotEmpty() -> ClipState.detail
             else -> "Syncs while the app is open" +
@@ -364,6 +472,7 @@ class MainActivity : Activity() {
     }
 
     private fun startClipSyncServiceWithPermissionPrompt(action: String? = null) {
+        if (!Account.isPaid(this)) return
         if (!PrivacyConsent.isGranted(this)) {
             withClipboardConsent { startClipSyncServiceWithPermissionPrompt(action) }
             return
@@ -387,7 +496,7 @@ class MainActivity : Activity() {
     }
 
     private fun startClipSyncService(action: String? = null) {
-        if (!PrivacyConsent.isGranted(this)) return
+        if (!PrivacyConsent.isGranted(this) || !Account.isPaid(this)) return
         val intent = Intent(this, ClipSyncService::class.java).apply {
             if (action != null) this.action = action
         }

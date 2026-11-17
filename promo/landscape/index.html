@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --ground: #020617;
+        --ink: #f1f5f9;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="40"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Scenes, back to back on lane 1 -->
+      <div id="inbox" data-composition-id="inbox" data-composition-src="compositions/inbox.html" data-start="0" data-duration="4.5" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="copytext" data-composition-id="copytext" data-composition-src="compositions/copytext.html" data-start="4.5" data-duration="2" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="pastetext" data-composition-id="pastetext" data-composition-src="compositions/pastetext.html" data-start="6.5" data-duration="3.5" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="photo" data-composition-id="photo" data-composition-src="compositions/photo.html" data-start="10" data-duration="5" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="devices" data-composition-id="devices" data-composition-src="compositions/devices.html" data-start="15" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="private" data-composition-id="private" data-composition-src="compositions/private.html" data-start="23" data-duration="8" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="31" data-duration="9" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+
+      <!-- Music: enters on Ctrl+C; beats land on 4.5 + 0.5k -->
+      <audio id="music" class="clip" src="assets/audio/music.mp3" data-start="4.5" data-duration="35.5" data-media-start="0.015" data-volume="0.5" data-fade-in="0.04" data-fade-out="2.2" data-track-index="3"></audio>
+
+      <!-- SFX, one lane (2), peaks one frame after the picture -->
+      <audio id="sfx-send" class="clip" src="assets/sfx/click_003.ogg" data-start="1.38" data-duration="0.05" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-stall" class="clip" src="assets/sfx/error_005.ogg" data-start="2.5" data-duration="0.5" data-volume="0.35" data-track-index="2"></audio>
+      <audio id="sfx-zoom" class="clip" src="assets/sfx/card-slide-1.ogg" data-start="3.62" data-duration="0.6" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-k1" class="clip" src="assets/sfx/keypress-004.wav" data-start="5.12" data-duration="0.1" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-k2" class="clip" src="assets/sfx/keypress-011.wav" data-start="5.25" data-duration="0.2" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-fly1" class="clip" src="assets/sfx/card-slide-3.ogg" data-start="5.88" data-duration="0.5" data-volume="0.75" data-track-index="2"></audio>
+      <audio id="sfx-land1" class="clip" src="assets/sfx/drop_002.ogg" data-start="7.22" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-k3" class="clip" src="assets/sfx/keypress-004.wav" data-start="10.82" data-duration="0.1" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-k4" class="clip" src="assets/sfx/keypress-011.wav" data-start="10.97" data-duration="0.2" data-volume="1" data-track-index="2"></audio>
+      <audio id="sfx-fly2" class="clip" src="assets/sfx/card-slide-5.ogg" data-start="11.22" data-duration="0.5" data-volume="0.75" data-track-index="2"></audio>
+      <audio id="sfx-land2" class="clip" src="assets/sfx/drop_002.ogg" data-start="12.02" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev1" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="15.52" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev2" class="clip" src="assets/sfx/impactSoft_medium_003.ogg" data-start="16.02" data-duration="0.14" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev3" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="16.52" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-dev4" class="clip" src="assets/sfx/impactSoft_medium_003.ogg" data-start="17.02" data-duration="0.14" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-flood" class="clip" src="assets/sfx/card-slide-1.ogg" data-start="23.02" data-duration="0.6" data-volume="0.7" data-track-index="2"></audio>
+      <audio id="sfx-slot1" class="clip" src="assets/sfx/click_003.ogg" data-start="27.52" data-duration="0.05" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-slot2" class="clip" src="assets/sfx/click_003.ogg" data-start="28.52" data-duration="0.05" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-slot3" class="clip" src="assets/sfx/click_003.ogg" data-start="29.52" data-duration="0.05" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-price" class="clip" src="assets/sfx/impactSoft_heavy_003.ogg" data-start="31.03" data-duration="0.55" data-volume="0.9" data-track-index="2"></audio>
+      <audio id="sfx-once" class="clip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="31.53" data-duration="0.19" data-volume="0.8" data-track-index="2"></audio>
+      <audio id="sfx-logo" class="clip" src="assets/sfx/impactSoft_heavy_003.ogg" data-start="34.97" data-duration="0.55" data-volume="0.9" data-track-index="2"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

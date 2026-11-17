@@ -1,0 +1,48 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Geist Mono"; src: url("assets/fonts/geist-mono.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1300px 900px at 78% 28%, #0b1a3a 0%, #020617 68%); }
+    #pt-cam { position: absolute; inset: 0; }
+    .phone { position: absolute; padding: 16px; background: #0b0d12; border-radius: 58px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #2a2f3a; }
+    .phone .screen { position: relative; overflow: hidden; border-radius: 44px; background: #0f1725; }
+    .phone .inner { position: absolute; left: 0; top: 0; width: 720px; height: 1500px; transform-origin: 0 0; }
+    .sbar { position: absolute; left: 0; top: 0; width: 720px; height: 60px; background: #0f1725; color: #f1f5f9; font: 600 28px "Geist", sans-serif; padding: 16px 0 0 46px; }
+    .sbar i { position: absolute; top: 24px; height: 16px; border-radius: 3px; background: #f1f5f9; }
+    .feed { position: absolute; left: 0; top: 60px; width: 720px; height: 1488px; }
+    .mask { position: absolute; left: 70px; top: 836px; width: 400px; height: 42px; background: #172033; color: #b7c0d3; font: 400 25px "Roboto", sans-serif; line-height: 42px; padding-left: 5px; }
+    #pt-phone { left: 1180px; top: 59px; }
+    #pt-phone .screen { width: 446px; height: 930px; }
+    #pt-phone .inner { transform: scale(0.62); }
+    #pt-fly { position: absolute; left: 200px; top: 372px; font-family: "Geist Mono", monospace; font-size: 56px; color: #f8fafc; white-space: nowrap; transform-origin: 0 0; }
+    .pt-title { position: absolute; left: 120px; top: 360px; width: 860px; color: #f1f5f9; font-weight: 600; font-size: 120px; line-height: 1.02; letter-spacing: -0.045em; }
+    .pt-title span { display: inline-block; }
+    .grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  </style>
+  <div id="root" data-composition-id="pastetext" data-width="1920" data-height="1080">
+    <div id="pt-cam">
+      <div id="pt-phone" class="phone">
+        <div class="screen">
+          <div class="inner">
+            <div class="sbar">9:41<i style="left: 560px; width: 26px"></i><i style="left: 596px; width: 26px"></i><i style="left: 632px; width: 44px"></i></div>
+            <video id="pt-vid" class="clip feed" src="assets/footage/take_text.mp4" data-start="0" data-duration="3.5" data-media-start="2.97" data-track-index="1" muted playsinline></video>
+            <div class="mask">Last received from Windows PC:</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h1 class="pt-title"><span>Paste</span> <span>on</span> <span>your</span> <span class="grad">phone.</span></h1>
+    <div id="pt-fly">Wi-Fi: blue-otter-2026</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // The copied line arrives from the left and drops into the phone's card as the real app receives it (0.7 s)
+    tl.fromTo("#pt-fly", { x: -1900, y: 0, scale: 1, filter: "blur(16px)", opacity: 1 }, { x: 1256 - 200, y: 633 - 372, scale: 0.332, filter: "blur(0px)", duration: 0.68, ease: "power3.out" }, 0);
+    tl.to("#pt-fly", { opacity: 0, duration: 0.12, ease: "none" }, 0.72);
+    tl.fromTo("#pt-phone", { x: 40 }, { x: 0, duration: 0.6, ease: "expo.out" }, 0);
+    tl.fromTo(".pt-title span", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.067, ease: "power2.out" }, 0.75);
+    // Punch in on the card that just changed
+    tl.fromTo("#pt-cam", { scale: 1 }, { scale: 1.75, duration: 0.6, ease: "power2.inOut", transformOrigin: "1420px 660px" }, 1.15);
+    window.__timelines["pastetext"] = tl;
+  </script>
+</template>

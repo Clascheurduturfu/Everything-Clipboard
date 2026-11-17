@@ -1,0 +1,85 @@
+<template>
+  <style>
+    @font-face { font-family: "Geist"; src: url("assets/fonts/geist.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: "Geist", sans-serif; background: radial-gradient(1500px 900px at 50% 60%, #0b1a3a 0%, #020617 70%); }
+    .phone { position: absolute; padding: 16px; background: #0b0d12; border-radius: 52px; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #2a2f3a; }
+    .phone .screen { position: relative; overflow: hidden; border-radius: 38px; background: #0f1725; }
+    .sbar { position: absolute; left: 0; top: 0; width: 720px; height: 60px; background: #0f1725; color: #f1f5f9; font: 600 28px "Geist", sans-serif; padding: 16px 0 0 46px; }
+    .sbar i { position: absolute; top: 24px; height: 16px; border-radius: 3px; background: #f1f5f9; }
+    #dv-android { left: 700px; top: 250px; }
+    #dv-android .screen { width: 333px; height: 694px; }
+    #dv-android .inner { position: absolute; left: 0; top: 0; width: 720px; height: 1500px; transform-origin: 0 0; transform: scale(0.4624); }
+    #dv-android .inner img { position: absolute; left: 0; top: 60px; width: 720px; height: 1488px; }
+    #dv-iphone { left: 1110px; top: 250px; }
+    #dv-iphone .screen { width: 319px; height: 694px; }
+    #dv-iphone .screen img { width: 100%; height: 100%; display: block; }
+    .shot { position: absolute; border-radius: 16px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.25); }
+    #dv-mac { left: 150px; top: 250px; width: 440px; }
+    #dv-win { left: 110px; top: 690px; width: 400px; border-radius: 10px; }
+    #dv-ipad { left: 1505px; top: 330px; width: 320px; border-radius: 22px; }
+    .lbl { position: absolute; color: #94a3b8; font-size: 30px; font-weight: 500; letter-spacing: -0.01em; }
+    .dv-title { position: absolute; left: 120px; top: 92px; color: #f1f5f9; font-weight: 600; font-size: 88px; line-height: 1; letter-spacing: -0.045em; white-space: nowrap; }
+    .dv-title span { display: inline-block; }
+    .grad { background: linear-gradient(135deg, #60a5fa, #c084fc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #dv-marks { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    #dv-marks rect { fill: rgba(96, 165, 250, 0.1); stroke: #60a5fa; stroke-width: 3; }
+  </style>
+  <div id="root" data-composition-id="devices" data-width="1920" data-height="1080">
+    <h1 class="dv-title"><span>One</span> <span>clipboard.</span> <span class="grad">All</span> <span class="grad">your</span> <span class="grad">devices.</span></h1>
+
+    <img id="dv-mac" class="shot" src="assets/shots/mac.png" alt="ClipSync menu on macOS" />
+    <div id="dv-l-mac" class="lbl" style="left: 150px; top: 608px">macOS</div>
+
+    <img id="dv-win" class="shot" src="assets/shots/windows.png" alt="ClipSync tray menu on Windows" />
+    <div id="dv-l-win" class="lbl" style="left: 110px; top: 980px">Windows</div>
+
+    <div id="dv-android" class="phone">
+      <div class="screen">
+        <div class="inner">
+          <div class="sbar">9:41<i style="left: 560px; width: 26px"></i><i style="left: 596px; width: 26px"></i><i style="left: 632px; width: 44px"></i></div>
+          <img src="assets/shots/phone-top.png" alt="ClipSync on Android" />
+        </div>
+      </div>
+    </div>
+    <div id="dv-l-and" class="lbl" style="left: 700px; top: 990px; width: 365px; text-align: center">Android</div>
+
+    <div id="dv-iphone" class="phone">
+      <div class="screen"><img src="assets/shots/ios.png" alt="ClipSync on iPhone" /></div>
+    </div>
+    <div id="dv-l-iph" class="lbl" style="left: 1110px; top: 990px; width: 351px; text-align: center">iPhone</div>
+
+    <img id="dv-ipad" class="shot" src="assets/shots/ipad.png" alt="ClipSync on iPad" />
+    <div id="dv-l-ipad" class="lbl" style="left: 1505px; top: 712px">iPad</div>
+
+    <svg id="dv-marks" viewBox="0 0 1920 1080">
+      <rect id="dv-m1" x="161" y="329" width="413" height="41" rx="8" />
+      <rect id="dv-m2" x="150" y="719" width="352" height="44" rx="8" />
+      <rect id="dv-m3" x="729" y="376" width="304" height="73" rx="12" />
+      <rect id="dv-m4" x="1152" y="855" width="268" height="54" rx="8" />
+      <rect id="dv-m5" x="1511" y="595" width="305" height="32" rx="6" />
+    </svg>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#dv-android", { opacity: 1, scale: 1.7, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 0);
+    tl.fromTo("#dv-l-and", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.3);
+    tl.fromTo(".dv-title span:nth-child(-n+2)", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.08, ease: "power2.out" }, 0.15);
+    // Each platform lands on a beat, from its own side
+    const land = (sel, lbl, fromX, at) => {
+      tl.fromTo(sel, { opacity: 0, x: fromX, scale: 0.9, filter: "blur(10px)" }, { opacity: 1, x: 0, scale: 1, filter: "blur(0px)", duration: 0.55, ease: "back.out(1.3)" }, at);
+      tl.fromTo(lbl, { opacity: 0 }, { opacity: 1, duration: 0.25 }, at + 0.2);
+    };
+    land("#dv-mac", "#dv-l-mac", -120, 0.48);
+    land("#dv-win", "#dv-l-win", -120, 0.98);
+    land("#dv-iphone", "#dv-l-iph", 120, 1.48);
+    land("#dv-ipad", "#dv-l-ipad", 120, 1.98);
+    tl.fromTo(".dv-title span:nth-child(n+3)", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, stagger: 0.08, ease: "power2.out" }, 2.5);
+    // Outline each device's real "last received" line: every one got a clip from another device
+    ["#dv-m1", "#dv-m2", "#dv-m3", "#dv-m4", "#dv-m5"].forEach((id, i) => {
+      const r = document.querySelector(id);
+      const per = 2 * (+r.getAttribute("width") + +r.getAttribute("height"));
+      tl.fromTo(id, { strokeDasharray: per, strokeDashoffset: per, fillOpacity: 0 }, { strokeDashoffset: 0, fillOpacity: 1, duration: 0.45, ease: "power2.inOut" }, 3.6 + i * 0.6);
+    });
+    window.__timelines["devices"] = tl;
+  </script>
+</template>

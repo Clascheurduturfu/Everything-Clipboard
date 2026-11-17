@@ -15,7 +15,7 @@ class SendClipboardActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (!PrivacyConsent.isGranted(this)) {
+        if (!PrivacyConsent.isGranted(this) || !Account.isPaid(this)) {
             startActivity(Intent(this, MainActivity::class.java))
             finishAndRemoveTask()
             return
