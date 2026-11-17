@@ -1,5 +1,4 @@
 .vercel
-brag/
 
 __pycache__/
 *.pyc
@@ -52,7 +51,7 @@ android-app/privacy/clipsync-logrotate.conf
 android-app/apktool.jar
 android-app/uber-apk-signer-1.3.0.jar
 
-# Promo video/store renders and HyperFrames caches are regenerated locally.
+# HyperFrames caches and raw intermediate renders are regenerated locally;
+# the final promo videos and store images are committed.
 .hyperframes/
-promo/out/
-promo/store/out/
+promo/out/raw/

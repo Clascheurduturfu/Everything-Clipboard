@@ -1,6 +1,6 @@
 # ClipSync 2.0-rc.2 — Play Console Data safety answers
 
-Prepared and saved in Play Console on 29 October 2026 for package `com.clipsync`, version code 7. Public policy: https://everything-clipboard.online/clipsync-privacy.html . This covers the Android app and the inspected ClipSync-operated relay, not the separate concept site/store. Saving the declaration does not mean Google has approved it; see privacy/PLAY_CONSOLE_STATUS.md for submission status.
+Prepared and saved in Play Console on 29 October 2026 for package `com.clipsync`, version code 7. Public policy: https://everything-clipboard.online/clipsync-privacy.html . This covers the Android app and the inspected ClipSync-operated relay, not the separate concept site/store. Saving the declaration does not mean Google has approved it; submission status is kept in the private ClipSync-private records.
 
 ## Overall answers
 

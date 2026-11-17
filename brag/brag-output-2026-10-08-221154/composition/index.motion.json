@@ -1,0 +1,13 @@
+{
+  "duration": 20,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#hook-title", "bySec": 0.8 },
+    { "kind": "before", "a": "#source-device", "b": "#pasted" },
+    { "kind": "before", "a": "#local", "b": "#self-hosted" },
+    { "kind": "before", "a": "#self-hosted", "b": "#hosted" },
+    { "kind": "staysInFrame", "selector": "#hook-phone" },
+    { "kind": "staysInFrame", "selector": "#destination" },
+    { "kind": "staysInFrame", "selector": "#android-proof" },
+    { "kind": "staysInFrame", "selector": "#price" }
+  ]
+}

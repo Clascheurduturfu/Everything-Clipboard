@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Everything Clipboard — We Can't Read Your Clipboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #020617;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #f1f5f9;
+        -webkit-font-smoothing: antialiased;
+      }
+      .mono {
+        font-family: ui-monospace, monospace;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(circle at 42% 30%, #0d1526 0%, #020617 62%);
+      }
+
+      /* ---------- Ambient layer (always on) ---------- */
+      .aura-glow-1 {
+        position: absolute;
+        top: -180px;
+        left: -160px;
+        width: 760px;
+        height: 760px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.13);
+        filter: blur(150px);
+        pointer-events: none;
+      }
+      .aura-glow-2 {
+        position: absolute;
+        bottom: -220px;
+        right: -140px;
+        width: 860px;
+        height: 860px;
+        border-radius: 50%;
+        background: rgba(124, 58, 237, 0.1);
+        filter: blur(170px);
+        pointer-events: none;
+      }
+      .dot-grid {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1.5px, transparent 1.5px);
+        background-size: 54px 54px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      /* ---------- Scene shells ---------- */
+      .scene {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* ---------- Scene 1: the claim ---------- */
+      #s1-label {
+        position: absolute;
+        top: 76px;
+        left: 150px;
+        font-size: 21px;
+        font-weight: 500;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+      .s1-block {
+        position: absolute;
+        left: 150px;
+        top: 392px;
+      }
+      #s1-line1 {
+        font-size: 78px;
+        font-weight: 300;
+        letter-spacing: -0.025em;
+        line-height: 1.12;
+        color: #f8fafc;
+        white-space: nowrap;
+      }
+      #s1-line1 .ch {
+        display: inline-block;
+        opacity: 0;
+      }
+      #s1-line2 {
+        margin-top: 40px;
+        font-size: 42px;
+        font-weight: 300;
+        letter-spacing: -0.01em;
+        color: #94a3b8;
+      }
+
+      /* ---------- Scene 2: the gibberish ---------- */
+      .s2-panel {
+        position: absolute;
+        left: 150px;
+        top: 300px;
+        width: 1180px;
+        padding: 40px 48px;
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+      }
+      .s2-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      #s2-title {
+        font-size: 21px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        color: #94a3b8;
+      }
+      #s2-pill {
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        border-radius: 999px;
+        padding: 7px 20px;
+      }
+      .s2-log {
+        margin-top: 34px;
+        font-size: 25px;
+        line-height: 2.05;
+      }
+      .s2-logline {
+        white-space: nowrap;
+      }
+      .s2-logline .p {
+        color: #64748b;
+        margin-right: 18px;
+      }
+      .s2-logline .k {
+        color: #64748b;
+      }
+      .s2-logline .v {
+        color: #94a3b8;
+      }
+      .s2-logline .cont {
+        margin-left: 43px;
+      }
+      .s2-logline .ok {
+        color: #34d399;
+      }
+      #s2-caption {
+        position: absolute;
+        left: 150px;
+        top: 736px;
+        font-size: 34px;
+        font-weight: 300;
+        letter-spacing: -0.01em;
+        color: #94a3b8;
+      }
+
+      /* ---------- Scene 3: the real tray menu ---------- */
+      .s3-menubar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        background: rgba(8, 12, 22, 0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .s3-trayicon {
+        position: absolute;
+        left: 96px;
+        top: 16px;
+      }
+      #s3-clock {
+        position: absolute;
+        right: 88px;
+        top: 19px;
+        font-size: 24px;
+        font-weight: 400;
+        color: #94a3b8;
+      }
+      #s3-menu {
+        position: absolute;
+        top: 64px;
+        left: 96px;
+        width: 780px;
+        padding: 12px 0;
+        background: rgba(30, 36, 48, 0.94);
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.65);
+      }
+      .s3-row {
+        padding: 10px 30px;
+        font-size: 27px;
+        font-weight: 400;
+        color: #e2e8f0;
+        line-height: 1.3;
+      }
+      #s3-version {
+        font-size: 23px;
+        color: #94a3b8;
+      }
+      .s3-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.09);
+        margin: 6px 22px;
+      }
+      .s3-dim {
+        color: #cbd5e1;
+      }
+      .s3-em {
+        color: #34d399;
+      }
+      .s3-dot {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #10b981;
+        margin-right: 16px;
+        opacity: 0;
+      }
+      #s3-caption {
+        position: absolute;
+        left: 150px;
+        top: 928px;
+        font-size: 34px;
+        font-weight: 300;
+        letter-spacing: -0.01em;
+        color: #94a3b8;
+      }
+
+      /* ---------- Scene 4: the punchline ---------- */
+      .s4-stack {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #s4-price {
+        font-size: 300px;
+        font-weight: 200;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        color: #f8fafc;
+      }
+      #s4-once {
+        margin-top: 14px;
+        font-size: 36px;
+        font-weight: 300;
+        color: #94a3b8;
+      }
+      #s4-identity {
+        margin-top: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .s4-brandrow {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      #s4-wordmark {
+        font-size: 42px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: #f1f5f9;
+      }
+      #s4-platforms {
+        margin-top: 22px;
+        font-size: 20px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        color: #94a3b8;
+      }
+      #s4-domain {
+        margin-top: 12px;
+        font-size: 26px;
+        font-weight: 300;
+        color: #cbd5e1;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="root"
+      data-start="0"
+      data-duration="21"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Music bed: very low deadpan posture, fade-in 0-1.5s, fade-out 18.8-20.9s -->
+      <audio
+        id="bg-music"
+        class="clip"
+        data-start="0"
+        data-duration="21"
+        data-track-index="10"
+        data-volume="0.14"
+        data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0},{"t":1.5,"v":1},{"t":18.8,"v":1},{"t":20.9,"v":0}]}]}'
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+      ></audio>
+
+      <!-- SFX: scene 1 typing (thinned key ticks) -->
+      <audio id="sfx-key-1" class="clip" data-start="0.45" data-duration="0.15" data-track-index="11" data-volume="0.32" src="assets/sfx/keyboard/keypress-004.wav"></audio>
+      <audio id="sfx-key-2" class="clip" data-start="0.80" data-duration="0.15" data-track-index="12" data-volume="0.30" src="assets/sfx/keyboard/keypress-011.wav"></audio>
+      <audio id="sfx-key-3" class="clip" data-start="1.15" data-duration="0.15" data-track-index="13" data-volume="0.30" src="assets/sfx/keyboard/keypress-017.wav"></audio>
+      <audio id="sfx-key-4" class="clip" data-start="1.45" data-duration="0.15" data-track-index="14" data-volume="0.28" src="assets/sfx/keyboard/keypress-031.wav"></audio>
+      <audio id="sfx-key-5" class="clip" data-start="2.65" data-duration="0.15" data-track-index="15" data-volume="0.28" src="assets/sfx/keyboard/keypress-023.wav"></audio>
+
+      <!-- SFX: scene 2 terminal ticks, one per log line -->
+      <audio id="sfx-term-1" class="clip" data-start="5.0" data-duration="0.02" data-track-index="16" data-volume="0.28" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-term-2" class="clip" data-start="5.75" data-duration="0.02" data-track-index="17" data-volume="0.28" src="assets/sfx/interface/click_002.ogg"></audio>
+      <audio id="sfx-term-3" class="clip" data-start="6.5" data-duration="0.02" data-track-index="18" data-volume="0.28" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-term-4" class="clip" data-start="7.25" data-duration="0.02" data-track-index="19" data-volume="0.28" src="assets/sfx/interface/click_002.ogg"></audio>
+
+      <!-- SFX: scene 3 tray drop (10.93) + Last-row highlight ding (12.55) -->
+      <audio id="sfx-thud" class="clip" data-start="10.93" data-duration="0.13" data-track-index="20" data-volume="0.55" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx-ding" class="clip" data-start="12.55" data-duration="0.15" data-track-index="21" data-volume="0.42" src="assets/sfx/interface/bong_001.ogg"></audio>
+
+      <!-- SFX: scene 4 "$3" felt impact (16.38) -->
+      <audio id="sfx-impact" class="clip" data-start="16.38" data-duration="0.55" data-track-index="22" data-volume="0.55" src="assets/sfx/impact/impactSoft_heavy_000.ogg"></audio>
+
+      <!-- Ambient layer -->
+      <div id="glow-1" class="aura-glow-1" data-layout-allow-overflow></div>
+      <div id="glow-2" class="aura-glow-2" data-layout-allow-overflow></div>
+      <div id="dot-grid" class="dot-grid"></div>
+
+      <!-- ============ SCENE 1 — THE CLAIM (0.00-4.00) ============ -->
+      <div id="scene-1" class="scene clip" data-start="0" data-duration="4" data-track-index="1">
+        <div id="s1-label" class="mono">Everything Clipboard — Security Statement</div>
+        <div class="s1-block">
+          <h1 id="s1-line1"><span class="ch">W</span><span class="ch">e</span><span class="ch">&nbsp;</span><span class="ch">c</span><span class="ch">a</span><span class="ch">n</span><span class="ch">&rsquo;</span><span class="ch">t</span><span class="ch">&nbsp;</span><span class="ch">r</span><span class="ch">e</span><span class="ch">a</span><span class="ch">d</span><span class="ch">&nbsp;</span><span class="ch">y</span><span class="ch">o</span><span class="ch">u</span><span class="ch">r</span><span class="ch">&nbsp;</span><span class="ch">c</span><span class="ch">l</span><span class="ch">i</span><span class="ch">p</span><span class="ch">b</span><span class="ch">o</span><span class="ch">a</span><span class="ch">r</span><span class="ch">d</span><span class="ch">.</span></h1>
+          <div id="s1-line2">We checked.</div>
+        </div>
+      </div>
+
+      <!-- ============ SCENE 2 — THE GIBBERISH (4.00-10.50) ============ -->
+      <div id="scene-2" class="scene clip" data-start="4" data-duration="6.5" data-track-index="2">
+        <div id="s2-panel" class="s2-panel">
+          <div class="s2-panel-head">
+            <span id="s2-title" class="mono">Relay Server — Live</span>
+            <span id="s2-pill" class="mono">AES-256-GCM</span>
+          </div>
+          <div class="s2-log mono">
+            <div class="s2-logline" id="s2-l1"><span class="p">&gt;</span><span class="k">room</span>  <span class="v">9f2c…a41b</span></div>
+            <div class="s2-logline" id="s2-l2"><span class="p">&gt;</span><span class="k">payload</span> <span class="v">{"device_name": "cU9xdGV2aWNl…mQ==",</span></div>
+            <div class="s2-logline" id="s2-l3"><span class="cont v">"content": "xJ3fP2vQm9L4hK7n…"}</span></div>
+            <div class="s2-logline" id="s2-l4"><span class="p">&gt;</span><span class="k">forwarded</span> <span class="ok">✓</span></div>
+          </div>
+        </div>
+        <div id="s2-caption">Encrypted on your device. Gibberish everywhere else.</div>
+      </div>
+
+      <!-- ============ SCENE 3 — THE REAL TRAY MENU (10.50-15.85) ============ -->
+      <div id="scene-3" class="scene clip" data-start="10.5" data-duration="5.35" data-track-index="3">
+        <div class="s3-menubar">
+          <div class="s3-trayicon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="6" y="7" width="20" height="21" rx="3.5" stroke="#cbd5e1" stroke-width="2.2"/>
+              <rect x="11.5" y="4.5" width="9" height="6" rx="2" stroke="#cbd5e1" stroke-width="2.2" fill="#020617"/>
+              <path d="M10.5 15.5 H21.5 M10.5 20.5 H18.5" stroke="#cbd5e1" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div id="s3-clock">Wed 9:41 PM</div>
+        </div>
+        <div id="s3-menu">
+          <div class="s3-row" id="s3-version">ClipSync v1.0.2</div>
+          <div class="s3-divider"></div>
+          <div class="s3-row">Status: <span class="s3-em">Connected</span></div>
+          <div class="s3-row" id="s3-last"><span class="s3-dot"></span>Last: <span id="s3-quote">"Hello from android !"</span> from Android Phone</div>
+          <div class="s3-divider"></div>
+          <div class="s3-row s3-dim">Preferences…</div>
+          <div class="s3-row s3-dim">Host Mode: OFF</div>
+          <div class="s3-divider"></div>
+          <div class="s3-row s3-dim">Disconnect</div>
+          <div class="s3-row s3-dim">Quit</div>
+        </div>
+        <div id="s3-caption">Your devices see everything.</div>
+      </div>
+
+      <!-- ============ SCENE 4 — THE PUNCHLINE (15.85-21.00) ============ -->
+      <div id="scene-4" class="scene clip" data-start="15.85" data-duration="5.15" data-track-index="4">
+        <div class="s4-stack">
+          <div id="s4-price">$3</div>
+          <div id="s4-once">Once. No subscriptions.</div>
+          <div id="s4-identity">
+            <div class="s4-brandrow">
+              <svg width="76" height="76" viewBox="0 0 100 100" fill="none">
+                <defs>
+                  <linearGradient id="lg-blue" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#2563eb"/>
+                    <stop offset="1" stop-color="#22d3ee"/>
+                  </linearGradient>
+                  <linearGradient id="lg-green" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#16a34a"/>
+                    <stop offset="1" stop-color="#4ade80"/>
+                  </linearGradient>
+                </defs>
+                <g>
+                  <rect x="4" y="20" width="46" height="60" rx="8" fill="url(#lg-blue)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+                  <rect x="16" y="13" width="22" height="11" rx="4" fill="#0f172a" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+                </g>
+                <g>
+                  <rect x="50" y="28" width="46" height="60" rx="8" fill="url(#lg-green)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+                  <rect x="62" y="21" width="22" height="11" rx="4" fill="#0f172a" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+                </g>
+                <g stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.96">
+                  <path d="M22 46 H82 M82 46 l-11 -8 M82 46 l-11 8"/>
+                  <path d="M78 58 H18 M18 58 l11 -8 M18 58 l11 8"/>
+                </g>
+              </svg>
+              <div id="s4-wordmark">Everything Clipboard</div>
+            </div>
+            <div id="s4-platforms" class="mono">Android · iOS · iPadOS · Windows · macOS</div>
+            <div id="s4-domain">everything-clipboard.online</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------- Ambient layer ----------
+      tl.to("#glow-1", { scale: 1.07, duration: 7, yoyo: true, repeat: 2, ease: "sine.inOut", transformOrigin: "50% 50%" }, 0);
+      tl.to("#glow-2", { scale: 1.05, duration: 10.5, yoyo: true, repeat: 1, ease: "sine.inOut", transformOrigin: "50% 50%" }, 0);
+      tl.fromTo("#dot-grid", { opacity: 0.5 }, { opacity: 0.3, duration: 21, ease: "none" }, 0);
+
+      // ==========================================
+      // SCENE 1 — THE CLAIM (0.00-4.00)
+      // ==========================================
+      tl.to("#scene-1", { opacity: 1, duration: 0.3, ease: "power2.out" }, 0.02);
+      tl.fromTo("#s1-label", { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 0.15);
+      tl.fromTo("#s1-line1 .ch", { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.16, stagger: 0.036, ease: "none" }, 0.32);
+      tl.fromTo("#s1-line2", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 2.6);
+      tl.to("#scene-1", { opacity: 0, duration: 0.3, ease: "power2.in" }, 3.7);
+
+      // ==========================================
+      // SCENE 2 — THE GIBBERISH (4.00-10.50)
+      // ==========================================
+      tl.to("#scene-2", { opacity: 1, duration: 0.35, ease: "power2.out" }, 4.02);
+      // beat-grid: 4.39s panel entrance
+      tl.fromTo("#s2-panel", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 4.39);
+      // log lines print one by one, deadpan cadence (not beat-snapped)
+      tl.fromTo("#s2-l1", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }, 5.0);
+      tl.fromTo("#s2-l2", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }, 5.75);
+      tl.fromTo("#s2-l3", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }, 6.5);
+      tl.fromTo("#s2-l4", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }, 7.25);
+      tl.fromTo("#s2-caption", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 7.75);
+      tl.to("#scene-2", { opacity: 0, duration: 0.3, ease: "power2.in" }, 10.2);
+
+      // ==========================================
+      // SCENE 3 — THE REAL TRAY MENU (10.50-15.85)
+      // ==========================================
+      tl.to("#scene-3", { opacity: 1, duration: 0.3, ease: "power2.out" }, 10.52);
+      // beat-locked: 10.93s strong cue — tray menu drops in one piece
+      tl.fromTo("#s3-menu", { y: -18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 10.93);
+      // beat-grid: 12.55s — the Last row resolves: emerald dot + green wash
+      tl.fromTo("#s3-last .s3-dot", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 12.55);
+      tl.to("#s3-last", { backgroundColor: "rgba(16,185,129,0.12)", duration: 0.35, ease: "power2.out" }, 12.55);
+      tl.to("#s3-quote", { color: "#a7f3d0", duration: 0.35, ease: "power2.out" }, 12.55);
+      tl.fromTo("#s3-caption", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 13.6);
+      tl.to("#scene-3", { opacity: 0, duration: 0.3, ease: "power2.in" }, 15.55);
+
+      // ==========================================
+      // SCENE 4 — THE PUNCHLINE (15.85-21.00)
+      // ==========================================
+      tl.to("#scene-4", { opacity: 1, duration: 0.3, ease: "power2.out" }, 15.87);
+      // beat-grid: 16.38s — "$3" fast-in, then dead still
+      tl.fromTo("#s4-price", { scale: 1.06, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "power4.out" }, 16.38);
+      // beat-locked: 17.47s strong cue
+      tl.fromTo("#s4-once", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out" }, 17.47);
+      // beat-locked: 18.56s strong cue — identity lockup, holds to end
+      tl.fromTo("#s4-identity", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 18.56);
+
+      window.__timelines["root"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

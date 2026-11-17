@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <title>Everything Clipboard - Brag Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        background: #020617; /* slate-950 */
+        color: #f1f5f9; /* slate-100 */
+        font-family: 'Geist', system-ui, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      
+      /* Background Aura Blobs */
+      .aura-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.6;
+        will-change: transform, opacity;
+      }
+      #blob1 {
+        width: 600px;
+        height: 600px;
+        background: #2563eb;
+        top: -100px;
+        left: -100px;
+      }
+      #blob2 {
+        width: 800px;
+        height: 800px;
+        background: #7c3aed;
+        bottom: -200px;
+        right: -100px;
+      }
+      
+      /* Typography */
+      .font-mono {
+        font-family: 'Geist Mono', monospace;
+      }
+      .text-gradient {
+        background: linear-gradient(135deg, #60a5fa, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      /* Glass Card */
+      .glass-card {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
+        border-radius: 2rem;
+      }
+      
+      /* Scene 1 Elements */
+      #scene1-title, #scene1-subtitle {
+        font-size: 80px;
+        font-weight: 300;
+        margin: 0;
+        text-align: center;
+        line-height: 1.1;
+      }
+      #scene1-subtitle {
+        font-weight: 500;
+        margin-top: 20px;
+      }
+      
+      /* Scene 2 Elements */
+      #scene2-title {
+        position: absolute;
+        top: 80px;
+        font-size: 48px;
+        font-weight: 300;
+        text-align: center;
+        width: 100%;
+      }
+      .devices-container {
+        display: flex;
+        gap: 200px;
+        align-items: center;
+      }
+      .device-card {
+        width: 300px;
+        height: 380px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .os-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+      }
+      .bubble {
+        position: absolute;
+        top: 60%;
+        background: #f8fafc;
+        color: #0f172a;
+        padding: 12px 24px;
+        border-radius: 9999px;
+        font-weight: 500;
+        font-size: 20px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      }
+      #mac-bubble {
+        left: -30px;
+      }
+      #win-bubble {
+        right: -30px;
+      }
+      #data-packet {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #60a5fa;
+        box-shadow: 0 0 30px 10px rgba(96, 165, 250, 0.6);
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+      
+      /* Scene 3 Elements */
+      #scene3-title {
+        position: absolute;
+        top: 80px;
+        font-size: 48px;
+        font-weight: 300;
+        text-align: center;
+        width: 100%;
+      }
+      .shield-card {
+        width: 400px;
+        height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+      }
+      .shield-icon {
+        font-size: 100px;
+        color: #10b981; /* emerald-500 */
+      }
+      .tag {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34d399;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      
+      /* Scene 4 Elements */
+      #scene4-title {
+        font-size: 72px;
+        font-weight: 600;
+        text-align: center;
+        z-index: 20;
+      }
+      .orbit-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+      .orbit-icon {
+        position: absolute;
+        font-size: 60px;
+        background: #1e293b;
+        width: 100px;
+        height: 100px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255,255,255,0.1);
+        left: 50%;
+        top: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1280"
+      data-height="720"
+      data-duration="18"
+    >
+      <!-- Background (Persists across scenes) -->
+      <div id="bg-blobs" class="clip" data-start="0" data-duration="18" data-layout-allow-overflow="true">
+        <div id="blob1" class="aura-blob"></div>
+        <div id="blob2" class="aura-blob"></div>
+      </div>
+      
+      <!-- Audio Track -->
+      <!-- We will assume ambient.mp3 is provided. The instruction said to use a suitable default or ambient.mp3 -->
+      
+      <!-- Scene 1: Hook (0-4s) -->
+      <section id="scene1" class="clip" data-start="0" data-duration="4">
+        <div>
+          <h1 id="scene1-title">One Clipboard.</h1>
+          <h1 id="scene1-subtitle" class="text-gradient">All Your Devices.</h1>
+        </div>
+      </section>
+      
+      <!-- Scene 2: Transfer Flow (4-10s) -->
+      <section id="scene2" class="clip" data-start="4" data-duration="6">
+        <h2 id="scene2-title">Sync at the speed of thought.</h2>
+        <div class="devices-container">
+          <div id="mac-card" class="glass-card device-card">
+            <div class="os-icon">🍎</div>
+            <div class="font-mono" style="color: #ffffff;" data-layout-allow-occlusion="true">MacOS</div>
+            <div id="mac-bubble" class="bubble" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">"Hello World"</div>
+          </div>
+          
+          <div id="data-packet"></div>
+          
+          <div id="win-card" class="glass-card device-card">
+            <div class="os-icon">🪟</div>
+            <div class="font-mono" style="color: #ffffff;" data-layout-allow-occlusion="true">Windows</div>
+            <div id="win-bubble" class="bubble" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">Ready to Paste</div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Scene 3: Privacy (10-14s) -->
+      <section id="scene3" class="clip" data-start="10" data-duration="4">
+        <h2 id="scene3-title">End-to-End Encrypted.</h2>
+        <div id="shield-card" class="glass-card shield-card">
+          <div class="shield-icon">🛡️</div>
+          <div id="zk-tag" class="tag">Zero-Knowledge</div>
+        </div>
+      </section>
+      
+      <!-- Scene 4: Outro (14-18s) -->
+      <section id="scene4" class="clip" data-start="14" data-duration="4">
+        <div class="orbit-container">
+          <div id="orbit-mac" class="orbit-icon" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">🍎</div>
+          <div id="orbit-win" class="orbit-icon" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">🪟</div>
+          <div id="orbit-ios" class="orbit-icon" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">📱</div>
+          <div id="orbit-and" class="orbit-icon" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">🤖</div>
+        </div>
+        <h1 id="scene4-title" class="text-gradient" data-layout-allow-overlap="true" data-layout-allow-occlusion="true">Everything Clipboard</h1>
+      </section>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      
+      // Background Blobs animation (continuous)
+      tl.to("#blob1", { x: 50, y: 30, duration: 9, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.to("#blob2", { x: -40, y: -50, duration: 9, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      
+      // Scene 1: 0 to 4s
+      tl.fromTo("#scene1-title", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.5);
+      tl.fromTo("#scene1-subtitle", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 1.3);
+      tl.to(["#scene1-title", "#scene1-subtitle"], { y: -40, opacity: 0, duration: 0.5, ease: "power2.in" }, 3.5);
+      
+      // Scene 2: 4 to 10s
+      tl.fromTo("#scene2-title", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 4.2);
+      
+      // Enter Mac and Win cards
+      tl.fromTo("#mac-card", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: "back.out(1.2)" }, 4.5);
+      tl.fromTo("#win-card", { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: "back.out(1.2)" }, 4.7);
+      
+      // Copy on Mac
+      tl.fromTo("#mac-bubble", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" }, 5.5);
+      
+      // Transfer data packet
+      // Wait, let's reset data-packet
+      tl.set("#data-packet", { opacity: 0, scale: 0 }, 0);
+      tl.to("#data-packet", { opacity: 1, scale: 1, duration: 0.2 }, 6.2);
+      tl.fromTo("#data-packet", { x: -150 }, { x: 150, duration: 0.6, ease: "power1.inOut" }, 6.3);
+      tl.to("#data-packet", { opacity: 0, scale: 0, duration: 0.2 }, 6.9);
+      
+      // Paste on Windows
+      tl.fromTo("#win-bubble", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" }, 7.1);
+      
+      // Exit Scene 2
+      tl.to("#scene2", { opacity: 0, duration: 0.5 }, 9.5);
+      
+      // Scene 3: 10 to 14s
+      tl.fromTo("#scene3-title", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }, 10.2);
+      tl.fromTo("#shield-card", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 10.5);
+      
+      // Slide in tag
+      tl.fromTo("#zk-tag", { x: -50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: "back.out(1.2)" }, 11.3);
+      
+      // Exit Scene 3
+      tl.to("#scene3", { opacity: 0, duration: 0.5 }, 13.5);
+      
+      // Scene 4: 14 to 18s
+      // Orbit icons start positions (using percentages via GSAP)
+      tl.set("#orbit-mac", { xPercent: -50, yPercent: -50 }, 0);
+      tl.set("#orbit-win", { xPercent: -50, yPercent: -50 }, 0);
+      tl.set("#orbit-ios", { xPercent: -50, yPercent: -50 }, 0);
+      tl.set("#orbit-and", { xPercent: -50, yPercent: -50 }, 0);
+      
+      const r = 250;
+      tl.fromTo("#orbit-mac", { x: -r, y: 0, opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)" }, 14.2);
+      tl.fromTo("#orbit-win", { x: r, y: 0, opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)" }, 14.3);
+      tl.fromTo("#orbit-ios", { x: 0, y: -r, opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)" }, 14.4);
+      tl.fromTo("#orbit-and", { x: 0, y: r, opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)" }, 14.5);
+      
+      // Gentle orbit rotation
+      tl.to("#orbit-mac", { x: -r * 0.9, y: -30, duration: 3, ease: "sine.inOut" }, 15);
+      tl.to("#orbit-win", { x: r * 0.9, y: 30, duration: 3, ease: "sine.inOut" }, 15);
+      tl.to("#orbit-ios", { x: 30, y: -r * 0.9, duration: 3, ease: "sine.inOut" }, 15);
+      tl.to("#orbit-and", { x: -30, y: r * 0.9, duration: 3, ease: "sine.inOut" }, 15);
+      
+      tl.fromTo("#scene4-title", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 1, ease: "power3.out" }, 14.8);
+      
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

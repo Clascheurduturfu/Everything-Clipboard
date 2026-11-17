@@ -1,0 +1,1 @@
+I made Everything Clipboard. It copies on one device and pastes on all your others — through a relay server that only ever sees AES-256-GCM gibberish. $3, once: https://everything-clipboard.online

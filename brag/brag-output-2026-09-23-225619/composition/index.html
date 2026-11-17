@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Everything Clipboard - One Clipboard. All Your Devices.</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/music/audio-data.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #020617; }
+      body { color: #f1f5f9; font-family: Arial, "Segoe UI", sans-serif; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #020617; isolation: isolate; }
+      .backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+      .glow { position: absolute; border-radius: 50%; filter: blur(100px); opacity: .42; }
+      .glow-a { width: 650px; height: 650px; left: 390px; top: 190px; background: rgba(37, 99, 235, .34); }
+      .glow-b { width: 720px; height: 720px; right: 50px; bottom: 45px; background: rgba(124, 58, 237, .27); }
+      .audio-glow { position: absolute; width: 690px; height: 690px; right: 550px; top: 155px; border-radius: 50%; background: radial-gradient(circle, rgba(96,165,250,.34), rgba(37,99,235,0) 70%); opacity: .12; }
+      .scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .eyebrow { color: #93c5fd; font: 600 22px/1.2 "Courier New", monospace; letter-spacing: .16em; text-transform: uppercase; }
+      .hero-copy { position: absolute; left: 170px; top: 315px; width: 780px; }
+      .hero-line { display: block; font-size: 92px; font-weight: 500; line-height: 1.04; letter-spacing: -.065em; white-space: nowrap; }
+      .hero-line.accent { margin-top: 12px; color: #93c5fd; }
+      .intro-label { position: absolute; left: 176px; top: 225px; }
+      .intro-phone { position: absolute; right: 168px; top: 116px; width: 298px; height: 648px; z-index: 3; }
+      .intro-mac { position: absolute; right: 300px; top: 416px; width: 680px; height: 532px; z-index: 2; }
+      .glass-frame { overflow: hidden; border: 2px solid rgba(226,232,240,.26); border-radius: 36px; background: #0f172a; box-shadow: 0 36px 100px rgba(0,0,0,.48), 0 0 0 1px rgba(96,165,250,.12); }
+      .glass-frame.phone { border-radius: 48px; }
+      .glass-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .phone-copy { position: absolute; left: 220px; top: 335px; width: 680px; }
+      .scene-title { margin-top: 28px; color: #f1f5f9; font-size: 74px; font-weight: 500; letter-spacing: -.055em; line-height: 1.06; }
+      .scene-detail { margin-top: 24px; color: #cbd5e1; font-size: 34px; font-weight: 400; line-height: 1.35; }
+      .ios-stage { position: absolute; right: 270px; top: 78px; width: 428px; height: 930px; }
+      .ios-stage .phone { width: 100%; height: 100%; border-radius: 54px; }
+      .focus-outline { position: absolute; z-index: 2; left: 5%; width: 90%; border: 2px solid rgba(52,211,153,.72); border-radius: 18px; background: rgba(52,211,153,.05); box-shadow: 0 0 24px rgba(52,211,153,.18); opacity: 0; pointer-events: none; }
+      #ios-connected-outline { top: 18.5%; height: 8.5%; }
+      #ios-clip-outline { top: 82.5%; height: 13%; }
+      .stage-label { display: inline-flex; align-items: center; gap: 12px; margin-top: 40px; color: #a7f3d0; font: 600 22px/1.2 "Courier New", monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .status-dot { width: 13px; height: 13px; border-radius: 50%; background: #34d399; box-shadow: 0 0 20px rgba(52,211,153,.55); }
+      .mac-copy { position: absolute; left: 210px; top: 390px; width: 620px; }
+      .mac-stage { position: absolute; right: 165px; top: 190px; width: 800px; height: 625px; }
+      .mac-stage .glass-frame { width: 100%; height: 100%; border-radius: 28px; }
+      .mac-stage .glass-frame img { object-fit: cover; }
+      #mac-last-outline { position: absolute; z-index: 2; left: 6%; top: 24%; width: 88%; height: 10%; border: 2px solid rgba(147,197,253,.76); border-radius: 12px; background: rgba(96,165,250,.07); box-shadow: 0 0 20px rgba(96,165,250,.18); opacity: 0; pointer-events: none; }
+      .mac-caption { position: absolute; left: 210px; bottom: 175px; color: #93c5fd; font-size: 27px; letter-spacing: .01em; }
+      .outro-bar { position: absolute; left: 112px; right: 112px; bottom: 48px; height: 168px; display: flex; align-items: center; gap: 30px; padding: 24px 42px; border: 1px solid rgba(148,163,184,.34); border-radius: 32px; background: rgba(15,23,42,.88); box-shadow: 0 24px 70px rgba(0,0,0,.4); }
+      .brand-logo { width: 78px; height: 78px; object-fit: contain; }
+      .outro-brand { min-width: 0; }
+      .outro-name { color: #f8fafc; font-size: 42px; font-weight: 600; letter-spacing: -.035em; }
+      .outro-tagline { margin-top: 5px; color: #cbd5e1; font-size: 25px; }
+      .platforms { margin-top: 12px; color: #94a3b8; font: 600 17px/1.2 "Courier New", monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .price-block { margin-left: auto; padding-left: 36px; border-left: 1px solid rgba(148,163,184,.3); text-align: right; }
+      .price { color: #bfdbfe; font-size: 65px; font-weight: 500; line-height: 1; letter-spacing: -.055em; }
+      .price-note { margin-top: 8px; color: #cbd5e1; font-size: 21px; }
+      .corner-mark { position: absolute; right: 115px; top: 66px; color: rgba(147,197,253,.75); font: 600 17px/1.2 "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-at0g" id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-qnnn" class="backdrop" aria-hidden="true">
+        <div data-hf-id="hf-7mr2" class="glow glow-a" id="ambient-glow-a"></div>
+        <div data-hf-id="hf-eppm" class="glow glow-b" id="ambient-glow-b"></div>
+        <div data-hf-id="hf-j2m6" class="audio-glow" id="audio-reactive-glow"></div>
+      </div>
+
+      <section data-hf-id="hf-6i1n" id="scene-intro" class="scene clip" data-start="0" data-duration="3.2" data-track-index="1">
+        <div data-hf-id="hf-ifvo" class="intro-label eyebrow" id="intro-label">EVERYTHING CLIPBOARD</div>
+        <div data-hf-id="hf-jloi" class="hero-copy">
+          <span data-hf-id="hf-94qa" class="hero-line" id="hero-line-one">One Clipboard.</span>
+          <span data-hf-id="hf-ohy3" class="hero-line accent" id="hero-line-two">All Your Devices.</span>
+        </div>
+        <div data-hf-id="hf-9xl6" class="intro-mac" id="intro-mac">
+          <div data-hf-id="hf-yicg" class="glass-frame"><img data-hf-id="hf-v3nk" src="assets/images/macos-app.png" alt="ClipSync macOS tray menu"></div>
+        </div>
+        <div data-hf-id="hf-3j40" class="intro-phone" id="intro-phone">
+          <div data-hf-id="hf-94f8" class="glass-frame phone"><img data-hf-id="hf-57bk" src="assets/images/ios-app.png" alt="ClipSync iOS Connected screen"></div>
+        </div>
+      </section>
+
+      <section data-hf-id="hf-50ht" id="scene-phone" class="scene clip" data-start="3.2" data-duration="5" data-track-index="2">
+        <div data-hf-id="hf-55h6" class="phone-copy" id="phone-copy">
+          <div data-hf-id="hf-eqho" class="eyebrow">CONNECTED ON IOS</div>
+          <h2 data-hf-id="hf-3uo1" class="scene-title">A new clip arrives.</h2>
+          <p data-hf-id="hf-y2ly" class="scene-detail">The same text is ready in your clipboard.</p>
+          <div data-hf-id="hf-9efa" class="stage-label"><span data-hf-id="hf-i0ip" class="status-dot"></span> Connected</div>
+        </div>
+        <div data-hf-id="hf-vm2q" class="ios-stage" id="ios-stage">
+          <div data-hf-id="hf-kaxo" class="glass-frame phone"><img data-hf-id="hf-27of" src="assets/images/ios-app.png" alt="ClipSync iOS app with Connected status and a received clipboard item"></div>
+          <div data-hf-id="hf-9635" class="focus-outline" id="ios-connected-outline"></div>
+          <div data-hf-id="hf-u9bg" class="focus-outline" id="ios-clip-outline"></div>
+        </div>
+      </section>
+
+      <section data-hf-id="hf-9r2d" id="scene-mac" class="scene clip" data-start="8.2" data-duration="6" data-track-index="3">
+        <div data-hf-id="hf-r4rm" class="mac-copy" id="mac-copy">
+          <div data-hf-id="hf-s1y9" class="eyebrow">THEN, ON YOUR MAC</div>
+          <h2 data-hf-id="hf-6z1b" class="scene-title">Ready to paste.</h2>
+          <p data-hf-id="hf-nlap" class="scene-detail">One update. Across your devices.</p>
+        </div>
+        <div data-hf-id="hf-9kxy" class="mac-stage" id="mac-stage">
+          <div data-hf-id="hf-is7s" class="glass-frame"><img data-hf-id="hf-zflw" src="assets/images/macos-app.png" alt="ClipSync macOS tray menu showing the latest clipboard item"></div>
+          <div data-hf-id="hf-sy0m" id="mac-last-outline"></div>
+        </div>
+        <div data-hf-id="hf-53uu" class="mac-caption" id="mac-caption">“Hello from android !” — Android Phone</div>
+      </section>
+
+      <div data-hf-id="hf-newo" id="device-splay" data-composition-id="multi-device-splay" data-composition-src="compositions/components/multi-device-splay.html" data-start="14.2" data-duration="5.8" data-track-index="4" data-width="1920" data-height="1080"></div>
+      <section data-hf-id="hf-ncj9" id="scene-outro" class="scene clip" data-start="14.2" data-duration="5.8" data-track-index="5">
+        <div data-hf-id="hf-es6b" class="corner-mark">COPY HERE · PASTE ANYWHERE</div>
+        <div data-hf-id="hf-n0xs" class="outro-bar" id="outro-bar">
+          <img data-hf-id="hf-8tag" class="brand-logo" id="brand-logo" src="assets/images/logo.png" alt="Everything Clipboard logo">
+          <div data-hf-id="hf-nz55" class="outro-brand">
+            <div data-hf-id="hf-uvtc" class="outro-name">Everything Clipboard</div>
+            <div data-hf-id="hf-idn7" class="outro-tagline">Copy here. Paste anywhere.</div>
+            <div data-hf-id="hf-3oaz" class="platforms">Android · iOS · Windows · macOS</div>
+          </div>
+          <div data-hf-id="hf-f423" class="price-block">
+            <div data-hf-id="hf-t2pi" class="price">$3</div>
+            <div data-hf-id="hf-w4vs" class="price-note">One-time payment</div>
+          </div>
+        </div>
+      </section>
+
+      <audio data-hf-id="hf-yk30" id="music-bed" src="assets/music/happy-beats-business-moves-vol-11-by-ende-dot-app.mp3" data-start="0" data-duration="20" data-track-index="10" data-volume="0.22" data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0},{&quot;t&quot;:0.8,&quot;v&quot;:1},{&quot;t&quot;:19,&quot;v&quot;:1},{&quot;t&quot;:20,&quot;v&quot;:0}]}]}"></audio>
+      <audio data-hf-id="hf-nllq" id="phone-tap" src="assets/sfx/interface/click_003.ogg" data-start="5.8" data-duration="0.01" data-track-index="11" data-volume="0.55"></audio>
+      <audio data-hf-id="hf-42s3" id="desktop-arrival" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="9.1" data-duration="0.19" data-track-index="12" data-volume="0.38"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Ambient brand warmth, one finite breath over the complete film.
+      tl.to("#ambient-glow-a", { x: 34, y: -22, scale: 1.08, duration: 10, ease: "sine.inOut" }, 0);
+      tl.to("#ambient-glow-a", { x: 0, y: 0, scale: 1, duration: 10, ease: "sine.inOut" }, 10);
+      tl.to("#ambient-glow-b", { x: -28, y: -18, scale: 1.06, duration: 10, ease: "sine.inOut" }, 0);
+      tl.to("#ambient-glow-b", { x: 0, y: 0, scale: 1, duration: 10, ease: "sine.inOut" }, 10);
+
+      // Audio-reactive warmth uses pre-extracted, seek-safe per-frame energy.
+      if (window.AUDIO_DATA && window.AUDIO_DATA.frames) {
+        const reactiveGlow = document.getElementById("audio-reactive-glow");
+        const reactiveFrameCount = Math.min(600, window.AUDIO_DATA.frames.length);
+        for (let frameIndex = 0; frameIndex < reactiveFrameCount; frameIndex += 1) {
+          const bands = window.AUDIO_DATA.frames[frameIndex].bands || [];
+          const energy = ((bands[0] || 0) + (bands[5] || 0)) / 2;
+          tl.call(
+            (function (level) {
+              return function () {
+                reactiveGlow.style.opacity = (0.12 + level * 0.08).toFixed(3);
+                reactiveGlow.style.transform = "scale(" + (1 + level * 0.06).toFixed(3) + ")";
+              };
+            })(energy),
+            [],
+            frameIndex / 30,
+          );
+        }
+      }
+
+      tl.fromTo("#intro-label", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" }, 0.16);
+      tl.fromTo("#hero-line-one", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.62, ease: "power3.out" }, 0.28);
+      // beat-locked: 1.60s - second headline lands on the bundled strong cue.
+      tl.fromTo("#hero-line-two", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.62, ease: "power3.out" }, 1.60);
+      tl.fromTo("#intro-mac", { opacity: 0, x: 42, y: 24, scale: 0.97 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.38);
+      tl.fromTo("#intro-phone", { opacity: 0, y: 54, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.72);
+
+      tl.fromTo("#phone-copy", { opacity: 0, x: -35 }, { opacity: 1, x: 0, duration: 0.65, ease: "power3.out" }, 3.38);
+      // beat-locked: 3.70s - actual connected iPhone UI settles on the cue.
+      tl.fromTo("#ios-stage", { opacity: 0, x: 36, scale: 0.98 }, { opacity: 1, x: 0, scale: 1, duration: 0.7, ease: "power3.out" }, 3.70);
+      tl.fromTo("#ios-connected-outline", { opacity: 0, scale: 0.985 }, { opacity: 0.82, scale: 1, duration: 0.3, ease: "power2.out" }, 4.68);
+      tl.to("#ios-connected-outline", { opacity: 0, duration: 0.22, ease: "power1.out" }, 5.05);
+      tl.fromTo("#ios-clip-outline", { opacity: 0, scale: 0.985 }, { opacity: 0.82, scale: 1, duration: 0.3, ease: "power2.out" }, 5.18);
+
+      tl.fromTo("#mac-copy", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.65, ease: "power3.out" }, 8.32);
+      // beat-locked: 8.96s - the desktop menu resolves on the bundled strong cue.
+      tl.fromTo("#mac-stage", { opacity: 0, x: 35, scale: 0.985 }, { opacity: 1, x: 0, scale: 1, duration: 0.62, ease: "power3.out" }, 8.96);
+      tl.fromTo("#mac-last-outline", { opacity: 0, scale: 0.985 }, { opacity: 0.78, scale: 1, duration: 0.34, ease: "power2.out" }, 10.8);
+      tl.fromTo("#mac-caption", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 10.0);
+
+      tl.fromTo("#outro-bar", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.65, ease: "power3.out" }, 16.9);
+      // beat-locked: 17.91s - closing brand and one-time price.
+      tl.fromTo("#brand-logo", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, 17.91);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

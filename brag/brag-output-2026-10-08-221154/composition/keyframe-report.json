@@ -1,0 +1,196 @@
+{
+  "project": "composition",
+  "runtime": "all",
+  "compositions": [
+    {
+      "composition": "index.html",
+      "source": "index.html",
+      "tweens": [
+        {
+          "id": "#packet-fromTo-4750",
+          "target": "#packet",
+          "method": "fromTo",
+          "start": 4.75,
+          "duration": 0.2,
+          "end": 4.95,
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 4.75,
+              "properties": {
+                "opacity": 0,
+                "x": -15,
+                "scale": 0.8
+              }
+            },
+            {
+              "pct": 100,
+              "time": 4.95,
+              "properties": {
+                "opacity": 1,
+                "x": 0,
+                "scale": 1
+              }
+            }
+          ],
+          "path": [
+            {
+              "x": -15,
+              "y": 0
+            },
+            {
+              "x": 0,
+              "y": 0
+            }
+          ]
+        },
+        {
+          "id": "#packet-to-5080-position",
+          "target": "#packet",
+          "method": "to",
+          "group": "position",
+          "start": 5.08,
+          "duration": 0.65,
+          "end": 5.73,
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 5.08,
+              "properties": {
+                "x": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 5.73,
+              "properties": {
+                "x": 138
+              }
+            }
+          ],
+          "path": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 138,
+              "y": 0
+            }
+          ]
+        },
+        {
+          "id": "#packet-to-5730",
+          "target": "#packet",
+          "method": "to",
+          "start": 5.73,
+          "duration": 0.16,
+          "end": 5.89,
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 5.73,
+              "properties": {
+                "opacity": 1,
+                "scale": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 5.89,
+              "properties": {
+                "opacity": 0,
+                "scale": 0.7
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [
+        {
+          "target": "#packet",
+          "strokes": [
+            {
+              "id": "#packet-fromTo-4750",
+              "start": 4.75,
+              "end": 4.95,
+              "keyframes": [
+                {
+                  "pct": 0,
+                  "time": 4.75,
+                  "properties": {
+                    "opacity": 0,
+                    "x": -15,
+                    "scale": 0.8
+                  }
+                },
+                {
+                  "pct": 100,
+                  "time": 4.95,
+                  "properties": {
+                    "opacity": 1,
+                    "x": 0,
+                    "scale": 1
+                  }
+                }
+              ],
+              "points": [
+                {
+                  "x": -15,
+                  "y": 0
+                },
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "id": "#packet-to-5080-position",
+              "start": 5.08,
+              "end": 5.73,
+              "keyframes": [
+                {
+                  "pct": 0,
+                  "time": 5.08,
+                  "properties": {
+                    "x": 0
+                  }
+                },
+                {
+                  "pct": 100,
+                  "time": 5.73,
+                  "properties": {
+                    "x": 138
+                  }
+                }
+              ],
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 138,
+                  "y": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cssKeyframes": [],
+      "anime": []
+    }
+  ],
+  "_meta": {
+    "version": "0.8.142",
+    "latestVersion": "0.8.142",
+    "updateAvailable": false
+  }
+}
+

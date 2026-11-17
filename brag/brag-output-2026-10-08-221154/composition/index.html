@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>Everything Clipboard — Copy here. Paste there.</title>
+  <script src="assets/gsap.min.js"></script>
+  <script src="assets/music/audio-data.js"></script>
+  <style>
+    @font-face { font-family: Geist; src: url('assets/fonts/geist.woff2') format('woff2'); font-weight: 100 900; }
+    @font-face { font-family: GeistMono; src: url('assets/fonts/geist-mono.woff2') format('woff2'); font-weight: 100 900; }
+    :root { --bg:#020617; --fg:#f1f5f9; --muted:#94a3b8; --blue:#60a5fa; --violet:#c084fc; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family:Geist,sans-serif; }
+    #root { width:100%; height:100%; position:relative; overflow:hidden; }
+    .clip,.scene-inner { position:absolute; inset:0; }
+    h1,h2,p { margin:0; }
+    .backlight { position:absolute; width:1100px; height:1000px; right:-160px; top:60px; background:radial-gradient(ellipse,rgba(37,99,235,.29),rgba(37,99,235,.08) 45%,transparent 70%); }
+    .light-violet { left:-330px; top:460px; background:radial-gradient(ellipse,rgba(124,58,237,.18),transparent 65%); }
+    .guide { position:absolute; left:110px; right:110px; height:2px; background:#233352; }
+    .guide-top { top:163px; }
+    .guide-bottom { bottom:112px; }
+    .brand { position:absolute; top:79px; left:110px; display:flex; align-items:center; gap:18px; font-size:27px; font-weight:600; }
+    .brand img { width:44px; height:44px; object-fit:contain; }
+    .eyebrow { position:absolute; right:112px; top:95px; font-family:GeistMono,monospace; color:var(--muted); font-size:22px; letter-spacing:.10em; }
+    .footer { position:absolute; left:110px; bottom:58px; display:flex; align-items:center; gap:18px; color:var(--muted); font-size:23px; }
+    .dot { width:9px; height:9px; border-radius:50%; background:var(--blue); }
+    .chapter { position:absolute; right:110px; bottom:58px; font-family:GeistMono,monospace; font-size:22px; color:var(--muted); }
+    .headline { position:absolute; left:110px; top:248px; width:1120px; font-size:138px; font-weight:560; line-height:1.01; letter-spacing:-.055em; }
+    .hf-lines { display:grid; gap:8px; }
+    .hf-lines > span { display:block; transform:translate(var(--hf-line-x,0px),var(--hf-line-y,0px)); }
+    .blue { color:var(--blue); }
+    .violet { color:var(--violet); }
+    .phone { position:absolute; border:3px solid #526789; padding:12px; border-radius:46px; background:#0c1425; box-shadow:0 26px 80px #01030b; }
+    .phone-screen { height:100%; border-radius:32px; background:#16233a; overflow:hidden; position:relative; }
+    .phone-top { padding:30px 30px 25px; border-bottom:2px solid #36455e; display:flex; align-items:center; justify-content:space-between; font-size:23px; color:#cbd5e1; }
+    .phone-top b { font-weight:600; }
+    .note { margin:35px 30px; }
+    .note-label { font-family:GeistMono,monospace; font-size:20px; color:#94a3b8; letter-spacing:.06em; }
+    .note-text { margin-top:28px; font-size:38px; line-height:1.25; font-weight:500; letter-spacing:-.025em; }
+    .copy-btn { margin:40px 30px 0; padding:20px; text-align:center; font-size:26px; font-weight:600; border-radius:16px; background:var(--blue); color:#071122; }
+    .confirm { color:#bfdbfe; font-size:23px; text-align:center; margin-top:26px; }
+    .hook-phone { left:1360px; top:255px; width:400px; height:615px; }
+    .hook-sub { position:absolute; left:115px; top:772px; font-size:31px; line-height:1.4; color:#cbd5e1; }
+    .flow-title { top:218px; width:1680px; font-size:91px; line-height:1.06; }
+    .source-device { left:165px; top:475px; width:425px; height:420px; border-radius:32px; }
+    .source-device .phone-screen { border-radius:20px; }
+    .source-device .phone-top { padding:21px 24px; }
+    .source-device .note { margin:24px; }
+    .source-device .note-text { margin-top:20px; font-size:33px; }
+    .source-device .copy-btn { margin:26px 24px 0; padding:14px; font-size:24px; }
+    .desktop { position:absolute; left:940px; top:475px; width:825px; height:420px; border:3px solid #526789; border-radius:24px; background:#121e34; box-shadow:0 24px 80px #01030b; overflow:hidden; }
+    .window-bar { height:62px; border-bottom:2px solid #344762; display:flex; align-items:center; padding:0 25px; gap:12px; font-size:23px; color:#cbd5e1; }
+    .window-dots { display:flex; gap:8px; margin-right:26px; }
+    .window-dots i { width:10px; height:10px; border-radius:50%; background:#94a3b8; }
+    .document { padding:34px 38px; }
+    .paste-button { position:absolute; right:34px; top:92px; font-size:22px; color:#071122; background:#c084fc; padding:12px 24px; border-radius:12px; font-weight:600; }
+    .document-label { color:#94a3b8; font-family:GeistMono,monospace; font-size:22px; }
+    .pasted { margin-top:25px; font-size:42px; font-weight:500; }
+    .tray { position:absolute; left:38px; right:38px; bottom:27px; border-top:2px solid #344762; padding-top:19px; font-size:22px; color:#cbd5e1; display:flex; flex-direction:column; gap:7px; }
+    .tray-status { color:#bfdbfe; }
+    .connector { position:absolute; left:632px; top:678px; width:263px; height:3px; background:#40547e; transform-origin:left center; }
+    .packet { position:absolute; left:665px; top:648px; width:65px; height:65px; border:2px solid #60a5fa; border-radius:16px; background:#182d52; display:grid; place-items:center; }
+    .packet svg { width:31px; height:31px; }
+    .device-label { position:absolute; top:914px; font-family:GeistMono,monospace; font-size:22px; color:#94a3b8; }
+    .source-label { left:165px; }
+    .dest-label { left:940px; }
+    .privacy-title { left:110px; top:264px; width:865px; font-size:111px; line-height:1.06; }
+    .encryption { position:absolute; left:115px; top:584px; font-size:32px; font-weight:500; color:#bfdbfe; }
+    .algorithm { position:absolute; left:115px; top:637px; font-family:GeistMono,monospace; color:#94a3b8; font-size:25px; }
+    .hosting-label { position:absolute; left:115px; top:755px; font-size:24px; color:#94a3b8; }
+    .hosting { position:absolute; left:115px; top:802px; display:flex; gap:16px; }
+    .hosting span { padding:17px 25px; border:2px solid #526789; border-radius:16px; background:#121e34; font-size:26px; font-weight:500; }
+    .android-proof { position:absolute; left:1485px; top:206px; width:326px; height:707px; border-radius:32px; overflow:hidden; border:3px solid #526789; box-shadow:0 24px 70px #01030b; }
+    .android-proof img { width:100%; height:100%; object-fit:cover; }
+    .windows-proof { position:absolute; left:1000px; top:475px; width:436px; border-radius:15px; overflow:hidden; border:3px solid #526789; box-shadow:0 24px 70px #01030b; }
+    .windows-proof img { width:100%; display:block; }
+    .proof-label { position:absolute; left:1000px; top:420px; font-family:GeistMono,monospace; font-size:23px; color:#cbd5e1; }
+    .closing-brand { position:absolute; left:115px; top:237px; display:flex; align-items:center; gap:30px; font-size:52px; font-weight:500; letter-spacing:-.03em; }
+    .closing-brand img { width:92px; height:92px; object-fit:contain; }
+    .price { position:absolute; left:110px; top:407px; font-size:194px; line-height:1.02; letter-spacing:-.065em; font-weight:620; }
+    .closing-tag { position:absolute; left:115px; top:659px; font-size:50px; letter-spacing:-.03em; }
+    .url { position:absolute; left:115px; top:768px; font-family:GeistMono,monospace; color:#bfdbfe; font-size:30px; }
+    .closing-mark { position:absolute; right:150px; top:410px; width:255px; height:255px; object-fit:contain; }
+  </style>
+</head>
+<body>
+<div data-hf-id="hf-7wnv" id="root" data-composition-id="everything-clipboard" data-width="1920" data-height="1080" data-start="0" data-duration="20" data-fps="30">
+  <div data-hf-id="hf-yzlm" class="backlight" id="product-light" data-layout-ignore=""></div>
+  <div data-hf-id="hf-qmtg" class="backlight light-violet" id="violet-light" data-layout-ignore=""></div>
+  <div data-hf-id="hf-aviv" class="guide guide-top" data-layout-ignore=""></div><div data-hf-id="hf-xb95" class="guide guide-bottom" data-layout-ignore=""></div>
+  <div data-hf-id="hf-oojr" class="brand"><img data-hf-id="hf-4d1q" src="assets/logo.png" alt=""><span data-hf-id="hf-97f6">Everything Clipboard</span></div>
+  <div data-hf-id="hf-ue8l" class="eyebrow">COPY HERE. PASTE THERE.</div>
+  <div data-hf-id="hf-yh7l" class="footer"><span data-hf-id="hf-9gry" class="dot"></span><span data-hf-id="hf-xjj1">Encrypted text sync across devices</span></div>
+  <section data-hf-id="hf-zs6q" id="hook" class="clip" data-start="0" data-duration="3.7" data-track-index="1">
+    <div data-hf-id="hf-r10z" class="scene-inner" id="hook-inner">
+      <h1 data-hf-id="hf-hwno" class="headline hf-lines" id="hook-title"><span data-hf-id="hf-g3yk">Your clipboard</span><span data-hf-id="hf-j2tp">has places</span><span data-hf-id="hf-qz00" class="violet">to be.</span></h1>
+      <p data-hf-id="hf-iz5m" class="hook-sub" id="hook-sub">Copy on one device. Paste on another.</p>
+      <div data-hf-id="hf-415i" class="phone hook-phone" id="hook-phone"><div data-hf-id="hf-9o7x" class="phone-screen">
+        <div data-hf-id="hf-mf3a" class="phone-top"><b data-hf-id="hf-jr9m">Notes</b><span data-hf-id="hf-qxkw">Android</span></div>
+        <div data-hf-id="hf-gjvw" class="note"><p data-hf-id="hf-w32z" class="note-label">A LITTLE HELLO</p><p data-hf-id="hf-h2td" class="note-text">Hello from Android!</p></div>
+        <div data-hf-id="hf-5i9a" class="copy-btn" id="hook-copy">Copy</div><p data-hf-id="hf-8e4h" class="confirm" id="hook-confirm">Copied to clipboard ✓</p>
+      </div></div><div data-hf-id="hf-d4yq" class="chapter">01 / COPY</div>
+    </div>
+  </section>
+  <section data-hf-id="hf-9iis" id="flow" class="clip" data-start="3.7" data-duration="6.3" data-track-index="1">
+    <div data-hf-id="hf-m8zy" class="scene-inner" id="flow-inner">
+      <h2 data-hf-id="hf-zdk3" class="headline flow-title hf-lines" id="flow-title"><span data-hf-id="hf-1hi4">Copy on Android.</span><span data-hf-id="hf-1j2m" class="blue">Paste on Windows.</span></h2>
+      <div data-hf-id="hf-plzy" class="phone source-device" id="source-device"><div data-hf-id="hf-a9kh" class="phone-screen">
+        <div data-hf-id="hf-e9gq" class="phone-top"><b data-hf-id="hf-z9fy">Notes</b><span data-hf-id="hf-8bjs">Android</span></div>
+        <div data-hf-id="hf-o37o" class="note"><p data-hf-id="hf-eyu3" class="note-label">A LITTLE HELLO</p><p data-hf-id="hf-9tw5" class="note-text">Hello from Android!</p></div><div data-hf-id="hf-gmx1" class="copy-btn">Copied ✓</div>
+      </div></div>
+      <div data-hf-id="hf-fmv7" class="connector" id="connector" data-layout-ignore=""></div>
+      <div data-hf-id="hf-213r" class="packet" id="packet" data-layout-ignore=""><svg data-hf-id="hf-99nn" viewBox="0 0 32 32" fill="none" stroke="#bfdbfe" stroke-width="2.3"><rect data-hf-id="hf-eolt" x="6" y="6" width="20" height="23" rx="3" /><rect data-hf-id="hf-g496" x="11" y="2" width="10" height="7" rx="2" fill="#182d52" /><path data-hf-id="hf-ress" d="M11 16h10M11 21h7" /></svg></div>
+      <div data-hf-id="hf-fs22" class="desktop" id="destination">
+        <div data-hf-id="hf-85t8" class="window-bar"><span data-hf-id="hf-38wu" class="window-dots"><i data-hf-id="hf-wt6k"></i><i data-hf-id="hf-zeb8"></i><i data-hf-id="hf-y7e5"></i></span><span data-hf-id="hf-iyi1">Document — Windows</span></div>
+        <div data-hf-id="hf-jwoj" class="document"><p data-hf-id="hf-9bwl" class="document-label">THE SAME TEXT.</p><div data-hf-id="hf-e3v9" class="paste-button" id="paste-button">Paste</div><p data-hf-id="hf-76i1" class="pasted" id="pasted">Hello from Android!</p></div>
+        <div data-hf-id="hf-frzu" class="tray" id="tray"><span data-hf-id="hf-k86b" class="tray-status">ClipSync · Status: Connected</span><span data-hf-id="hf-fftk" id="last-received">Last: “Hello from Android!” from Android</span></div>
+      </div>
+      <span data-hf-id="hf-4t51" class="device-label source-label" id="source-label">01 / ANDROID</span><span data-hf-id="hf-7hfy" class="device-label dest-label" id="dest-label">02 / WINDOWS</span>
+      <div data-hf-id="hf-3n5v" class="chapter">02 / PASTE</div>
+    </div>
+  </section>
+  <section data-hf-id="hf-j1zo" id="privacy" class="clip" data-start="10" data-duration="5.81" data-track-index="1">
+    <div data-hf-id="hf-hpd0" class="scene-inner" id="privacy-inner">
+      <h2 data-hf-id="hf-1ga9" class="headline privacy-title hf-lines" id="privacy-title"><span data-hf-id="hf-23md">Your text.</span><span data-hf-id="hf-jvrb" class="violet">Your business.</span></h2>
+      <p data-hf-id="hf-vvms" class="encryption" id="encryption">End-to-End Encrypted</p><p data-hf-id="hf-mf7s" class="algorithm" id="algorithm">AES-256-GCM · on your devices</p>
+      <p data-hf-id="hf-337g" class="hosting-label" id="hosting-label">Choose where your relay lives.</p>
+      <div data-hf-id="hf-rf56" class="hosting"><span data-hf-id="hf-x022" id="local">Local</span><span data-hf-id="hf-6ud6" id="self-hosted">Self-hosted</span><span data-hf-id="hf-iypc" id="hosted">Hosted</span></div>
+      <p data-hf-id="hf-4htc" class="proof-label" id="proof-label">THE REAL APPS.</p>
+      <div data-hf-id="hf-80pu" class="windows-proof" id="windows-proof"><img data-hf-id="hf-pzif" src="assets/windows.png" alt="ClipSync Windows tray menu"></div>
+      <div data-hf-id="hf-92km" class="android-proof" id="android-proof"><img data-hf-id="hf-2wu7" src="assets/android.png" alt="ClipSync Android settings"></div>
+      <div data-hf-id="hf-txnb" class="chapter">03 / YOURS</div>
+    </div>
+  </section>
+  <section data-hf-id="hf-xq3f" id="closing" class="clip" data-start="15.81" data-duration="4.19" data-track-index="1">
+    <div data-hf-id="hf-y2e9" class="scene-inner" id="closing-inner">
+      <div data-hf-id="hf-d6b4" class="closing-brand" id="closing-brand"><img data-hf-id="hf-osgi" src="assets/logo.png" alt=""><span data-hf-id="hf-v7yu">Everything Clipboard</span></div>
+      <h2 data-hf-id="hf-jw0c" class="price" id="price">$3. <span data-hf-id="hf-vid6" class="blue">Once.</span></h2>
+      <p data-hf-id="hf-8fx4" class="closing-tag" id="closing-tag">One Clipboard. All Your Devices.</p><p data-hf-id="hf-hqni" class="url" id="url">everything-clipboard.online</p>
+      <img data-hf-id="hf-fxlm" class="closing-mark" id="closing-mark" src="assets/logo.png" alt="" data-layout-ignore=""><div data-hf-id="hf-dwie" class="chapter">04 / THAT'S IT</div>
+    </div>
+  </section>
+  <audio data-hf-id="hf-k35c" id="music" src="assets/music/music.mp3" data-start="0" data-duration="20" data-track-index="10" data-volume="0.30" data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0},{&quot;t&quot;:0.4,&quot;v&quot;:0.30},{&quot;t&quot;:18.7,&quot;v&quot;:0.30},{&quot;t&quot;:20,&quot;v&quot;:0}]}]}"></audio>
+  <audio data-hf-id="hf-bqq7" id="copy-click" src="assets/sfx/click.ogg" data-start="1.6" data-duration="0.02" data-track-index="11" data-volume="0.55"></audio>
+  <audio data-hf-id="hf-dks9" id="flow-hit" src="assets/sfx/soft.ogg" data-start="3.7" data-duration="0.18" data-track-index="12" data-volume="0.52"></audio>
+  <audio data-hf-id="hf-tfa1" id="paste-click" src="assets/sfx/click.ogg" data-start="5.8" data-duration="0.02" data-track-index="11" data-volume="0.55"></audio>
+  <audio data-hf-id="hf-3lyu" id="close-hit" src="assets/sfx/soft.ogg" data-start="16.34" data-duration="0.18" data-track-index="12" data-volume="0.48"></audio>
+</div>
+<script>
+  const tl = gsap.timeline({ paused: true });
+  // Adapted from the installed line-by-line-slide registry primitive.
+  function lines(selector, start) {
+    tl.fromTo(selector, { opacity: 0, '--hf-line-x': '-36px', '--hf-line-y': '18px' },
+      { opacity: 1, '--hf-line-x': '0px', '--hf-line-y': '0px', duration: 0.42, stagger: 0.11, ease: 'power3.out' }, start);
+  }
+  // One explicit settle entrance, adapted from browser-device-stage.
+  function device(selector, start, duration = 0.75) {
+    tl.fromTo(selector, { opacity: 0, y: 48, scale: 0.965 },
+      { opacity: 1, y: 0, scale: 1, duration, ease: 'power3.out' }, start);
+  }
+  function reveal(selector, start, x = 0) {
+    tl.fromTo(selector, { opacity: 0, x, y: 15 },
+      { opacity: 1, x: 0, y: 0, duration: 0.35, ease: 'power2.out' }, start);
+  }
+  lines('#hook-title > span', 0.08); device('#hook-phone', 0.18); reveal('#hook-sub', 0.65);
+  // beat-locked: copy action at 1.60s.
+  tl.fromTo('#hook-copy', { scale: 1 }, { scale: 0.96, duration: 0.10, ease: 'power2.inOut', yoyo: true, repeat: 1 }, 1.60);
+  reveal('#hook-confirm', 1.78);
+  // beat-locked: two-device flow reveal at 3.70s.
+  lines('#flow-title > span', 3.70); device('#source-device', 3.82, 0.55); device('#destination', 4.00, 0.65);
+  reveal('#source-label', 4.22); reveal('#dest-label', 4.35);
+  tl.fromTo('#connector', { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: 'power2.out' }, 4.23);
+  tl.fromTo('#packet', { opacity: 0, x: -15, scale: 0.8 }, { opacity: 1, x: 0, scale: 1, duration: 0.20, ease: 'back.out(1.3)' }, 4.75);
+  tl.to('#packet', { x: 138, duration: 0.65, ease: 'power2.inOut' }, 5.08);
+  tl.to('#packet', { opacity: 0, scale: 0.7, duration: 0.16 }, 5.73);
+  // beat-locked: paste lands at 5.80s; the result holds for four seconds.
+  tl.fromTo('#paste-button', { scale: 1 }, { scale: 0.94, duration: 0.09, yoyo: true, repeat: 1, ease: 'power2.inOut' }, 5.80);
+  reveal('#pasted', 5.88); reveal('#last-received', 5.80);
+  lines('#privacy-title > span', 10.04); reveal('#encryption', 10.48); reveal('#algorithm', 10.63);
+  device('#android-proof', 10.14); device('#windows-proof', 10.32); reveal('#proof-label', 10.61); reveal('#hosting-label', 10.77);
+  // beat-grid: hosting text at 11.06s, 12.12s, 13.18s; every other beat.
+  reveal('#local', 11.06, -18); reveal('#self-hosted', 12.12, -18); reveal('#hosted', 13.18, -18);
+  device('#closing-brand', 15.85, 0.48);
+  tl.fromTo('#price', { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.48, ease: 'back.out(1.15)' }, 16.34);
+  reveal('#closing-tag', 16.86); reveal('#url', 17.05);
+  tl.fromTo('#closing-mark', { opacity: 0, rotation: -8, scale: 0.8 }, { opacity: 1, rotation: 0, scale: 1, duration: 0.65, ease: 'power3.out' }, 16.02);
+  tl.fromTo('#violet-light', { x: 0, y: 0 }, { x: 70, y: -65, duration: 20, ease: 'sine.inOut' }, 0);
+  // Pre-extracted music bands modulate the existing product light under seek.
+  const productLight = document.getElementById('product-light');
+  tl.eventCallback('onUpdate', () => {
+    const frame = AUDIO_DATA.frames[Math.min(599, Math.floor(tl.time() * AUDIO_DATA.fps))];
+    productLight.style.opacity = String(0.82 + frame.bands[0] * 0.18);
+    productLight.style.transform = `scale(${1 + frame.bands[0] * 0.035})`;
+  });
+  window.__timelines['everything-clipboard'] = tl;
+</script>
+</body>
+</html>
