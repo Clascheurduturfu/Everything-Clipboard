@@ -65,8 +65,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clipsync")
 
-APP_VERSION = "2.0-rc.6"
+APP_VERSION = "2.0-rc.7"
 _IS_MACOS = platform.system() == "Darwin"
+
+
+def _is_store_package() -> bool:
+    """True when running from an MSIX package, i.e. the Microsoft Store build.
+
+    GetCurrentPackageFullName returns ERROR_INSUFFICIENT_BUFFER (122) for a
+    zero-length buffer when the process has package identity, and
+    APPMODEL_ERROR_NO_PACKAGE (15700) otherwise.
+    """
+    if platform.system() != "Windows":
+        return False
+    try:
+        import ctypes
+
+        length = ctypes.c_uint32(0)
+        return ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(length), None) == 122
+    except (AttributeError, OSError):
+        return False
+
+
+# The Store installs and updates the MSIX itself (policy 10.2.2): the Store
+# build never checks for, downloads or applies its own updates, and start on
+# login is the manifest's startupTask, managed in Windows Settings, because
+# packaged apps get a virtualized HKCU Run key.
+STORE_BUILD = _is_store_package()
 
 # A value that crossed the wire (in either direction) is remembered for this
 # long so the clipboard poller never broadcasts it a second time.
@@ -743,14 +768,28 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
     startup_var = ctk.BooleanVar(value=bool(config.get("start_on_login")))
     hide_dock_var = ctk.BooleanVar(value=bool(config.get("hide_dock_icon", True)))
     images_var = ctk.BooleanVar(value=bool(config.get("sync_images", True)))
-    switch(general, "Start ClipSync on login", startup_var)
+    if STORE_BUILD:
+        startup_row = ctk.CTkFrame(general, fg_color="transparent")
+        startup_row.pack(fill="x", padx=8, pady=(6, 2))
+        ctk.CTkLabel(
+            startup_row, text="Start on login: Windows Settings > Apps > Startup", font=font(13),
+            text_color=p["text"], anchor="w",
+        ).pack(side="left", fill="x", expand=True)
+        ctk.CTkButton(
+            startup_row, text="Open", width=72, height=28, corner_radius=8,
+            fg_color=p["panel_border"], hover_color=p["status_border"], text_color=p["text"],
+            command=lambda: os.startfile("ms-settings:startupapps"),
+        ).pack(side="right")
+    else:
+        switch(general, "Start ClipSync on login", startup_var)
     switch(general, "Sync images (up to 16 MB)", images_var)
     if _IS_MACOS:
         switch(general, "Hide Dock icon when no window is open", hide_dock_var)
     updates_var = ctk.BooleanVar(value=bool(config.get("check_updates", True)))
     preview_var = ctk.BooleanVar(value=config.get("update_channel", "main") == "preview")
-    switch(general, "Check for updates automatically", updates_var)
-    switch(general, "Developer: preview updates (preview branch)", preview_var)
+    if not STORE_BUILD:
+        switch(general, "Check for updates automatically", updates_var)
+        switch(general, "Developer: preview updates (preview branch)", preview_var)
 
     update_row = ctk.CTkFrame(general, fg_color="transparent")
     update_row.pack(fill="x", padx=8, pady=(6, 2))
@@ -764,9 +803,12 @@ def show_preferences_dialog(status_color: str = "gray", status_text: str = "") -
         general, text="Check for updates", width=160, height=32, corner_radius=8,
         fg_color=p["panel_border"], hover_color=p["status_border"], text_color=p["text"],
     )
-    update_button.pack(anchor="w", padx=8, pady=(0, 6))
+    if not STORE_BUILD:
+        update_button.pack(anchor="w", padx=8, pady=(0, 6))
 
     def check_updates_in_preferences():
+        if STORE_BUILD:
+            return
         channel = "preview" if preview_var.get() else "main"
         channel_name = "Preview" if channel == "preview" else "Stable"
         update_button.configure(state="disabled", text="Checking...")
@@ -1096,9 +1138,10 @@ class ClipSyncApp:
             [
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Preferences...", self._open_preferences_from_tray),
-                self._update_menu_item(),
             ]
         )
+        if not STORE_BUILD:
+            items.append(self._update_menu_item())
         if _IS_MACOS:
             items.append(
                 pystray.MenuItem(
@@ -1880,6 +1923,8 @@ class ClipSyncApp:
 
     def _set_start_on_login(self, enabled: bool):
         system = platform.system()
+        if STORE_BUILD:
+            return  # The manifest startupTask, toggled in Windows Settings.
         if system == "Windows":
             self._set_windows_startup(enabled)
         elif system == "Darwin":
@@ -1981,7 +2026,7 @@ class ClipSyncApp:
 
     def _install_update(self):
         update = self.available_update
-        root = updater.install_root()
+        root = None if STORE_BUILD else updater.install_root()
         if not update or root is None or not self._update_busy.acquire(blocking=False):
             return
         try:
@@ -2021,7 +2066,8 @@ class ClipSyncApp:
 
         if self.config.get("server_url") and self.config.get("secret_key"):
             self._connect()
-        threading.Thread(target=self._update_loop, daemon=True).start()
+        if not STORE_BUILD:
+            threading.Thread(target=self._update_loop, daemon=True).start()
         logger.info("Tray icon setup finished")
 
     def run(self):
