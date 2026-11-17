@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Microsoft Store package for the PyInstaller build. build_msix.ps1 fills in
+  __VERSION__ and writes the result next to the staged app as AppxManifest.xml.
+  Identity values come from Partner Center > Everything Clipboard (9NM290667HZM)
+  > Product identity and must not change.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap desktop rescap">
+
+  <Identity
+    Name="XinolabCorp.EverythingClipboard"
+    Publisher="CN=3063DFCB-2028-4BE5-811B-D94CDFBAE867"
+    Version="__VERSION__"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Everything Clipboard</DisplayName>
+    <PublisherDisplayName>Xinolab Corp</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="EverythingClipboard" Executable="ClipSync\ClipSync.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Everything Clipboard"
+        Description="Encrypted clipboard sync for text and photos between Windows, macOS, Android and iOS."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- Off by default; the user turns it on in Settings > Apps > Startup.
+             Packaged apps can't use the HKCU Run key (it is virtualized). -->
+        <desktop:Extension Category="windows.startupTask" Executable="ClipSync\ClipSync.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="EverythingClipboardStartup" Enabled="false" DisplayName="Everything Clipboard" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
